@@ -23,6 +23,7 @@ const people = ["Craig Chihururu", "Amara Stone", "Nadia Jacobs", "Theo Brand", 
 const cities = ["Cape Town", "Johannesburg", "Durban", "Gqeberha", "East London", "Mthatha", "Kariega", "Centane", "Qumbu", "Butterworth"];
 const regions = ["northern", "eastern", "western", "central"];
 const counts: Record<string, number> = {
+  posts: 18,
   "launch-pages": 44,
   "content-blocks": 72,
   "product-catalog": 58,
@@ -425,6 +426,17 @@ function valuesForCollection(collection: CmsCollection, index: number, id: strin
   const name = makeName(index);
 
   switch (collection.id) {
+    case "posts":
+      return {
+        title: `${name}: notes from the field`,
+        slug: slugify(`${name} notes from the field`),
+        excerpt: makeParagraph(index, "post"),
+        body: `${makeParagraph(index, "post")}\n\n${makeParagraph(index + 1, "follow-up")}`,
+        coverImage: assetOrEmpty(index, collection.tableName, "cover", "png"),
+        author: people[index % people.length],
+        tags: ["performance", "seo", "workflow", "cms", "astro"].filter((_, tagIndex) => (index + tagIndex) % 3 !== 0).join(", "),
+        publishedAt: isoFromSeed(-index * 2, index * 7)
+      };
     case "launch-pages":
       return {
         title: `${name} Launch Page`,

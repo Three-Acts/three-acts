@@ -2,6 +2,31 @@ import type { CmsCollection } from "./types";
 
 export const collectionRegistry: CmsCollection[] = [
   {
+    id: "posts",
+    label: "Posts",
+    tableName: "posts",
+    group: "Editorial",
+    titleField: "title",
+    description: "Blog posts rendered on the public site at /blog/:slug. Only published records reach the site.",
+    fields: [
+      { key: "title", label: "Title", type: "text", required: true },
+      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/blog/" },
+      { key: "excerpt", label: "Excerpt", type: "textarea", required: true, helpText: "Shown in listings and as the meta description." },
+      { key: "body", label: "Body", type: "textarea", required: true },
+      { key: "coverImage", label: "Cover image", type: "asset", bucket: "cms-assets", accept: "image/*" },
+      { key: "author", label: "Author", type: "text" },
+      { key: "tags", label: "Tags", type: "text", helpText: "Comma-separated, e.g. performance, seo, workflow." },
+      { key: "publishedAt", label: "Published at", type: "datetime", required: true, helpText: "Drives ordering and the sitemap lastmod." }
+    ],
+    listColumns: [
+      { key: "title", label: "Name", width: "minmax(220px, 1.5fr)" },
+      { key: "publishStatus", label: "Status", valueType: "status", width: "160px" },
+      { key: "author", label: "Author", width: "140px" },
+      { key: "publishedAt", label: "Published", valueType: "datetime", width: "170px" },
+      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
+    ]
+  },
+  {
     id: "launch-pages",
     label: "Launch Pages",
     tableName: "launch_pages",
@@ -425,7 +450,8 @@ export const collectionRegistry: CmsCollection[] = [
       { key: "characterLimit", label: "Character limit", type: "number" },
       { key: "approved", label: "Approved", type: "boolean" },
       { key: "screenshot", label: "Screenshot", type: "asset", bucket: "cms-assets", accept: "image/*" },
-      { key: "updatedAt", label: "Updated at", type: "datetime" },
+      // Explicit column: the default snake_case ("updated_at") would collide with the system modified-at column.
+      { key: "updatedAt", label: "Updated at", type: "datetime", column: "source_updated_at" },
       { key: "stringId", label: "String ID", type: "readonly" }
     ],
     listColumns: [

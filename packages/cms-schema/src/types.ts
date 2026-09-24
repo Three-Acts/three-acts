@@ -33,6 +33,12 @@ type FieldBase<TType extends FieldType> = {
   required?: boolean;
   helpText?: string;
   /**
+   * Enforce uniqueness of this field's value across the collection (ignoring
+   * empty values). `slug` fields default to unique; set `unique: false` to opt
+   * out. Realised as a partial unique index by the schema tooling.
+   */
+  unique?: boolean;
+  /**
    * Backing column name when it differs from `key`. Adapters fall back to the
    * collection's `columnNaming` strategy (default: snake_case of `key`).
    */
@@ -102,6 +108,8 @@ export type AssetUploadResult = {
 /** Query options for `listRecords`. Adapters may ignore `search` and filter client-side. */
 export type ListRecordsOptions = {
   search?: string;
+  /** Only records with this publish status (used by the public content API). */
+  publishStatus?: PublishStatus;
   sort?: { key: string; direction: "asc" | "desc" };
   /** Page size. Omit to return every record (mock/dev only). */
   limit?: number;
