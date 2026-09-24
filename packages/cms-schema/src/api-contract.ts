@@ -52,3 +52,14 @@ export function listRecordsQuery(options?: ListRecordsOptions): string {
   const query = params.toString();
   return query ? `?${query}` : "";
 }
+
+/**
+ * Public, unauthenticated read contract for published content, consumed by
+ * the static site build (`apps/web`). Only collections with a publish
+ * workflow are served, and only their `published` records.
+ *
+ *   GET /api/content/collections/:collectionId/records?sortKey&sortDirection&limit&offset -> ListRecordsResult
+ */
+export const contentApiPaths = {
+  records: (collectionId: string) => `/content/collections/${encodeURIComponent(collectionId)}/records` as const
+};

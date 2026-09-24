@@ -2,6 +2,7 @@ import {
   CmsError,
   MAX_ASSET_UPLOAD_BYTES,
   collectionRegistry,
+  hasPublishWorkflow,
   type AssetField,
   type AssetUploadResult,
   type CmsCollection,
@@ -165,11 +166,6 @@ function isPublishStatus(value: unknown): value is PublishStatus {
   return value === "published" || value === "not_published" || value === "queued_to_publish";
 }
 
-/** Only editorial (or default-mode) collections have a publish workflow; "data"/"readonly" collections never queue. */
-function hasPublishWorkflow(collection: CmsCollection): boolean {
-  return collection.mode === undefined || collection.mode === "editorial";
-}
-
 function sanitizeFileName(fileName: string): string {
   const cleaned = fileName.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
   return cleaned || "file";
@@ -191,6 +187,20 @@ export async function listCollections(): Promise<CmsCollectionSummary[]> {
 export async function listRecords(collectionId: string, options: ListRecordsOptions): Promise<ListRecordsResult> {
   const collection = getCollectionOrThrow(collectionId);
   return getDataStore().listRecords(collection, options);
+}
+
+/**
+ * Public read used by the static site build (`/api/content/*`): published
+ * records of an editorial collection only. Collections without a publish
+ * workflow (`data`, `readonly`) are reported as not found so operational and
+ * system-generated records never leak through the unauthenticated route.
+ */
+export async function listPublishedRecords(collectionId: string, options: ListRecordsOptions): Promise<ListRecordsResult> {
+  const collection = getCollectionOrThrow(collectionId);
+  if (!hasPublishWorkflow(collection)) {
+    throw new CmsError("not_found", `Unknown collection: ${collectionId}`);
+  }
+  return getDataStore().listRecords(collection, { ...options, publishStatus: "published" });
 }
 
 export async function getRecord(collectionId: string, recordId: string): Promise<CmsRecord> {

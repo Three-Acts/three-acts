@@ -125,6 +125,10 @@ export class SupabaseDataStore implements CmsDataStore {
 
     let query = client.from(collection.tableName).select("*", { count: "exact" });
 
+    if (options.publishStatus) {
+      query = query.eq(sys.publishStatus, options.publishStatus);
+    }
+
     if (options.search) {
       const columns = searchableColumns(collection);
       if (columns.length > 0) {

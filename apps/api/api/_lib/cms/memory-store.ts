@@ -58,6 +58,10 @@ export class MemoryDataStore implements CmsDataStore {
   async listRecords(collection: CmsCollection, options: ListRecordsOptions): Promise<ListRecordsResult> {
     let records = this.recordsFor(collection.id).map(cloneRecord);
 
+    if (options.publishStatus) {
+      records = records.filter((record) => record.publishStatus === options.publishStatus);
+    }
+
     if (options.search) {
       const term = options.search.toLowerCase();
       const searchableKeys = collection.fields.filter((field) => SEARCHABLE_FIELD_TYPES.has(field.type)).map((field) => field.key);
