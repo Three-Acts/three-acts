@@ -2,8 +2,8 @@ import type { ContentEntry, ContentSource } from "./content-source";
 
 /**
  * Default content source. Ships seed data so `npm run build:web` produces a
- * complete static site with zero credentials. Swap in the Supabase source by
- * setting the Supabase env vars (see `./index.ts`).
+ * complete static site with zero credentials. Swap in the API-backed source
+ * by setting `CONTENT_SOURCE=api` (see `./index.ts`).
  */
 
 const posts: ContentEntry[] = [
@@ -11,8 +11,8 @@ const posts: ContentEntry[] = [
     slug: "static-first-launch-playbook",
     title: "The static-first launch playbook",
     excerpt:
-      "How Three Acts prerenders marketing pages to fast, indexable HTML while keeping editorial data in Supabase.",
-    body: "Static-first means the browser receives finished HTML, not a loading spinner. We fetch content from Supabase at build time, prerender every marketing route, and ship zero JavaScript on pages that do not need it. Interactive pieces become islands that hydrate on their own.",
+      "How Three Acts prerenders marketing pages to fast, indexable HTML while keeping editorial data in its own API.",
+    body: "Static-first means the browser receives finished HTML, not a loading spinner. We fetch content from the project's own API at build time, prerender every marketing route, and ship zero JavaScript on pages that do not need it. Interactive pieces become islands that hydrate on their own.",
     coverImage: "/content/launch-playbook.png",
     publishedAt: "2026-06-20T09:00:00.000Z",
     updatedAt: "2026-06-28T12:00:00.000Z",

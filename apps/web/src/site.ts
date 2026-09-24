@@ -21,7 +21,7 @@ export const site = {
   // misconfigured production build — see astro.config.mjs `resolveSiteUrl`).
   url: import.meta.env.SITE.replace(/\/+$/, ""),
   description:
-    "A static-first marketing website starter built on Astro and React, backed by Supabase and deployed on Vercel.",
+    "A static-first marketing website starter built on Astro and React, backed by its own API and deployed on Vercel.",
   /** Local raster (compressed to AVIF at build) used as the default social image. */
   defaultImage: "/og-default.png",
   locale: "en_US",

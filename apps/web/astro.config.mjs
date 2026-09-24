@@ -54,7 +54,7 @@ export default defineConfig({
       : undefined,
     ssr: {
       // Bundle these for the build-time render so they resolve cleanly under npm workspaces.
-      noExternal: ["@base-ui-components/react", "@supabase/supabase-js"]
+      noExternal: ["@base-ui-components/react"]
     }
   }
 });

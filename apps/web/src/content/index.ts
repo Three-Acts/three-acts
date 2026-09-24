@@ -4,39 +4,50 @@ import { mockContentSource } from "./mock-source";
 export type { ContentEntry, ContentSource } from "./content-source";
 
 /**
- * Resolves the active content source.
+ * Resolves the active content source from `CONTENT_SOURCE`:
+ *   - "api"          -> reads published content from this project's own API
+ *                       (`apps/api`), at `CONTENT_API_ORIGIN` (falling back to
+ *                       `API_ORIGIN`) — see `./api-source.ts`.
+ *   - unset / "mock" -> the zero-config mock source, so builds work with no
+ *                       backend at all.
+ *   - anything else  -> a configuration error.
  *
- * When both `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set (baked in
- * at build time, live in dev), the Supabase source is loaded lazily. Otherwise
- * the mock source keeps builds working with zero configuration — and the
- * Supabase client (and its dependencies) is never imported.
+ * `import.meta.env` is how Astro/Vite expose env vars server-side; `process.env`
+ * is read defensively in case a var only reaches the Node process (e.g. set by
+ * the shell/CI rather than an `.env` file Vite loads).
  */
 let cached: Promise<ContentSource> | null = null;
 
-async function resolveContentSource(): Promise<ContentSource> {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+function readEnv(name: string): string | undefined {
+  const fromImportMeta = (import.meta.env as Record<string, string | undefined>)[name];
+  return fromImportMeta ?? process.env[name];
+}
 
-  if (Boolean(url) !== Boolean(anonKey)) {
-    throw new Error(
-      "VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must both be set to use the Supabase content source — only one was provided."
-    );
-  }
+async function resolveContentSource(): Promise<ContentSource> {
+  const mode = readEnv("CONTENT_SOURCE");
 
   let source: ContentSource;
 
-  if (url && anonKey) {
-    const { createSupabaseContentSource } = await import("./supabase-source");
-    source = createSupabaseContentSource(url, anonKey);
-  } else {
+  if (mode === undefined || mode === "mock") {
     source = mockContentSource;
+  } else if (mode === "api") {
+    const apiOrigin = readEnv("CONTENT_API_ORIGIN") ?? readEnv("API_ORIGIN");
+    if (!apiOrigin) {
+      throw new Error(
+        'CONTENT_SOURCE=api requires CONTENT_API_ORIGIN (or API_ORIGIN) to be set to the API app\'s origin, e.g. "http://127.0.0.1:5175".'
+      );
+    }
+    const { createApiContentSource } = await import("./api-source");
+    source = createApiContentSource(apiOrigin);
+  } else {
+    throw new Error(`Unknown CONTENT_SOURCE "${mode}" — expected "api", "mock", or unset.`);
   }
 
   console.info(`[content] source: ${source.name}`);
 
   if (source.name === "mock" && process.env.VERCEL_ENV === "production") {
     console.warn(
-      "[content] Production Vercel build is using the mock content source — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to publish real content."
+      "[content] Production Vercel build is using the mock content source — set CONTENT_SOURCE=api (and CONTENT_API_ORIGIN/API_ORIGIN) to publish real content."
     );
   }
 
