@@ -44,6 +44,14 @@ _Avoid_: Generic API gateway, database proxy
 The shared `@three-acts/cms-schema` package: the Collection Registry, field types, typed errors, the REST wire contract, and column-mapping helpers. Consumed by the CMS and the REST Bridge so both validate against the same fields.
 _Avoid_: Duplicated types, app-local schema
 
+**Schema Snapshot**:
+The committed JSON capture of the Collection Registry's table shape (`apps/api/schema/snapshot.json`) that the schema tooling diffs against to produce migration SQL. Updated only by `schema:migrate`.
+_Avoid_: Live database introspection, ORM migration state
+
+**Public Content Route**:
+The unauthenticated `/api/content/*` read path of the REST Bridge that serves only `published` records of `editorial` CMS Collections, used by the static site build.
+_Avoid_: Direct database reads from the site, anon-key client, CMS route
+
 **Collection Mode**:
 How editors work with a CMS Collection's records: `editorial` (publish workflow), `data` (editable, no publish workflow), or `readonly` (system-generated records like form submissions — view, export, delete only).
 _Avoid_: Per-record permissions, role-based access
@@ -88,6 +96,8 @@ _Avoid_: Production content, screenshot copy
 - A **CMS Collection** has one **Collection Mode** (`editorial` by default).
 - A CMS Collection record has one **Publish Status** only when its collection's **Collection Mode** is `editorial`.
 - Publishing runs a **Publish Transition** first, then a **Site Deploy**.
+- A **Site Deploy** reads content through the **Public Content Route**, never from a **Data Store** directly.
+- The **Collection Registry** produces the database schema and migrations by diffing against the **Schema Snapshot**; the database never defines a **Collection Field**.
 - The **Editorial Workspace** is optimized for desktop editorial work.
 - The **Editorial Workspace** shows the selected record in a **Record Editor Pane**.
 - A **CMS Collection** may define one **Title Field**.
@@ -105,6 +115,10 @@ _Avoid_: Production content, screenshot copy
 > **Domain expert:** "No — uploads are edited through an **Asset Field** on the record that needs the file."
 > **Dev:** "Do we need a live backend before building the CMS?"
 > **Domain expert:** "No, build against the **CMS Data Adapter** first. `VITE_CMS_BACKEND=mock` runs the whole editor with no backend at all, and switching to `rest` later doesn't change the editor code."
+> **Dev:** "How does the public site get its content?"
+> **Domain expert:** "Through the **Public Content Route**. It only ever sees published records of editorial collections, and it uses the same field keys from the **Collection Schema Package** the editor uses."
+> **Dev:** "I added a field to a collection. Do I edit the database by hand?"
+> **Domain expert:** "No. Run the schema diff. It compares the **Collection Registry** to the **Schema Snapshot** and gives you the ALTER statements to review."
 > **Dev:** "Can I use plain Postgres?"
 > **Domain expert:** "Yes. Implement the **Data Store** interface for Postgres and register it in the **REST Bridge**. Nothing in the CMS or the **Collection Schema Package** changes."
 > **Dev:** "Where do uploads go if I use Cloudflare?"

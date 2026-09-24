@@ -4,7 +4,7 @@ Astro, React, Tailwind, and Vercel API monorepo with a static public web app, an
 
 ## Apps
 
-- `apps/web` - public **Astro** website that prerenders to **zero-JS static HTML**, with React **islands** for interactivity, a **build-time content layer** (mock by default, Supabase-ready), route-level SEO + AEO metadata (JSON-LD, `sitemap.xml`, `robots.txt`, `llms.txt`), build-time **AVIF** image compression, and a same-origin `/api/*` convention.
+- `apps/web` - public **Astro** website that prerenders to **zero-JS static HTML**, with React **islands** for interactivity, a **build-time content layer** (mock by default, or the API's public published-content route), route-level SEO + AEO metadata (JSON-LD, `sitemap.xml`, `robots.txt`, `llms.txt`), build-time **AVIF** image compression, and a same-origin `/api/*` convention.
 - `apps/cms` - private CMS shell with `noindex,nofollow`, disallowing `robots.txt`, a provider-shaped auth interface ready for Clerk, Auth0, or Supabase, a pluggable CMS backend (mock or REST) built on the shared `packages/cms-schema` collection registry, and the same same-origin `/api/*` convention.
 - `apps/api` - Vercel serverless API app for server-only template functionality such as CMS writes, payment callbacks, webhook handling, record validation, and integration bridges.
 - `packages/cms-schema` - shared collection registry, field types, typed errors, REST wire contract, and column-mapping helpers for the CMS, exported from `@three-acts/cms-schema`. Consumed by `apps/cms` and `apps/api` so both validate against the same schema. See [ADR 0003](docs/adr/0003-pluggable-cms-backend.md).
@@ -46,7 +46,7 @@ npm run lint
 npm run typecheck
 ```
 
-Set `VITE_SITE_URL` before `npm run build:web` to control canonical URLs and sitemap locations. Set `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` to source content from Supabase instead of the built-in mock (see `apps/web/.env.example`).
+Set `VITE_SITE_URL` before `npm run build:web` to control canonical URLs and sitemap locations. Set `CONTENT_SOURCE=api` (with `API_ORIGIN` pointing at the deployed API) to source published content from the API's public content route instead of the built-in mock (see `apps/web/.env.example`).
 
 ## API App
 
@@ -130,9 +130,17 @@ The CMS then polls `GET /api/deploy-status`, first with `?after=` and `?since=` 
 
 A new backend means implementing two server-side interfaces in `apps/api/api/_lib/cms/`, one for records and one for asset uploads, and registering them alongside `CMS_DATA_BACKEND` / `CMS_STORAGE_BACKEND`. Nothing in `apps/cms` changes, since it only ever talks to the REST bridge. Plain Postgres (via `pg` or Drizzle) and Cloudflare R2 both fit this shape.
 
-Run `npm run schema:sql -w @three-acts/api` to print `CREATE TABLE` SQL for every collection in the registry, so any Postgres-compatible database can be provisioned from the same schema the CMS renders.
+### Database schema from the registry
 
-See [ADR 0003](docs/adr/0003-pluggable-cms-backend.md) for the full decision and interface names.
+`packages/cms-schema/src/registry.ts` is the single source of truth for collections, fields, and constraints. The database follows it through the scripts in `apps/api/scripts/` (see `apps/api/schema/README.md`):
+
+- `npm run schema:sql -w @three-acts/api` prints the full, idempotent Postgres schema: `CREATE TABLE IF NOT EXISTS` per collection, `CHECK` constraints for select options and publish status, partial unique indexes for slug (and any `unique: true`) fields, and the `updated_at` trigger.
+- `npm run schema:diff -w @three-acts/api` prints the migration SQL between the committed snapshot (`apps/api/schema/snapshot.json`) and the current registry. `npm run schema:migrate -w @three-acts/api -- <name>` writes it to `apps/api/schema/migrations/` and updates the snapshot. Destructive statements are emitted commented out; renames appear as drop + add.
+- `npm run schema:json -w @three-acts/api` prints the registry as plain JSON for other tools.
+
+Review generated SQL before applying it with `psql` or the Supabase SQL editor.
+
+See [ADR 0003](docs/adr/0003-pluggable-cms-backend.md) for the backend interfaces and [ADR 0004](docs/adr/0004-registry-driven-schema-and-public-content.md) for the schema tooling and the public content route.
 
 ### Env matrix
 
@@ -144,6 +152,8 @@ See [ADR 0003](docs/adr/0003-pluggable-cms-backend.md) for the full decision and
 | `CMS_DATA_BACKEND` | api | `supabase` or `memory`. Defaults to `supabase` when the Supabase env vars below are set, otherwise `memory`. |
 | `CMS_STORAGE_BACKEND` | api | `supabase` or `memory`, same default rule as `CMS_DATA_BACKEND`. |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | api | Service-role Supabase project used by the `supabase` data store and blob store. |
+| `CONTENT_SOURCE` | web | `mock` (default) or `api`. `api` reads published records from `GET /api/content/collections/:id/records` at build time. |
+| `CONTENT_API_ORIGIN` | web | Optional override of `API_ORIGIN` for the build-time content fetch only. |
 | `VERCEL_DEPLOY_HOOK_URL` / `VERCEL_TOKEN` / `VERCEL_PROJECT_ID` / `VERCEL_TEAM_ID` / `VERCEL_API_BASE` | api | Deploy hook and polling credentials used by the site deploy step. |
 
 ## Web rendering model
@@ -167,9 +177,9 @@ An island is a self-contained React component with JSON-serializable props that 
 Content is read through a source in `src/content/`:
 
 - `mock-source.ts` is the default, so builds work with **zero credentials**.
-- `supabase-source.ts` activates automatically when `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` are set (read-only, anon key). It is loaded lazily, so mock builds never bundle Supabase.
+- `api-source.ts` activates with `CONTENT_SOURCE=api`. It fetches the `posts` collection from the API's public, published-only route (`/api/content/collections/posts/records`, no auth) and maps records using the field keys from `@three-acts/cms-schema`, so the site and the CMS share one collection definition. A failed fetch fails the build rather than shipping an empty blog.
 
-`src/pages/blog/[slug].astro` expands the collection into concrete static routes via `getStaticPaths`, with per-entry SEO from `blogPostMeta` in `src/page-meta.ts`. The content source is only imported from build-time code, so the Supabase client never ships to the browser. Server-side writes belong in `apps/api`, not here.
+`src/pages/blog/[slug].astro` expands the collection into concrete static routes via `getStaticPaths`, with per-entry SEO from `blogPostMeta` in `src/page-meta.ts`. The content source is only imported from build-time code, so no data client ships to the browser. Server-side writes belong in `apps/api`, not here.
 
 ### Images
 
