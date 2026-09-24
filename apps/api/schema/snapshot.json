@@ -1,0 +1,978 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-24T11:50:59.500Z",
+  "tables": {
+    "posts": {
+      "collectionId": "posts",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "title": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "slug": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "slug",
+          "unique": true
+        },
+        "excerpt": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "body": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "cover_image": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "author": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "tags": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "published_at": {
+          "type": "timestamptz",
+          "kind": "field",
+          "fieldType": "datetime"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "launch_pages": {
+      "collectionId": "launch-pages",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "title": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "slug": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "slug",
+          "unique": true
+        },
+        "summary": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "template": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "campaign",
+            "editorial",
+            "conversion",
+            "long_form",
+            "product"
+          ]
+        },
+        "priority": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "featured": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "hero_image": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "publish_at": {
+          "type": "timestamptz",
+          "kind": "field",
+          "fieldType": "datetime"
+        },
+        "record_id": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "readonly"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "content_blocks": {
+      "collectionId": "content-blocks",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "block_name": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "slot_key": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "slug",
+          "unique": true
+        },
+        "body": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "surface": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "homepage",
+            "pricing",
+            "article",
+            "checkout",
+            "email"
+          ]
+        },
+        "sort_order": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "visible": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "reference_image": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "review_at": {
+          "type": "timestamptz",
+          "kind": "field",
+          "fieldType": "datetime"
+        },
+        "block_id": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "readonly"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "product_catalog": {
+      "collectionId": "product-catalog",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "name": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "sku": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "description": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "price": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "category": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "books",
+            "workshops",
+            "templates",
+            "services",
+            "bundles"
+          ]
+        },
+        "in_stock": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "spec_sheet": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "updated_by": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "readonly"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "form_submissions": {
+      "collectionId": "form-submissions",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "submitted_by": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "email": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "message": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "source": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "homepage",
+            "pricing",
+            "webinar",
+            "partner",
+            "referral"
+          ]
+        },
+        "score": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "consent": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "attachment": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "submitted_at": {
+          "type": "timestamptz",
+          "kind": "field",
+          "fieldType": "datetime"
+        },
+        "submission_id": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "readonly"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "experiments": {
+      "collectionId": "experiments",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "experiment_name": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "slug": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "slug",
+          "unique": true
+        },
+        "hypothesis": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "channel": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "organic",
+            "paid_search",
+            "email",
+            "partner",
+            "direct"
+          ]
+        },
+        "traffic_split": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "active": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "variant_preview": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "launch_at": {
+          "type": "timestamptz",
+          "kind": "field",
+          "fieldType": "datetime"
+        },
+        "experiment_id": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "readonly"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "locations": {
+      "collectionId": "locations",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "location_name": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "slug": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "slug",
+          "unique": true
+        },
+        "region": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "northern",
+            "eastern",
+            "western",
+            "central"
+          ]
+        },
+        "capacity": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "accepts_bookings": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "opening_date": {
+          "type": "timestamptz",
+          "kind": "field",
+          "fieldType": "datetime"
+        },
+        "map_preview": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "notes": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "people_directory": {
+      "collectionId": "people-directory",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "full_name": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "email": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "bio": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "role": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "editor",
+            "designer",
+            "developer",
+            "strategist",
+            "producer"
+          ]
+        },
+        "weekly_capacity": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "contractor": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "avatar": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "start_date": {
+          "type": "timestamptz",
+          "kind": "field",
+          "fieldType": "datetime"
+        },
+        "person_id": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "readonly"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "feature_flags": {
+      "collectionId": "feature-flags",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "flag_name": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "key": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "slug",
+          "unique": true
+        },
+        "description": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "environment": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "development",
+            "staging",
+            "production",
+            "preview"
+          ]
+        },
+        "rollout": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "enabled": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "evidence": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "expires_at": {
+          "type": "timestamptz",
+          "kind": "field",
+          "fieldType": "datetime"
+        },
+        "flag_id": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "readonly"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "media_library": {
+      "collectionId": "media-library",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "asset_name": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "alt_text": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "license": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "owned",
+            "licensed",
+            "creative_commons",
+            "unknown"
+          ]
+        },
+        "width": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "height": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "sensitive": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "file": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "uploaded_at": {
+          "type": "timestamptz",
+          "kind": "field",
+          "fieldType": "datetime"
+        },
+        "asset_id": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "readonly"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "redirect_rules": {
+      "collectionId": "redirect-rules",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "source_path": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "slug",
+          "unique": true
+        },
+        "target_url": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "notes": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "status_code": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "301",
+            "302",
+            "307",
+            "308"
+          ]
+        },
+        "hits": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "permanent": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "evidence": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "last_hit_at": {
+          "type": "timestamptz",
+          "kind": "field",
+          "fieldType": "datetime"
+        },
+        "rule_id": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "readonly"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "localization_strings": {
+      "collectionId": "localization-strings",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "string_key": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "localized_text": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "locale": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "en",
+            "af",
+            "xh",
+            "fr",
+            "de"
+          ]
+        },
+        "namespace": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "navigation",
+            "forms",
+            "checkout",
+            "seo",
+            "errors"
+          ]
+        },
+        "character_limit": {
+          "type": "numeric",
+          "kind": "field",
+          "fieldType": "number"
+        },
+        "approved": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "screenshot": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "asset"
+        },
+        "source_updated_at": {
+          "type": "timestamptz",
+          "kind": "field",
+          "fieldType": "datetime"
+        },
+        "string_id": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "readonly"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    }
+  }
+}

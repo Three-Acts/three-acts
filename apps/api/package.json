@@ -9,7 +9,10 @@
     "build": "tsc -p tsconfig.app.json --noEmit",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "schema:sql": "tsx scripts/print-schema.ts"
+    "schema:sql": "tsx scripts/print-schema.ts",
+    "schema:json": "tsx scripts/print-schema-json.ts",
+    "schema:diff": "tsx scripts/diff-schema.ts",
+    "schema:migrate": "tsx scripts/diff-schema.ts --write"
   },
   "devDependencies": {
     "@types/node": "^25.0.0",
