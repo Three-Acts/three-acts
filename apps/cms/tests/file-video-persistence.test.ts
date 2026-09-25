@@ -15,7 +15,7 @@ function makeFile(name: string, type: string, size = 12): File {
 
 describe("file/video field persistence", () => {
   it("saves and reloads typed file and video metadata", async () => {
-    const original = await mockCmsBackend.data.getRecord("products", "pro-0001");
+    const original = await mockCmsBackend.data.getRecord("products", "product-ethiopia-yirgacheffe-kochere");
     const specSheet = {
       src: "/mock-storage/cms-documents/products/spec-sheet-001.pdf",
       fileName: "spec-sheet-001.pdf",
@@ -48,7 +48,7 @@ describe("file/video field persistence", () => {
   });
 
   it("clears file/video values and keeps them empty across reload", async () => {
-    const original = await mockCmsBackend.data.getRecord("products", "pro-0002");
+    const original = await mockCmsBackend.data.getRecord("products", "product-colombia-huila-la-esperanza");
 
     const saved = await mockCmsBackend.data.saveRecord(
       "products",

@@ -1,5 +1,6 @@
 import { collectionRegistry } from "./registry";
-import { CmsError, serializeFileValue, serializeImageGallery, serializeImageValue, serializeVideoValue } from "./types";
+import { cloneSeedCollections } from "@three-acts/cms-schema/seed";
+import { CmsError, hasPublishWorkflow } from "./types";
 import type {
   AssetUploadResult,
   CmsBackend,
@@ -7,18 +8,12 @@ import type {
   CmsField,
   CmsRecord,
   CmsRecordValue,
-  FileValue,
-  ImageValue,
   ListRecordsOptions,
   PublishStatus,
   SaveRecordOptions,
-  SelectField,
-  VideoValue
+  SelectField
 } from "./types";
 import { normalizeDateTime } from "../lib/format";
-
-const seedNow = new Date("2026-06-25T18:30:00.000Z");
-const statuses: PublishStatus[] = ["published", "queued_to_publish", "not_published"];
 
 function matchesAccept(file: File, accept?: string): boolean {
   const patterns = (accept ?? "")
@@ -35,190 +30,13 @@ function matchesAccept(file: File, accept?: string): boolean {
   });
 }
 
-const words = ["Signal", "Harbour", "Proof", "Atlas", "Northstar", "Foundry", "Pulse", "Beacon", "Orbit", "Vector", "Canvas", "Metric", "Archive", "Bridge", "Summit", "Launch", "Campaign", "Studio", "Field", "Ledger"];
-const people = ["Craig Chihururu", "Amara Stone", "Nadia Jacobs", "Theo Brand", "Mika Chen", "Jonas Mokoena", "Priya Naidoo", "Leah Morgan", "Sipho Dlamini", "Elena Ward", "Max Roux", "Ayesha Khan"];
-const cities = ["Cape Town", "Johannesburg", "Durban", "Gqeberha", "East London", "Mthatha", "Kariega", "Centane", "Qumbu", "Butterworth"];
-const counts: Record<string, number> = {
-  articles: 18,
-  authors: 8,
-  "article-categories": 6,
-  faqs: 24,
-  testimonials: 12,
-  products: 58,
-  "product-categories": 8,
-  "product-reviews": 140,
-  orders: 220,
-  customers: 160,
-  "discount-codes": 14,
-  "cms-users": 10,
-  "form-submissions": 180,
-  "media-library": 96,
-  "redirect-rules": 128,
-  // Settings hold hand-written records only (see settingsRecords): no generated padding.
-  "site-settings": 0,
-  "page-settings": 0
-};
-
-const edgeCases: Record<string, CmsRecord[]> = {
-  products: [
-    buildRecord("prd-edge-long", 901, {
-      title: "A Very Long Product Title That Should Stress Every Truncation Boundary In The Table And Editor Header",
-      slug: "very-long-product-title-that-keeps-going-and-going",
-      sku: "TA-EDGE-LONG-0001",
-      category: "ceramics",
-      price: 99999.99,
-      compareAtPrice: 0,
-      currency: "ZAR",
-      inventory: 0,
-      availability: "out_of_stock",
-      shortDescription: "This record deliberately contains long values to test scroll behavior and dense form controls.",
-      description: "",
-      images: "[]",
-      productVideo: "",
-      specSheet: "",
-      weightGrams: 0,
-      tags: "",
-      featured: true
-    })
-  ],
-  "form-submissions": [
-    buildRecord("fs-edge-empty", 911, {
-      submittedBy: "Anonymous visitor",
-      email: "anonymous+stress@example.test",
-      message: "",
-      source: "referral",
-      score: 0,
-      consent: false,
-      attachment: "",
-      submittedAt: isoFromSeed(-2, 14),
-      submissionId: "fs-edge-empty"
-    }),
-    buildRecord("fs-edge-unicode", 912, {
-      submittedBy: "Zoë François-Louw",
-      email: "zoe.francois-louw@example.test",
-      message: "Unicode stress: café, naïve, jalapeño, isiXhosa, résumé, São Paulo, München.",
-      source: "partner",
-      score: 100,
-      consent: true,
-      attachment: "/mock-storage/cms-documents/form_submissions/unicode-brief.pdf",
-      submittedAt: isoFromSeed(-3, 22),
-      submissionId: "fs-edge-unicode"
-    })
-  ],
-  "redirect-rules": [
-    buildRecord("rr-edge-loop-risk", 921, {
-      sourcePath: "old/pricing/legacy/enterprise/2024/very/deep/path",
-      targetUrl: "https://www.threeacts.test/pricing?utm_source=legacy&utm_medium=redirect&utm_campaign=stress-test",
-      notes: "Deep path and long query string stress column truncation and CSV export.",
-      statusCode: "308",
-      hits: 124884,
-      permanent: true,
-      evidence: "/mock-storage/cms-documents/redirect_rules/redirect-audit.csv",
-      lastHitAt: isoFromSeed(-1, 6),
-      ruleId: "rr-edge-loop-risk"
-    })
-  ],
-  "media-library": [
-    buildRecord("ml-edge-missing-alt", 931, {
-      assetName: "Huge transparent product render 12000px",
-      altText: "",
-      license: "unknown",
-      width: 12000,
-      height: 8000,
-      sensitive: true,
-      file: "/mock-storage/cms-assets/media_library/huge-transparent-product-render.png",
-      uploadedAt: isoFromSeed(-30, 70),
-      assetId: "ml-edge-missing-alt"
-    })
-  ]
-};
-
 /**
- * Site and page settings mirror the public site's current SEO copy
- * (apps/web/src/site.ts + page-meta.ts). Empty og/search fields exercise the
- * fallback chain (og/search -> meta -> site defaults). Images point at files
- * that really exist in apps/web/public so mock-backed builds resolve them.
+ * The mock backend serves a fresh deep clone of the shared "Fynbos & Fire"
+ * seed (`@three-acts/cms-schema/seed`), so the CMS, the API memory store and
+ * the web mock source all show the same realistic data. Edits live in memory
+ * for the lifetime of the page.
  */
-const settingsRecords: Record<string, CmsRecord[]> = {
-  "site-settings": [
-    settingsRecord("site-settings-main", 3, "published", {
-      siteName: "Three Acts",
-      titleTemplate: "%s | Three Acts",
-      defaultMetaDescription:
-        "A static-first marketing website starter built on Astro and React, backed by its own API and deployed on Vercel.",
-      defaultOgImage: serializeImageValue({
-        src: "/og-default.png",
-        fileName: "og-default.png",
-        size: 28606,
-        width: 1200,
-        height: 630,
-        alt: "Three Acts"
-      }),
-      favicon: serializeImageValue({ src: "/favicon.svg", fileName: "favicon.svg", size: 261, alt: "" }),
-      twitterHandle: "@threeacts",
-      locale: "en_US",
-      allowIndexing: true,
-      schemaMarkup: JSON.stringify(
-        { "@context": "https://schema.org", "@type": "Organization", name: "Three Acts", sameAs: ["https://twitter.com/threeacts"] },
-        null,
-        2
-      )
-    })
-  ],
-  "page-settings": [
-    settingsRecord("page-settings-home", 2, "published", {
-      pageName: "Home",
-      pagePath: "/",
-      metaTitle: "Static marketing website starter",
-      metaDescription:
-        "Three Acts is a marketing website starter for story-led launches, conversion pages, and static SEO performance.",
-      canonicalUrl: "/",
-      ogTitle: "Three Acts | Static marketing website starter",
-      ogDescription: "",
-      ogImage: "",
-      searchTitle: "",
-      searchDescription: "",
-      searchImage: "",
-      schemaMarkup: JSON.stringify({ "@context": "https://schema.org", "@type": "WebSite", name: "Three Acts" }, null, 2)
-    }),
-    settingsRecord("page-settings-about", 5, "published", {
-      pageName: "About",
-      pagePath: "/about",
-      metaTitle: "About",
-      metaDescription:
-        "Meet the marketing strategy behind Three Acts: sharp positioning, static performance, and CMS-backed launch operations.",
-      canonicalUrl: "/about",
-      ogTitle: "About Three Acts",
-      ogDescription: "",
-      ogImage: "",
-      searchTitle: "",
-      searchDescription: "",
-      searchImage: "",
-      schemaMarkup: ""
-    }),
-    settingsRecord("page-settings-blog", 8, "queued_to_publish", {
-      pageName: "Blog",
-      pagePath: "/blog",
-      metaTitle: "Blog",
-      metaDescription: "Notes on static-first delivery, islands architecture, and CMS-driven publishing.",
-      canonicalUrl: "/blog",
-      ogTitle: "",
-      ogDescription: "",
-      ogImage: "",
-      searchTitle: "",
-      searchDescription: "",
-      searchImage: "",
-      schemaMarkup: ""
-    })
-  ]
-};
-
-const initialRecords = collectionRegistry.reduce<Record<string, CmsRecord[]>>((nextRecords, collection) => {
-  nextRecords[collection.id] = [...(settingsRecords[collection.id] ?? []), ...(edgeCases[collection.id] ?? []), ...Array.from({ length: counts[collection.id] ?? 24 }, (_, index) => generateRecord(collection, index))];
-  return nextRecords;
-}, {});
-
-const records = structuredClone(initialRecords);
+const records: Record<string, CmsRecord[]> = cloneSeedCollections();
 
 function delay<T>(value: T, ms = 180): Promise<T> {
   return new Promise((resolve) => {
@@ -234,14 +52,12 @@ export const mockCmsBackend: CmsBackend = {
       return delay(
         collectionRegistry.map((collection) => {
           const collectionRecords = records[collection.id] ?? [];
-          // Only collections with a publish workflow can carry queued records —
-          // mirrors the same check in publishQueued.
-          const hasPublishWorkflow = (collection.mode ?? "editorial") === "editorial";
-
           return {
             ...collection,
             count: collectionRecords.length,
-            queuedCount: hasPublishWorkflow
+            // Only collections with a publish workflow can carry queued records —
+            // mirrors the same check in publishQueued.
+            queuedCount: hasPublishWorkflow(collection)
               ? collectionRecords.filter((record) => record.publishStatus === "queued_to_publish").length
               : 0
           };
@@ -290,8 +106,11 @@ export const mockCmsBackend: CmsBackend = {
         throw new CmsError("conflict", `${collection.label} record ${record.id} was changed elsewhere.`);
       }
 
-      const nextRecord = {
-        ...cloneRecord(record),
+      const values = { ...record.values };
+      const nextRecord: CmsRecord = {
+        ...cloneRecord(stored),
+        ...resolveSavedStatus(collection, stored, record.publishStatus, values),
+        values,
         modifiedAt: new Date().toISOString()
       };
 
@@ -354,7 +173,7 @@ export const mockCmsBackend: CmsBackend = {
       for (const collection of targets) {
         // Only collections with a publish workflow have anything to flip —
         // "data"/"readonly" collections never carry queued_to_publish records.
-        if ((collection.mode ?? "editorial") !== "editorial") {
+        if (!hasPublishWorkflow(collection)) {
           continue;
         }
 
@@ -365,7 +184,13 @@ export const mockCmsBackend: CmsBackend = {
           }
 
           published += 1;
-          return { ...record, publishStatus: "published" as PublishStatus, modifiedAt: new Date().toISOString() };
+          // Promotion: the working values become the live snapshot the site renders.
+          return {
+            ...record,
+            publishStatus: "published" as PublishStatus,
+            liveValues: { ...record.values },
+            modifiedAt: new Date().toISOString()
+          };
         });
       }
 
@@ -375,8 +200,12 @@ export const mockCmsBackend: CmsBackend = {
     async setPublishStatus(collectionId: string, recordIds: string[], status: Exclude<PublishStatus, "published">) {
       const collection = assertWritable(getCollection(collectionId));
 
-      if ((collection.mode ?? "editorial") !== "editorial") {
+      if (!hasPublishWorkflow(collection)) {
         throw new CmsError("validation", `${collection.label} has no publish workflow.`);
+      }
+
+      if (status !== "queued_to_publish" && status !== "not_published") {
+        throw new CmsError("validation", "publishStatus must be 'queued_to_publish' or 'not_published'.");
       }
 
       const idSet = new Set(recordIds);
@@ -388,7 +217,11 @@ export const mockCmsBackend: CmsBackend = {
           return record;
         }
 
-        const nextRecord = { ...record, publishStatus: status, modifiedAt: now };
+        // Unpublishing takes the record off the site: its live snapshot goes too.
+        const nextRecord: CmsRecord =
+          status === "not_published"
+            ? { ...record, publishStatus: status, liveValues: null, modifiedAt: now }
+            : { ...record, publishStatus: status, modifiedAt: now };
         updatedById.set(record.id, nextRecord);
         return nextRecord;
       });
@@ -433,7 +266,55 @@ export const mockCmsBackend: CmsBackend = {
 };
 
 function cloneRecord(record: CmsRecord): CmsRecord {
-  return { ...record, values: { ...record.values } };
+  return { ...record, values: { ...record.values }, liveValues: record.liveValues ? { ...record.liveValues } : (record.liveValues ?? null) };
+}
+
+function areValuesEqual(a: Record<string, CmsRecordValue>, b: Record<string, CmsRecordValue>): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if ((a[key] ?? "") !== (b[key] ?? "")) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Publish model on save (see `PublishStatus`). Clients never set `published`
+ * or `liveValues` directly:
+ * - no publish workflow: status and (null) snapshot stay as stored.
+ * - "not_published": off the site, the snapshot is cleared.
+ * - "queued_to_publish": stays queued; the snapshot is kept until publishQueued promotes.
+ * - otherwise ("published" echoed back, or "draft"): "published" when the values
+ *   match the live snapshot, else "draft" (the site keeps the old snapshot).
+ */
+function resolveSavedStatus(
+  collection: CmsCollection,
+  stored: CmsRecord,
+  requested: PublishStatus | undefined,
+  values: Record<string, CmsRecordValue>
+): Pick<CmsRecord, "publishStatus" | "liveValues"> {
+  const liveValues = stored.liveValues ?? null;
+
+  if (!hasPublishWorkflow(collection)) {
+    return { publishStatus: stored.publishStatus, liveValues };
+  }
+
+  const status = requested ?? stored.publishStatus;
+
+  if (status === "not_published") {
+    return { publishStatus: "not_published", liveValues: null };
+  }
+
+  if (status === "queued_to_publish") {
+    return { publishStatus: "queued_to_publish", liveValues };
+  }
+
+  if (liveValues && areValuesEqual(values, liveValues)) {
+    return { publishStatus: "published", liveValues };
+  }
+
+  return { publishStatus: "draft", liveValues };
 }
 
 function getCollection(collectionId: string): CmsCollection {
@@ -528,175 +409,6 @@ function sortRecords(records: CmsRecord[], sort: { key: string; direction: "asc"
   });
 }
 
-function generateRecord(collection: CmsCollection, index: number): CmsRecord {
-  const id = `${collection.id.slice(0, 3)}-${String(index + 1).padStart(4, "0")}`;
-
-  return {
-    id,
-    publishStatus: statuses[index % statuses.length],
-    createdAt: isoFromSeed(-index - 1, index * 7),
-    modifiedAt: isoFromSeed(-Math.floor(index / 2), index * 11),
-    values: valuesForCollection(collection, index, id)
-  };
-}
-
-function buildRecord(id: string, offset: number, values: Record<string, CmsRecordValue>): CmsRecord {
-  return {
-    id,
-    publishStatus: statuses[offset % statuses.length],
-    createdAt: isoFromSeed(-offset, offset),
-    modifiedAt: isoFromSeed(-Math.floor(offset / 2), offset * 2),
-    values
-  };
-}
-
-function settingsRecord(id: string, offset: number, publishStatus: PublishStatus, values: Record<string, CmsRecordValue>): CmsRecord {
-  return { ...buildRecord(id, offset, values), publishStatus };
-}
-
-function valuesForCollection(collection: CmsCollection, index: number, id: string): Record<string, CmsRecordValue> {
-  const name = makeName(index);
-
-  switch (collection.id) {
-    case "articles":
-      return {
-        title: `${name}: notes from the field`,
-        slug: slugify(`${name} notes from the field`),
-        excerpt: makeParagraph(index, "article"),
-        body: `${makeParagraph(index, "article")}\n\n${makeParagraph(index + 1, "follow-up")}`,
-        coverImage: imageOrEmpty(index, collection.tableName, "cover", "png"),
-        author: slugify(people[index % people.length]),
-        category: ["guides", "news", "behind-the-scenes"][index % 3],
-        tags: ["performance", "seo", "workflow", "cms", "astro"].filter((_, tagIndex) => (index + tagIndex) % 3 !== 0).join(", "),
-        publishedAt: isoFromSeed(-index * 2, index * 7),
-        readingTime: 3 + (index % 9),
-        featured: index % 6 === 0,
-        seoTitle: "",
-        seoDescription: ""
-      };
-    case "products":
-      return {
-        title: `${name} ${["Mug", "Vase", "Throw", "Candle", "Print"][index % 5]}`,
-        slug: slugify(`${name} ${index + 1}`),
-        sku: `${words[index % words.length].slice(0, 3).toUpperCase()}-${1000 + index}`,
-        category: ["ceramics", "textiles", "candles", "prints"][index % 4],
-        price: Number(((index % 17) * 19 + 29.99).toFixed(2)),
-        compareAtPrice: index % 5 === 0 ? Number(((index % 17) * 19 + 49.99).toFixed(2)) : 0,
-        currency: pickOption(collection, "currency", index % 2 === 0 ? 0 : index),
-        inventory: index % 7 === 0 ? 0 : (index * 13) % 120,
-        availability: index % 7 === 0 ? "out_of_stock" : pickOption(collection, "availability", index % 2),
-        shortDescription: makeParagraph(index, "product"),
-        description: `${makeParagraph(index, "product")}\n\n${makeParagraph(index + 2, "care")}`,
-        images: galleryOrEmpty(index, collection.tableName),
-        productVideo: videoOrEmpty(index, collection.tableName),
-        specSheet: fileOrEmpty(index, collection.tableName, "spec-sheet", "pdf", "application/pdf"),
-        weightGrams: 150 + ((index * 37) % 2400),
-        tags: ["handmade", "gift", "bestseller", "new"].filter((_, tagIndex) => (index + tagIndex) % 2 === 0).join(", "),
-        featured: index % 8 === 0
-      };
-    case "form-submissions":
-      return {
-        submittedBy: people[index % people.length],
-        email: `${slugify(people[index % people.length])}.${index}@example.test`,
-        message: makeParagraph(index, "submission"),
-        source: pickOption(collection, "source", index),
-        score: index % 101,
-        consent: index % 3 !== 0,
-        attachment: assetOrEmpty(index, collection.tableName, "attachment", "pdf"),
-        submittedAt: isoFromSeed(-index, index),
-        submissionId: id
-      };
-    case "media-library":
-      return {
-        assetName: `${name} Asset ${index + 1}`,
-        altText: index % 5 === 0 ? "" : `Alt text for ${name} asset ${index + 1}`,
-        license: pickOption(collection, "license", index),
-        width: 640 + ((index * 137) % 3600),
-        height: 360 + ((index * 89) % 2400),
-        sensitive: index % 9 === 0,
-        file: assetOrEmpty(index, collection.tableName, "asset", index % 4 === 0 ? "pdf" : "jpg"),
-        uploadedAt: isoFromSeed(-index, index * 6),
-        assetId: id
-      };
-    case "redirect-rules":
-      return {
-        sourcePath: slugify(`old ${name} ${index}`),
-        targetUrl: `https://www.threeacts.test/${slugify(name)}/${index + 1}`,
-        notes: makeParagraph(index, "redirect rule"),
-        statusCode: pickOption(collection, "statusCode", index),
-        hits: (index * 977) % 50000,
-        permanent: index % 4 !== 1,
-        evidence: assetOrEmpty(index, collection.tableName, "audit", "csv"),
-        lastHitAt: isoFromSeed(-index, index * 2),
-        ruleId: id
-      };
-    default:
-      return genericValues(collection, index, id);
-  }
-}
-
-/**
- * Type-driven placeholder values for collections without hand-written
- * fixtures, so every registry collection renders populated records.
- */
-function genericValues(collection: CmsCollection, index: number, id: string): Record<string, CmsRecordValue> {
-  const name = makeName(index);
-  const person = people[index % people.length];
-
-  return collection.fields.reduce<Record<string, CmsRecordValue>>((values, field) => {
-    const key = field.key.toLowerCase();
-    switch (field.type) {
-      case "slug":
-        values[field.key] = slugify(`${name} ${index + 1}`);
-        break;
-      case "select":
-        values[field.key] = pickOption(collection, field.key, index);
-        break;
-      case "number":
-        values[field.key] = (index * 17) % 500;
-        break;
-      case "boolean":
-        values[field.key] = index % 3 !== 0;
-        break;
-      case "datetime":
-        values[field.key] = isoFromSeed(-index, index * 5);
-        break;
-      case "textarea":
-        values[field.key] = makeParagraph(index, collection.label.toLowerCase());
-        break;
-      case "image":
-        values[field.key] = imageOrEmpty(index, collection.tableName, field.key, "jpg");
-        break;
-      case "image-gallery":
-        values[field.key] = galleryOrEmpty(index, collection.tableName);
-        break;
-      case "video":
-        values[field.key] = videoOrEmpty(index, collection.tableName);
-        break;
-      case "file":
-        values[field.key] = fileOrEmpty(index, collection.tableName, field.key, "pdf", "application/pdf");
-        break;
-      case "asset":
-        values[field.key] = assetOrEmpty(index, collection.tableName, field.key, "jpg");
-        break;
-      case "readonly":
-        values[field.key] = id;
-        break;
-      default:
-        values[field.key] = key.includes("email")
-          ? `${slugify(person)}.${index}@example.test`
-          : key.includes("city")
-            ? cities[index % cities.length]
-            : key === collection.titleField?.toLowerCase() || key.endsWith("name")
-            ? key.includes("customer") || key === "name"
-              ? person
-              : name
-            : `${name} ${field.label.toLowerCase()}`;
-    }
-    return values;
-  }, {});
-}
-
 let idCounter = 0;
 
 /** crypto.randomUUID() when available; otherwise a monotonic counter + timestamp fallback. */
@@ -731,7 +443,8 @@ function createEmptyRecord(collection: CmsCollection, id = generateId(collection
     publishStatus: "not_published",
     createdAt: now,
     modifiedAt: now,
-    values
+    values,
+    liveValues: null
   };
 }
 
@@ -783,120 +496,4 @@ function coerceValue(field: CmsField, value: CmsRecordValue): CmsRecordValue {
   }
 
   return value;
-}
-
-function makeName(index: number) {
-  return `${words[index % words.length]} ${words[(index * 7 + 3) % words.length]}`;
-}
-
-function makeParagraph(index: number, subject: string) {
-  const first = words[index % words.length].toLowerCase();
-  const second = words[(index * 5 + 2) % words.length].toLowerCase();
-  const third = words[(index * 11 + 4) % words.length].toLowerCase();
-  return `Mock ${subject} ${index + 1} combines ${first}, ${second}, and ${third} signals to test dense editing, search matching, import/export output, and long-form field rendering.`;
-}
-
-function pickOption(collection: CmsCollection, fieldKey: string, index: number) {
-  const field = collection.fields.find((item) => item.key === fieldKey);
-
-  if (!field || field.type !== "select") {
-    return "";
-  }
-
-  const selectField = field as SelectField;
-  return selectField.options[index % selectField.options.length]?.value ?? "";
-}
-
-function assetOrEmpty(index: number, tableName: string, prefix: string, extension: string) {
-  if (index % 7 === 0) {
-    return "";
-  }
-
-  return `/mock-storage/cms-assets/${tableName}/${prefix}-${String(index + 1).padStart(3, "0")}.${extension}`;
-}
-
-/** Typed single-image JSON for realistic editor fixtures (empty every 7th record). */
-function imageOrEmpty(index: number, tableName: string, prefix: string, extension: string): string {
-  const src = assetOrEmpty(index, tableName, prefix, extension);
-  if (!src) {
-    return "";
-  }
-
-  const fileName = `${prefix}-${String(index + 1).padStart(3, "0")}.${extension}`;
-  return serializeImageValue({
-    src,
-    fileName,
-    size: 180000 + index * 2500,
-    width: 1600,
-    height: 900,
-    alt: index % 3 === 0 ? "" : `${makeName(index)} ${prefix} image`
-  });
-}
-
-/** Typed gallery JSON for image-gallery fields such as product images (empty every 5th record). */
-function galleryOrEmpty(index: number, tableName: string): string {
-  if (index % 5 === 0) {
-    return "[]";
-  }
-
-  const items: ImageValue[] = [1, 2].map((n) => ({
-    src: `/mock-storage/cms-assets/${tableName}/gallery-${String(index + 1).padStart(3, "0")}-${n}.jpg`,
-    fileName: `gallery-${String(index + 1).padStart(3, "0")}-${n}.jpg`,
-    size: 120000 + index * 1000 + n,
-    width: 1600,
-    height: 900,
-    alt: n === 1 ? `Gallery image ${index + 1}a` : ""
-  }));
-
-  return serializeImageGallery(items);
-}
-
-/** Typed single-file JSON for file fields such as the product spec sheet (empty every 7th record). */
-function fileOrEmpty(index: number, tableName: string, prefix: string, extension: string, contentType: string): string {
-  const src = assetOrEmpty(index, tableName, prefix, extension);
-  if (!src) {
-    return "";
-  }
-
-  const value: FileValue = {
-    src,
-    fileName: `${prefix}-${String(index + 1).padStart(3, "0")}.${extension}`,
-    size: 64000 + index * 1200,
-    contentType
-  };
-
-  return serializeFileValue(value);
-}
-
-/** Typed single-video JSON for video fields such as the product video (empty every 4th record). */
-function videoOrEmpty(index: number, tableName: string): string {
-  if (index % 4 === 0) {
-    return "";
-  }
-
-  const fileName = `demo-${String(index + 1).padStart(3, "0")}.mp4`;
-  const value: VideoValue = {
-    src: `/mock-storage/cms-assets/${tableName}/${fileName}`,
-    fileName,
-    size: 2400000 + index * 48000,
-    contentType: "video/mp4"
-  };
-
-  return serializeVideoValue(value);
-}
-
-function isoFromSeed(dayOffset: number, minuteOffset: number) {
-  const date = new Date(seedNow);
-  date.setUTCDate(date.getUTCDate() + dayOffset);
-  date.setUTCMinutes(date.getUTCMinutes() + minuteOffset);
-  return date.toISOString();
-}
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
