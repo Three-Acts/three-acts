@@ -966,7 +966,7 @@ const news: NewsItem[] = [
       `The courier cut-off for delivery before Christmas is Monday 15 December for main centres and Friday 12 December for outlying areas.`,
       `We reopen on Monday 5 January. Subscriptions due over the break will be paused automatically and resume on your next scheduled date. Enjoy the break — and stock up.`
     ],
-    coverAlt: null,
+    coverAlt: "Kraft coffee bags stacked on the packing bench with courier labels, ready for festive-season dispatch",
     tags: ""
   },
   {
@@ -1060,11 +1060,12 @@ const generatedTopics: GeneratedTopic[] = [
 ];
 
 /** Status overrides for generated articles, keyed by topic key. */
-const generatedStatus: Record<string, Partial<Pick<ArticleSpec, "status" | "liveOverrides" | "modifiedDays" | "publishedDays" | "author" | "excerpt">>> = {
+const generatedStatus: Record<string, Partial<Pick<ArticleSpec, "status" | "liveOverrides" | "modifiedDays" | "publishedDays" | "author" | "excerpt" | "coverAlt">>> = {
   "brew-french-press": { status: "draft", modifiedDays: 6, liveOverrides: { tags: "french press, brew guide" } },
   "recipe-affogato": { status: "queued_to_publish", modifiedDays: 2, liveOverrides: { excerpt: "Vanilla ice cream, hot espresso, a spoon. That's it." } },
   "impact-courier-emissions": { status: "queued_to_publish", publishedDays: -2, modifiedDays: 0 },
-  "review-aeropress-go": { status: "draft", publishedDays: -14, modifiedDays: 3, author: "sam-okafor", excerpt: "" },
+  // A brand-new draft the editor has not finished: no excerpt and no cover yet (covers are required to publish).
+  "review-aeropress-go": { status: "draft", publishedDays: -14, modifiedDays: 3, author: "sam-okafor", excerpt: "", coverAlt: null },
   "origin-guatemala-huehuetenango": { status: "not_published", modifiedDays: 90 },
   "news-stellenbosch-popup": { status: "not_published", modifiedDays: 140 },
   "brew-kalita-wave": { status: "draft", publishedDays: -20, modifiedDays: 9 }
@@ -1095,7 +1096,7 @@ const generatedArticles: ArticleSpec[] = generatedTopics.map((topic, index) => {
     featured: false,
     seoTitle: withSeo ? title.replace(/:.*$/, "").slice(0, 60) : "",
     seoDescription: withSeo ? topic.excerpt.slice(0, 155) : "",
-    coverAlt: topic.coverAlt,
+    coverAlt: override.coverAlt === undefined ? topic.coverAlt : override.coverAlt,
     status: override.status,
     liveOverrides: override.liveOverrides,
     modifiedDays: override.modifiedDays

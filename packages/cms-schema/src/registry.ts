@@ -44,7 +44,7 @@ export const collectionRegistry: CmsCollection[] = [
       { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/blog/" },
       { key: "excerpt", label: "Excerpt", type: "textarea", required: true, helpText: "One or two sentences shown in listings and as the fallback meta description." },
       { key: "body", label: "Body", type: "textarea", required: true, helpText: "Article body. Blank lines separate paragraphs." },
-      { key: "coverImage", label: "Cover image", type: "image", bucket: "cms-assets", accept: "image/*" },
+      { key: "coverImage", label: "Cover image", type: "image", bucket: "cms-assets", accept: "image/*", required: true, helpText: "Every article needs a cover: it is the card image in listings and the social preview." },
       { key: "author", label: "Author", type: "text", required: true, helpText: "Author slug — matches authors.slug, e.g. amara-stone." },
       { key: "category", label: "Category", type: "text", helpText: "Category slug — matches article-categories.slug, e.g. guides." },
       { key: "tags", label: "Tags", type: "text", helpText: "Comma-separated, e.g. styling, care, sustainability." },

@@ -181,7 +181,11 @@ describe("contentSeed", () => {
 
     const featured = articles.filter((record) => record.values.featured === true);
     assert.ok(featured.length >= 2 && featured.length <= 8, "a few featured articles");
-    assert.ok(articles.some((record) => isEmpty(record.values.coverImage)), "an article without a cover image");
+    // Covers are required to publish: only an unpublished draft may lack one, and no live snapshot ever does.
+    assert.ok(articles.some((record) => isEmpty(record.values.coverImage) && !record.liveValues), "a draft article without a cover image");
+    for (const record of articles) {
+      if (record.liveValues) assert.ok(!isEmpty(record.liveValues.coverImage), `${record.values.slug}: live article has a cover image`);
+    }
     assert.ok(articles.some((record) => String(record.values.title).length > 120), "a very long title");
     assert.ok(articles.some((record) => /[^\u0000-\u007f]/.test(String(record.values.title))), "a unicode title");
     assert.ok(articles.some((record) => /\p{Extended_Pictographic}/u.test(String(record.values.title))), "an emoji");
