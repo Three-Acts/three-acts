@@ -61,10 +61,10 @@ function AddToCartInner({ product }: { product: AddToCartProduct }) {
   if (!canAdd) {
     return (
       <div className="flex flex-col gap-3">
-        <Button.Root type="button" disabled className="w-full sm:w-auto">
+        <Button.Root type="button" disabled className="w-full landscape:w-auto">
           Add to cart
         </Button.Root>
-        {reason && <p className="text-sm text-muted">{reason}</p>}
+        {reason && <p className="text-small text-ink">{reason}</p>}
       </div>
     );
   }
@@ -72,13 +72,13 @@ function AddToCartInner({ product }: { product: AddToCartProduct }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center border border-line">
+        <div className="flex items-center border border-line-strong">
           <button
             type="button"
             onClick={decrement}
             disabled={quantity <= 1}
             aria-label={`Decrease quantity of ${product.title}`}
-            className="focus-ring flex size-11 items-center justify-center text-lg text-ink transition-colors duration-150 hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-40"
+            className="focus-ring flex size-11 items-center justify-center text-h3 text-ink transition-colors duration-150 hover:bg-block disabled:cursor-not-allowed disabled:opacity-40"
           >
             −
           </button>
@@ -98,26 +98,26 @@ function AddToCartInner({ product }: { product: AddToCartProduct }) {
                 setQuantity(Math.min(maxQuantity, Math.max(1, next)));
               }
             }}
-            className="focus-ring h-11 w-14 border-x border-line bg-transparent text-center text-sm text-ink [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="focus-ring h-11 w-14 border-x border-line-strong bg-transparent text-center text-body text-ink [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <button
             type="button"
             onClick={increment}
             disabled={quantity >= maxQuantity}
             aria-label={`Increase quantity of ${product.title}`}
-            className="focus-ring flex size-11 items-center justify-center text-lg text-ink transition-colors duration-150 hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-40"
+            className="focus-ring flex size-11 items-center justify-center text-h3 text-ink transition-colors duration-150 hover:bg-block disabled:cursor-not-allowed disabled:opacity-40"
           >
             +
           </button>
         </div>
-        <Button.Root type="button" onClick={handleAdd} className="flex-1 sm:flex-none">
+        <Button.Root type="button" onClick={handleAdd} className="flex-1 landscape:flex-none">
           Add to cart
         </Button.Root>
       </div>
       {added && (
-        <p className="text-sm text-moss" role="status">
+        <p className="text-small text-ink" role="status">
           Added —{" "}
-          <a href="/cart" className="focus-ring font-semibold underline decoration-1 underline-offset-2">
+          <a href="/cart" className="focus-ring font-medium underline decoration-1 underline-offset-2">
             View cart
           </a>
         </p>

@@ -3,13 +3,13 @@ import { shopApiPaths, type ProductReview, type SubmitReviewRequest } from "@thr
 import { ApiRequestError } from "@three-acts/utils";
 import { apiFetch } from "../../lib/api-client";
 import { formatDate } from "../../lib/format";
+import { Section } from "../layout/section";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { Field } from "../ui/field";
 import { Notice } from "../ui/notice";
 import { Rating } from "../ui/rating";
-import { Typography } from "../ui/typography";
 
 type FetchStatus = "loading" | "loaded" | "error";
 
@@ -53,14 +53,14 @@ function ReviewsSummary({ slug }: { slug: string }) {
   const { status, reviews } = useProductReviews(slug);
 
   if (status === "loading") {
-    return <p className="text-sm text-muted">Loading reviews</p>;
+    return <p className="text-small text-ink">Loading reviews</p>;
   }
   if (status === "error") {
     return null;
   }
   if (reviews.length === 0) {
     return (
-      <a href="#reviews" className="focus-ring text-sm text-muted underline decoration-1 underline-offset-2 hover:text-ink">
+      <a href="#reviews" className="focus-ring text-small text-ink underline decoration-1 underline-offset-2 hover:no-underline">
         No reviews yet — be the first
       </a>
     );
@@ -151,7 +151,7 @@ function ReviewForm({ slug, onSubmitted }: { slug: string; onSubmitted: (review:
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5 border border-line bg-surface-raised p-6">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5 border border-line-strong bg-surface p-6">
       <Field.Root label="Review title" error={errors.title} required>
         <Field.Input
           value={values.title}
@@ -202,9 +202,9 @@ function ReviewsList({ reviews }: { reviews: ProductReview[] }) {
             <Rating.Root value={review.rating} size="sm" />
             {review.verifiedPurchase && <Badge.Root tone="success">Verified purchase</Badge.Root>}
           </div>
-          <p className="mt-3 font-serif text-lg font-semibold tracking-tight text-ink">{review.title}</p>
-          <p className="mt-2 text-sm leading-6 text-ink">{review.body}</p>
-          <p className="mt-3 text-xs text-muted">
+          <p className="mt-3 text-body font-medium text-ink">{review.title}</p>
+          <p className="mt-2 text-body text-ink">{review.body}</p>
+          <p className="mt-3 text-small text-ink">
             {review.customerName} · {formatDate(review.submittedAt)}
           </p>
         </li>
@@ -225,27 +225,31 @@ function ReviewsFull({ slug }: { slug: string }) {
   const reviews = [...extra, ...fetched];
 
   return (
-    <div id="reviews" className="flex flex-col gap-8 scroll-mt-24">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <Typography.Title as="h2">Reviews</Typography.Title>
-        <Button.Root type="button" variant="secondary" size="sm" onClick={() => setShowForm((current) => !current)} aria-expanded={showForm}>
-          {showForm ? "Cancel" : "Write a review"}
-        </Button.Root>
+    <div id="reviews" className="scroll-mt-24">
+      <Section.Header
+        title="Reviews"
+        action={
+          <Button.Root type="button" variant="secondary" size="sm" onClick={() => setShowForm((current) => !current)} aria-expanded={showForm}>
+            {showForm ? "Cancel" : "Write a review"}
+          </Button.Root>
+        }
+      />
+
+      <div className="flex flex-col gap-8">
+        {showForm && (
+          <ReviewForm
+            slug={slug}
+            onSubmitted={(review) => {
+              setExtra((current) => [review, ...current]);
+              setShowForm(false);
+            }}
+          />
+        )}
+
+        {status === "loading" && extra.length === 0 && <p className="text-small text-ink">Loading reviews…</p>}
+        {status === "error" && extra.length === 0 && <Notice.Root tone="error">Could not load reviews. Try refreshing the page.</Notice.Root>}
+        {(status === "loaded" || extra.length > 0) && <ReviewsList reviews={reviews} />}
       </div>
-
-      {showForm && (
-        <ReviewForm
-          slug={slug}
-          onSubmitted={(review) => {
-            setExtra((current) => [review, ...current]);
-            setShowForm(false);
-          }}
-        />
-      )}
-
-      {status === "loading" && extra.length === 0 && <p className="text-sm text-muted">Loading reviews…</p>}
-      {status === "error" && extra.length === 0 && <Notice.Root tone="error">Could not load reviews. Try refreshing the page.</Notice.Root>}
-      {(status === "loaded" || extra.length > 0) && <ReviewsList reviews={reviews} />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { Faq } from "@three-acts/content";
-import { formatMoney, shopConfig, type Product, type ProductCategory } from "@three-acts/ecommerce";
+import type { Product, ProductCategory } from "@three-acts/ecommerce";
 import { ProductGrid } from "../../components/shop/product-grid";
 import { AvailabilityBadge } from "../../components/shop/availability-badge";
 import { Badge } from "../../components/ui/badge";
@@ -28,7 +28,7 @@ function Header({ product, category }: HeaderProps) {
   return (
     <div className="flex flex-col gap-3">
       {category && (
-        <a href={`/shop/category/${category.slug}`} className="focus-ring text-xs font-semibold uppercase tracking-eyebrow text-moss hover:text-ink">
+        <a href={`/shop/category/${category.slug}`} className="focus-ring w-fit text-small uppercase tracking-eyebrow text-ink hover:underline">
           {category.name}
         </a>
       )}
@@ -37,7 +37,7 @@ function Header({ product, category }: HeaderProps) {
   );
 }
 
-/** Price (with compare-at), availability badge, SKU and the short marketing description. */
+/** Price (with compare-at), availability badge, SKU and the short description. */
 function Pricing({ product }: { product: Product }) {
   return (
     <div className="flex flex-col gap-3">
@@ -45,36 +45,79 @@ function Pricing({ product }: { product: Product }) {
         <Price.Root amount={product.price} compareAtPrice={product.compareAtPrice} currency={product.currency} />
         <AvailabilityBadge product={product} />
       </div>
-      <p className="text-xs uppercase tracking-eyebrow text-muted">SKU: {product.sku}</p>
-      <p className="text-base leading-7 text-ink">{product.shortDescription}</p>
+      <p className="text-small uppercase tracking-eyebrow text-ink">SKU: {product.sku}</p>
+      <p className="text-body text-ink">{product.shortDescription}</p>
     </div>
   );
 }
 
-/** Shipping note, spec sheet link, full description, video, tags and weight — everything after the add-to-cart control. */
-function Details({ product }: { product: Product }) {
+/**
+ * The "what you get" rows for a product's category — repo access / updates /
+ * licence scope for the buildable pieces, a licence product's own terms, a
+ * service's delivery model, or a bundle's pointer down to its own contents.
+ */
+function whatYouGetRows(product: Product, category?: ProductCategory): string[] {
+  switch (category?.slug) {
+    case "licenses":
+      if (product.tags.includes("unlimited")) {
+        return ["Unlimited sites, unlimited seats", "No expiry — pay once", "Delivered as a signed licence record"];
+      }
+      if (product.tags.includes("agency")) {
+        return ["Unlimited client sites for one agency", "No expiry — pay once", "Delivered as a signed licence record"];
+      }
+      return ["Covers one production site", "No expiry — pay once", "Delivered as a signed licence record"];
+    case "services":
+      return ["Delivered remotely", "Scheduled after purchase"];
+    case "bundles":
+      return ["Everything listed below"];
+    default:
+      return ["Source in the template repo", "Updates for 12 months", "Use on one client site per licence"];
+  }
+}
+
+/** A bordered "what you get" box: a checked row per entitlement, derived from the product's category. */
+function WhatYouGet({ product, category }: { product: Product; category?: ProductCategory }) {
+  const rows = whatYouGetRows(product, category);
+  return (
+    <div className="flex flex-col gap-3 border border-line-strong bg-surface p-6">
+      <p className="text-small font-medium uppercase tracking-eyebrow text-ink">What you get</p>
+      <ul className="flex flex-col gap-2">
+        {rows.map((row) => (
+          <li key={row} className="grid grid-cols-check items-start gap-3 text-body text-ink">
+            <span aria-hidden="true" className="mt-0.5 flex size-6 shrink-0 items-center justify-center border border-line-strong text-small">
+              ✓
+            </span>
+            <span>{row}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** The "what you get" list, spec sheet/video download when present, the full Prose description and tags — everything after the add-to-cart control. */
+function Details({ product, category }: { product: Product; category?: ProductCategory }) {
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-sm text-muted">Free delivery over {formatMoney(shopConfig.shipping.freeOverInclVat, shopConfig.currency)}.</p>
+      <WhatYouGet product={product} category={category} />
 
       {product.specSheet && (
         <a
           href={product.specSheet.src}
           download={product.specSheet.fileName || ""}
-          className="focus-ring inline-flex w-fit items-center gap-2 text-sm font-medium text-ink underline decoration-1 underline-offset-2 hover:text-accent"
+          className="focus-ring inline-flex w-fit items-center gap-2 text-body text-ink underline decoration-1 underline-offset-2 hover:no-underline"
         >
           Download spec sheet
         </a>
       )}
 
-      <Prose.Root body={product.description} />
-
       {product.video && (
-        // Product demo b-roll: silent, no dialogue/narration to caption.
-        <video controls preload="metadata" className="w-full border border-line">
+        <video controls preload="metadata" className="aspect-video w-full border border-line-strong bg-block">
           <source src={product.video.src} type={product.video.contentType || undefined} />
         </video>
       )}
+
+      <Prose.Root body={product.description} />
 
       {product.tags.length > 0 && (
         <ul className="flex flex-wrap gap-2">
@@ -85,8 +128,6 @@ function Details({ product }: { product: Product }) {
           ))}
         </ul>
       )}
-
-      <p className="text-xs text-muted">Weight: {product.weightGrams} g</p>
     </div>
   );
 }
@@ -100,17 +141,26 @@ function Questions({ faqs }: { faqs: Faq[] }) {
   return (
     <Section.Root>
       <Section.Container className="max-w-3xl">
-        <Section.Header title="Questions" action={<Button.Link href="/faq" variant="ghost">See all FAQs →</Button.Link>} />
-        <div className="flex flex-col divide-y divide-line border-y border-line">
+        <Section.Header
+          title="Questions"
+          action={
+            <Button.Link href="/faq" variant="ghost" icon="arrow">
+              See all FAQs
+            </Button.Link>
+          }
+        />
+        <div className="flex flex-col border-t border-line-strong">
           {items.map((faq) => (
-            <details key={faq.id} className="group py-5">
-              <summary className="focus-ring flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-ink [&::-webkit-details-marker]:hidden">
+            <details key={faq.id} className="group border-b border-line-strong py-5">
+              <summary className="focus-ring flex cursor-pointer list-none items-center justify-between gap-4 text-body font-medium text-ink [&::-webkit-details-marker]:hidden">
                 {faq.question}
-                <span aria-hidden="true" className="shrink-0 text-lg text-muted transition-transform duration-150 group-open:rotate-45">
+                <span aria-hidden="true" className="shrink-0 text-h3 leading-none text-ink">
                   +
                 </span>
               </summary>
-              <p className="mt-3 text-sm leading-6 text-muted">{faq.answer}</p>
+              <div className="mt-4">
+                <Prose.Root body={faq.answer} />
+              </div>
             </details>
           ))}
         </div>
@@ -119,7 +169,7 @@ function Questions({ faqs }: { faqs: Faq[] }) {
   );
 }
 
-/** "You might also like" — the related-products grid. Renders nothing when there are none. */
+/** "Related pieces" — the related-products grid. Renders nothing when there are none. */
 function Related({ products }: { products: Product[] }) {
   if (products.length === 0) {
     return null;
@@ -127,7 +177,7 @@ function Related({ products }: { products: Product[] }) {
   return (
     <Section.Root>
       <Section.Container>
-        <Section.Header title="You might also like" />
+        <Section.Header title="Related pieces" />
         <ProductGrid products={products} />
       </Section.Container>
     </Section.Root>

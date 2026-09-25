@@ -9,37 +9,33 @@ type ProductGalleryProps = {
 };
 
 /**
- * Zero-JS product gallery: the first image renders large and eager; any
- * remaining images render underneath as a plain static strip — real `<img>`s,
- * no lightbox, no `<a href="#img-n">` linking, no client JS at all.
+ * Zero-JS product gallery: a large `aspect-square` main image with a 4-up
+ * thumbnail strip beneath — real `<img>`s, no lightbox, no `<a href="#img-n">`
+ * linking, no client JS at all. Every slot keeps its aspect ratio and shows
+ * `bg-block` when there's no image, so a product with one photo (or none)
+ * never collapses the layout.
  */
 export function ProductGallery({ images, title, className }: ProductGalleryProps) {
   const [first, ...rest] = images;
 
-  if (!first) {
-    return (
-      <div className={className}>
-        <div className="flex aspect-square w-full items-center justify-center border border-line bg-surface-raised text-sm text-muted">No image available</div>
-      </div>
-    );
-  }
-
   return (
     <div className={className}>
-      <div className="aspect-square w-full overflow-hidden border border-line bg-surface-raised">
-        <Image
-          src={first.src}
-          alt={first.alt || title}
-          width={first.width ?? 1200}
-          height={first.height ?? 1200}
-          loading="eager"
-          className="size-full object-cover"
-        />
+      <div className="aspect-square w-full overflow-hidden bg-block">
+        {first && (
+          <Image
+            src={first.src}
+            alt={first.alt || title}
+            width={first.width ?? 1200}
+            height={first.height ?? 1200}
+            loading="eager"
+            className="size-full object-cover"
+          />
+        )}
       </div>
       {rest.length > 0 && (
         <div className="mt-3 grid grid-cols-4 gap-3">
           {rest.map((image, index) => (
-            <div key={index} className="aspect-square overflow-hidden border border-line bg-surface-raised">
+            <div key={index} className="aspect-square overflow-hidden bg-block">
               <Image src={image.src} alt={image.alt || title} width={image.width ?? 400} height={image.height ?? 400} className="size-full object-cover" />
             </div>
           ))}

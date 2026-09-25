@@ -47,10 +47,10 @@ const cartProduct = {
 ---
 
 <BaseLayout seo={meta.seo}>
-  <Section.Root className="pb-16 pt-6">
+  <Section.Root>
     <Section.Container>
       <Breadcrumb.Root items={breadcrumbItems} className="mb-8" />
-      <div class="grid gap-10 landscape:grid-cols-2">
+      <div class="grid gap-x-gap gap-y-gap-y landscape:grid-cols-2">
         <ProductGallery images={product.images} title={product.title} />
         {/*
           This flex column's document order IS the visual order — the two
@@ -65,7 +65,7 @@ const cartProduct = {
           <ProductReviews client:visible slug={product.slug} variant="summary" />
           <ProductPage.Pricing product={product} />
           <AddToCart client:load product={cartProduct} />
-          <ProductPage.Details product={product} />
+          <ProductPage.Details product={product} category={category} />
         </div>
       </div>
     </Section.Container>
