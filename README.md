@@ -118,7 +118,7 @@ If a specific deployment needs to call the API directly from the browser, set `P
 
 The CMS reads and writes content through a swappable backend (`@three-acts/cms-schema`'s `CmsBackend`), injected via `CmsBackendProvider`. Two implementations ship today, picked by `VITE_CMS_BACKEND`:
 
-- `mock` (default) - an in-browser Test Collection Set. No env vars, no network calls.
+- `mock` (default) - an in-browser copy of the shared seed data (see _Seed data_). No env vars, no network calls.
 - `rest` - talks to the REST bridge in `apps/api` (`/api/cms/*`), which reads and writes through a server-side data store and blob store.
 
 ### Running mock vs rest locally
@@ -180,6 +180,19 @@ Review generated SQL before applying it with `psql` or the Supabase SQL editor.
 
 See [ADR 0003](docs/adr/0003-pluggable-cms-backend.md) for the backend interfaces and [ADR 0004](docs/adr/0004-registry-driven-schema-and-public-content.md) for the schema tooling and the public content route.
 
+## Seed data
+
+Every app demos the same fictional brand, **Fynbos & Fire**: a Cape Town specialty coffee roaster with an online shop and a brewing journal. The dataset covers every registry collection: articles and authors, products and categories, about 400 orders with matching customers, reviews and discount codes, plus site settings, page settings, redirects, media, form submissions and CMS users. It includes a realistic mix of published, draft, queued and unpublished records.
+
+- **Where it lives:** `packages/cms-schema/src/seed/`, exported as `@three-acts/cms-schema/seed`. `content.ts`, `shop.ts` and `site.ts` each own a group of collections. `keys.ts` lists the shared reference keys (author, category and product slugs, static page paths). `index.ts` merges everything into `seedCollections` and exports `cloneSeedCollections()`, which returns a mutable deep copy.
+- **CMS mock backend** (`apps/cms/src/cms/mock-adapter.ts`) starts from `cloneSeedCollections()`. Its edits stay in memory and follow the publish model.
+- **API memory store** (`apps/api/api/_lib/cms/memory-store.ts`) is seeded the same way, but only outside production. The public content route serves each record's `liveValues` snapshot.
+- **Web mock source** (`apps/web/src/content/mock-source.ts`) builds the blog from articles that have `liveValues`. It resolves author names and maps covers onto the local images in `public/content/`, so the default build works offline.
+
+**Adding records:** add them in the file that owns the collection and build them with `seedRecord()`. `seedRecord()` fills in `liveValues` from the status. Records in data and readonly collections use `not_published` with `liveValues: null`. References must use keys from `keys.ts` or real records. `seed.test.ts` checks references across files (redirect targets, order numbers and discount codes in messages, author and product slugs). Each file's own test checks field values against the registry.
+
+**Determinism rule:** seeds must produce identical output on every run. Never use `Math.random()` or `new Date()`. Use `createRandom(seed)` and dates relative to `seedNow` (`daysAgo()`). Keep the seed cheap to build, because the test fails if building it takes 500 ms or more.
+
 ## Environment variables
 
 The `.env.example` files are the authoritative per-app setup references. The matrix below explains how the variables fit together; most are optional for the lightweight path.
@@ -221,7 +234,7 @@ An island is a self-contained React component with JSON-serializable props that 
 
 Content is read through a source in `src/content/`:
 
-- `mock-source.ts` is the default, so builds work with **zero credentials**.
+- `mock-source.ts` is the default, so builds work with **zero credentials**. It renders the seed's live articles (see _Seed data_).
 - `api-source.ts` activates with `CONTENT_SOURCE=api`. It fetches the `articles` collection from the API's public, published-only route (`/api/content/collections/articles/records`, no auth) and maps records using the field keys from `@three-acts/cms-schema`, so the site and the CMS share one collection definition. A failed fetch fails the build rather than shipping an empty blog.
 
 `src/pages/blog/[slug].astro` expands the collection into concrete static routes via `getStaticPaths`, with per-entry SEO from `blogPostMeta` in `src/page-meta.ts`. The content source is only imported from build-time code, so no data client ships to the browser. Server-side writes belong in `apps/api`, not here.
