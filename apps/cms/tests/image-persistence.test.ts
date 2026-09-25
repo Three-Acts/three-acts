@@ -11,7 +11,7 @@ Object.defineProperty(globalThis, "window", {
 
 describe("image field persistence", () => {
   it("saves and reloads single-image metadata and alt text", async () => {
-    const original = await mockCmsBackend.data.getRecord("articles", "article-aeropress-recipes");
+    const original = await mockCmsBackend.data.getRecord("articles", "article-registry-source-of-truth");
     const image = {
       src: "/mock-storage/cms-assets/articles/campaign-cover.png",
       fileName: "campaign-cover.png",
@@ -32,7 +32,7 @@ describe("image field persistence", () => {
   });
 
   it("preserves gallery add, remove, reorder, and metadata across reload", async () => {
-    const original = await mockCmsBackend.data.getRecord("products", "product-ethiopia-yirgacheffe-kochere");
+    const original = await mockCmsBackend.data.getRecord("products", "product-web-app");
     const initial = [
       { src: "/mock-storage/a.jpg", fileName: "a.jpg", width: 1200, height: 800, size: 1000, alt: "A" },
       { src: "/mock-storage/b.jpg", fileName: "b.jpg", width: 1200, height: 800, size: 2000, alt: "B" }

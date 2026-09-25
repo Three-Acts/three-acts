@@ -24,10 +24,10 @@ describe("mock backend seed data", () => {
   });
 
   it("searches, sorts and pages seed records", async () => {
-    const result = await data.listRecords("products", { search: "kenya", sort: { key: "title", direction: "asc" }, limit: 1, offset: 0 });
+    const result = await data.listRecords("products", { search: "supabase", sort: { key: "title", direction: "asc" }, limit: 1, offset: 0 });
     assert.ok(result.total >= 1);
     assert.equal(result.records.length, 1);
-    assert.match(JSON.stringify(result.records[0].values).toLowerCase(), /kenya/);
+    assert.match(JSON.stringify(result.records[0].values).toLowerCase(), /supabase/);
   });
 
   it("does not let edits leak into the shared seed", async () => {
@@ -39,7 +39,7 @@ describe("mock backend seed data", () => {
 
 describe("mock backend publish model", () => {
   it("turns an edited published record into a draft that keeps the live snapshot", async () => {
-    const original = await data.getRecord("articles", "article-espresso-dial-in");
+    const original = await data.getRecord("articles", "article-afternoon-launch");
     assert.equal(original.publishStatus, "published");
     const liveTitle = original.liveValues?.title;
 
@@ -61,23 +61,23 @@ describe("mock backend publish model", () => {
   });
 
   it("promotes queued values into the live snapshot on publish", async () => {
-    const original = await data.getRecord("articles", "article-aeropress-recipes");
-    const queued = await data.saveRecord("articles", { ...original, publishStatus: "queued_to_publish", values: { ...original.values, title: "Four AeroPress recipes" } });
+    const original = await data.getRecord("articles", "article-registry-source-of-truth");
+    const queued = await data.saveRecord("articles", { ...original, publishStatus: "queued_to_publish", values: { ...original.values, title: "Registry, revisited" } });
     assert.equal(queued.publishStatus, "queued_to_publish");
-    assert.notEqual(queued.liveValues?.title, "Four AeroPress recipes");
+    assert.notEqual(queued.liveValues?.title, "Registry, revisited");
 
     const before = (await data.listCollections()).find((s) => s.id === "articles")!.queuedCount;
     const { published } = await data.publishQueued("articles");
     assert.equal(published, before);
 
-    const promoted = await data.getRecord("articles", "article-aeropress-recipes");
+    const promoted = await data.getRecord("articles", "article-registry-source-of-truth");
     assert.equal(promoted.publishStatus, "published");
     assert.deepEqual(promoted.liveValues, promoted.values);
     assert.equal((await data.listCollections()).find((s) => s.id === "articles")!.queuedCount, 0);
   });
 
   it("clears the live snapshot when a record is unpublished", async () => {
-    const [unpublished] = await data.setPublishStatus("articles", ["article-espresso-dial-in"], "not_published");
+    const [unpublished] = await data.setPublishStatus("articles", ["article-afternoon-launch"], "not_published");
     assert.equal(unpublished.publishStatus, "not_published");
     assert.equal(unpublished.liveValues, null);
   });
