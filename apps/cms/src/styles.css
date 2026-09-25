@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@three-acts/config/theme.css";
+@import "./theme.css";
 
 @layer base {
   :root {

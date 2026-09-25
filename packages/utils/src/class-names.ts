@@ -8,8 +8,8 @@ import { extendTailwindMerge } from "tailwind-merge";
  * tokens (`w-pane`, `max-w-viewport`, `tracking-label`, ...) dedupe against
  * their numeric siblings instead of both surviving in the class string.
  *
- * Keep in sync with the tokens in @three-acts/config/theme.css and
- * apps/web/src/styles.css.
+ * Keep in sync with the tokens in apps/cms/src/theme.css and
+ * apps/web/src/theme.css.
  */
 const merge = extendTailwindMerge({
   extend: {

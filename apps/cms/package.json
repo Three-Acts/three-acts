@@ -14,7 +14,6 @@
     "@base-ui-components/react": "^1.0.0-rc.0",
     "@tailwindcss/vite": "^4.3.1",
     "@three-acts/cms-schema": "*",
-    "@three-acts/config": "*",
     "@three-acts/utils": "*",
     "@vitejs/plugin-react": "^6.0.3",
     "lucide-react": "^1.21.0",

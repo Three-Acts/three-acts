@@ -24,7 +24,7 @@ export function ConfirmDialog({ confirmLabel = "Delete", description, onConfirm,
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-ink/70" />
+        <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-cms-scrim/70" />
         <AlertDialog.Popup
           className={cn(
             popupClass,

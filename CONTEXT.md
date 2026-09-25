@@ -8,7 +8,7 @@ Three Acts is a reusable client-website foundation, not a single finished site. 
 - **Editorial App** (`apps/cms`): a private, desktop-first React/Vite workspace. It owns editing UX but no provider credentials or server-side storage implementations.
 - **API App** (`apps/api`): Vercel functions and a matching local development server. It owns privileged operations, secrets, CMS/data routes, public published-content routes, contact handling, and deploy orchestration.
 - **Collection Schema Package** (`packages/cms-schema`): the provider-neutral collection registry, field model, errors, REST contract, and column mapping shared by the CMS and API. The web app also consumes its field keys when mapping API content.
-- **Shared Packages** (`packages/config`, `packages/utils`): theme tokens and provider-neutral utilities used across apps.
+- **Shared Package** (`packages/utils`): provider-neutral utilities used across apps. Theme tokens are not shared: each app owns its own `src/theme.css` (the paper-and-ink public site in `apps/web`, the dark editorial workspace in `apps/cms`).
 
 ## Supported project shapes
 

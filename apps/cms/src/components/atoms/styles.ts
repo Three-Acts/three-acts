@@ -2,7 +2,7 @@ import { cn, cv } from "@three-acts/utils";
 
 // The CMS design system in one file: shared class fragments and cv variants that
 // every atom composes from. Colors, type sizes, radii, and shadows are tokens in
-// packages/config/theme.css — nothing here hard-codes a value.
+// apps/cms/src/theme.css — nothing here hard-codes a value.
 
 /**
  * One focus treatment for every interactive surface. The offset keeps the ring

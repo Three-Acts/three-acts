@@ -26,7 +26,7 @@ export function Modal({ children, className, footer, onClose, open, title }: Mod
       }}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-ink/70" />
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-cms-scrim/70" />
         <Dialog.Popup
           className={cn(
             popupClass,

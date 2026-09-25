@@ -1,0 +1,36 @@
+/*
+ * Public site theme — the paper-and-ink palette for apps/web.
+ * The CMS has its own isolated theme in apps/cms/src/theme.css.
+ */
+@theme {
+  --font-sans: "Inter", "Avenir Next", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-ink: #171512;
+  --color-paper: #f7f1e7;
+  --color-panel: #fffaf0;
+  --color-charcoal: #202733;
+  --color-moss: #365344;
+  --color-rust: #ad5d3a;
+  --color-gold: #d6a23f;
+  --shadow-soft: 0 24px 80px rgb(23 21 18 / 0.14);
+
+  --breakpoint-portrait: 30rem;
+  --breakpoint-landscape: 48rem;
+  --breakpoint-tablet: 64rem;
+  --breakpoint-desktop: 80rem;
+
+  /* Marketing type: eyebrows and the hero display line. */
+  --tracking-eyebrow: 0.14em;
+  --leading-display: 0.95;
+
+  /* Hero fills the first viewport minus the site header (py-5 + 2.5rem nav). */
+  --spacing-hero: calc(100vh - 5.5rem);
+
+  /* Section grids. */
+  --grid-template-columns-hero: 1.05fr 0.95fr;
+  --grid-template-columns-path: 0.8fr 1.2fr;
+  --grid-template-columns-step: 4.5rem 1fr; /* numbered step badge | copy */
+  --grid-template-columns-check: 2.75rem 1fr; /* check badge | copy */
+}

@@ -36,7 +36,6 @@ The zero-configuration development defaults still use mock content in the web ap
 - `apps/api` - Vercel serverless API app for optional server-only functionality. It currently provides health and metadata routes, contact submissions, CMS/content routes, and Vercel publish orchestration; it is also the home for project-specific payments, webhooks, and integration bridges.
 - `packages/cms-schema` - shared collection registry, field types, typed errors, REST wire contract, and column-mapping helpers for the CMS, exported from `@three-acts/cms-schema`. Consumed by `apps/cms` and `apps/api` so both validate against the same schema. See [ADR 0003](docs/adr/0003-pluggable-cms-backend.md).
 - `packages/utils` - shared utility helpers such as `cn`, `clsx`, and `cv`, exported from `@three-acts/utils`.
-- `packages/config` - shared theme tokens consumed by Tailwind.
 
 Base UI is installed per app through `@base-ui-components/react`, and web-specific template components live inside `apps/web`.
 
@@ -46,7 +45,7 @@ Base UI is installed per app through `@base-ui-components/react`, and web-specif
 - `apps/cms` owns private editorial UI. It talks to a `CmsBackend`, using either a browser-local mock or the API's REST bridge.
 - `apps/api` owns secrets, privileged operations, provider implementations, CMS writes, and public published-content reads.
 - `packages/cms-schema` owns the collection registry and CMS contract shared by the editor, API, and build-time content source.
-- `packages/config` and `packages/utils` contain provider-neutral styling and utility code shared by the apps.
+- `packages/utils` contains provider-neutral utility code shared by the apps. Theme tokens are per app: `apps/web/src/theme.css` and `apps/cms/src/theme.css` are deliberately isolated so the public site and the editorial workspace can diverge.
 
 Supabase is one included server-side Data Store and Blob Store implementation. It is not required by the web app or CMS UI, and it is not the architecture's default identity.
 

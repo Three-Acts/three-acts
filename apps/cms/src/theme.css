@@ -1,22 +1,16 @@
+/*
+ * CMS admin theme — a dark workspace palette owned entirely by apps/cms.
+ * It shares no tokens with the public site (apps/web/src/theme.css); the
+ * neutrals are keyed off the site's ink (#171512, hue ~40°, 4-7% saturation)
+ * so the workspace reads as the same studio rather than a grey tool, but
+ * every value here is defined locally.
+ * All fills are solid: opacity is reserved for scrims and shadows.
+ */
 @theme {
   --font-sans: "Inter", "Avenir Next", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Fraunces", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  --color-ink: #171512;
-  --color-paper: #f7f1e7;
-  --color-panel: #fffaf0;
-  --color-charcoal: #202733;
-  --color-moss: #365344;
-  --color-rust: #ad5d3a;
-  --color-gold: #d6a23f;
-  --shadow-soft: 0 24px 80px rgb(23 21 18 / 0.14);
 
-  /*
-   * CMS admin palette — the dark counterpart to the paper site.
-   * Neutrals are keyed off --color-ink (hue ~40°, 4-7% saturation) so the
-   * workspace reads as the same studio as apps/web rather than a grey tool.
-   * All fills are solid: opacity is reserved for scrims and shadows.
-   */
   --color-cms-bg: #1A1A19;
   --color-cms-surface: #232323;
   --color-cms-raised: #2E2E2D;
@@ -26,6 +20,8 @@
   --color-cms-text: #EFEFEE;
   --color-cms-muted: #A8A8A7;
   --color-cms-subtle: #858585;
+  /* Modal/dialog backdrop base; applied at partial opacity (bg-cms-scrim/70). */
+  --color-cms-scrim: #171512;
 
   /* The accent carries every "you can act here" affordance. Text on it is
    * white, not ink: ink-on-accent was 3.4:1 at rest / 2.3:1 pressed (fails

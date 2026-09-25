@@ -1,25 +1,5 @@
 @import "tailwindcss";
-@import "@three-acts/config/theme.css";
-
-@theme {
-  --breakpoint-portrait: 30rem;
-  --breakpoint-landscape: 48rem;
-  --breakpoint-tablet: 64rem;
-  --breakpoint-desktop: 80rem;
-
-  /* Marketing type: eyebrows and the hero display line. */
-  --tracking-eyebrow: 0.14em;
-  --leading-display: 0.95;
-
-  /* Hero fills the first viewport minus the site header (py-5 + 2.5rem nav). */
-  --spacing-hero: calc(100vh - 5.5rem);
-
-  /* Section grids. */
-  --grid-template-columns-hero: 1.05fr 0.95fr;
-  --grid-template-columns-path: 0.8fr 1.2fr;
-  --grid-template-columns-step: 4.5rem 1fr; /* numbered step badge | copy */
-  --grid-template-columns-check: 2.75rem 1fr; /* check badge | copy */
-}
+@import "./theme.css";
 
 :root {
   color: var(--color-ink);
