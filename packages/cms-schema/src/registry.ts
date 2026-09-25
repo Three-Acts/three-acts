@@ -350,6 +350,7 @@ export const collectionRegistry: CmsCollection[] = [
     // Asset metadata — editable, but assets themselves have no publish workflow.
     mode: "data",
     group: "Media",
+    settingsView: "media",
     titleField: "assetName",
     description: "Asset metadata for images, documents, licenses, and sensitive media.",
     fields: [

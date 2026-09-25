@@ -5,6 +5,8 @@ export type SettingsViewProps = {
   collection: CmsCollectionSummary;
   /** Optional site subview collection rendered alongside the site singleton. */
   redirectCollection?: CmsCollectionSummary;
+  /** Optional media collection rendered alongside the site singleton. */
+  mediaCollection?: CmsCollectionSummary;
   /** Lets the workspace guard navigation away from unsaved edits. */
   onDirtyChange: (dirty: boolean) => void;
   /** Called after a save/status change so the workspace can refresh summaries (queued counts). */
@@ -13,3 +15,4 @@ export type SettingsViewProps = {
 
 export { SiteSettingsView } from "./site-settings-view";
 export { PageSettingsView } from "./page-settings-view";
+export { MediaSettingsView } from "./redirect-settings-view";

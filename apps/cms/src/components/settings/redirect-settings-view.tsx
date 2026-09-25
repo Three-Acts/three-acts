@@ -7,9 +7,14 @@ import { RecordsToolbar } from "../workspace/records-toolbar";
 import { RecordTable } from "../workspace/record-table";
 import type { SettingsViewProps } from "./index";
 
-type Props = Pick<SettingsViewProps, "onDirtyChange" | "onSaved"> & { collection: CmsCollectionSummary };
+type Props = Pick<SettingsViewProps, "onDirtyChange" | "onSaved"> & {
+  collection: CmsCollectionSummary;
+  downloadName: string;
+  newLabel: string;
+  title: string;
+};
 
-export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Props) {
+export function CollectionSettingsView({ collection, downloadName, newLabel, onDirtyChange, onSaved, title }: Props) {
   const { data, storage } = useCmsBackend();
   const [records, setRecords] = useState<CmsRecord[]>([]);
   const [draft, setDraft] = useState<CmsRecord | null>(null);
@@ -143,7 +148,7 @@ export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Pro
     const csv = [headers.join(","), ...rows.map((record) => headers.map((key) => JSON.stringify(record.values[key] ?? "")).join(","))].join("\n");
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    link.download = "redirect-rules.csv";
+    link.download = downloadName;
     link.click();
     URL.revokeObjectURL(link.href);
   }
@@ -173,12 +178,12 @@ export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Pro
   }
 
   return (
-    <section aria-label="Redirects" className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
+    <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
       <RecordsToolbar
         canQueueSelected={false}
         canUnpublishSelected={false}
         hasPublishWorkflow={false}
-        newLabel="redirect"
+        newLabel={newLabel}
         onCreate={() => void createRecord()}
         onDeleteSelected={() => void deleteSelected()}
         onExportSelected={exportSelected}
@@ -192,7 +197,7 @@ export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Pro
         search={search}
         selectedCount={selectedIds.size}
         selectionMode={selectionMode}
-        title="Redirects"
+        title={title}
       />
       <RecordTable
         collection={collection}
@@ -202,8 +207,8 @@ export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Pro
         onToggleSelectAll={toggleAll}
         onToggleSelected={toggleSelected}
         records={filteredRecords}
-        selectedIds={new Set()}
-        selectionMode={false}
+        selectedIds={selectedIds}
+        selectionMode={selectionMode}
       />
       <footer className="flex h-7 shrink-0 items-center border-t border-cms-line px-3 text-ui tabular-nums text-cms-subtle">
         {filteredRecords.length === records.length ? `${records.length} records` : `${filteredRecords.length} of ${records.length} records`}
@@ -211,4 +216,12 @@ export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Pro
       <ImportDialog collection={collection} onImport={importRecords} onOpenChange={setIsImportOpen} open={isImportOpen} />
     </section>
   );
+}
+
+export function RedirectSettingsView(props: Pick<Props, "collection" | "onDirtyChange" | "onSaved">) {
+  return <CollectionSettingsView {...props} downloadName="redirect-rules.csv" newLabel="redirect" title="Redirects" />;
+}
+
+export function MediaSettingsView(props: Pick<Props, "collection" | "onDirtyChange" | "onSaved">) {
+  return <CollectionSettingsView {...props} downloadName="media-library.csv" newLabel="media asset" title="Media Library" />;
 }

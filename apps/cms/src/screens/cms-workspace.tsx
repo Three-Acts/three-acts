@@ -80,6 +80,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("cms");
   const siteSettingsCollection = settingsCollections.find((collection) => collection.settingsView === "site");
   const redirectRulesCollection = settingsCollections.find((collection) => collection.settingsView === "redirects");
+  const mediaCollection = settingsCollections.find((collection) => collection.settingsView === "media");
   const pageSettingsCollection = settingsCollections.find((collection) => collection.settingsView === "pages");
   const settingsCollection =
     activeTab === "site-settings" ? siteSettingsCollection : activeTab === "page-settings" ? pageSettingsCollection : undefined;
@@ -214,6 +215,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
                 key={`${settingsCollection.id}-${settingsRevision}`}
                 onDirtyChange={setIsSettingsDirty}
                 onSaved={refreshCollections}
+                mediaCollection={mediaCollection}
                 redirectCollection={redirectRulesCollection}
               />
             )}
