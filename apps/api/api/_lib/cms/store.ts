@@ -10,6 +10,16 @@ import type { CmsCollection, CmsRecord, CmsRecordValue, ListRecordsOptions, List
  * S3 API, ...), implement these two interfaces and register the result in
  * `resolve-store.ts`.
  */
+/**
+ * `liveValuesPatch`: operational fields (stock counts, availability) that the
+ * site changes on a published record must reach the live snapshot at once —
+ * they are not editorial drafts. When set, stores that track live snapshots
+ * merge the patch into `liveValues` as well as `values`, so a published
+ * record stays published instead of becoming a draft. Stores without live
+ * snapshots ignore it.
+ */
+export type UpdateRecordOptions = { liveValuesPatch?: Record<string, CmsRecordValue> };
+
 export interface CmsDataStore {
   readonly name: string;
 
@@ -44,7 +54,12 @@ export interface CmsDataStore {
    *   `modifiedAt` no longer matches `expectedModifiedAt`
    * - returns `null` when the record does not exist at all
    */
-  updateRecord(collection: CmsCollection, record: CmsRecord, expectedModifiedAt?: string): Promise<CmsRecord | "conflict" | null>;
+  updateRecord(
+    collection: CmsCollection,
+    record: CmsRecord,
+    expectedModifiedAt?: string,
+    options?: UpdateRecordOptions
+  ): Promise<CmsRecord | "conflict" | null>;
 
   /** Returns whether a row was actually deleted. */
   deleteRecord(collection: CmsCollection, recordId: string): Promise<boolean>;

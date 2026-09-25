@@ -22,6 +22,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",
-    "@three-acts/cms-schema": "*"
+    "@three-acts/auth": "*",
+    "@three-acts/cms-schema": "*",
+    "@three-acts/ecommerce": "*",
+    "@three-acts/forms": "*"
   }
 }

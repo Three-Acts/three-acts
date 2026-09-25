@@ -1,8 +1,10 @@
 import {
   CmsError,
   MAX_ASSET_UPLOAD_BYTES,
+  canCreateRecords,
   collectionRegistry,
   hasPublishWorkflow,
+  isReadOnlyField,
   parseFileValue,
   parseImageGallery,
   parseImageValue,
@@ -47,6 +49,21 @@ function assertWritable(collection: CmsCollection): CmsCollection {
   return collection;
 }
 
+/**
+ * Rejects editor-initiated creation (New / Import / asset upload) of records
+ * in a collection the site itself creates (`recordSource: "site"`, e.g.
+ * orders and customers): inventing one from the CMS would fabricate
+ * operational data. `readonly`-mode collections are already rejected earlier
+ * by `assertWritable` with the "readonly" error, so this only fires for
+ * `recordSource: "site"` collections editors can otherwise edit and delete.
+ */
+function assertCanCreate(collection: CmsCollection): CmsCollection {
+  if (!canCreateRecords(collection)) {
+    throw new CmsError("forbidden", `${collection.label} records are created by the site, not editors.`);
+  }
+  return collection;
+}
+
 function validationError(field: CmsField, message: string): CmsError {
   return new CmsError("validation", message, { details: { field: field.key } });
 }
@@ -83,6 +100,17 @@ function validateFieldValue(field: CmsField, raw: CmsRecordValue, enforceRequire
         const markup = parseSchemaMarkup(text);
         if (!markup.ok) {
           throw validationError(field, markup.error);
+        }
+      }
+      // `format: "json"` fields (e.g. an order's line items) hold any JSON
+      // value, not just an object/array-of-objects like json-ld: "" is valid
+      // (nothing yet), anything else must parse.
+      if ((field.type === "text" || field.type === "textarea") && field.format === "json" && text.trim()) {
+        try {
+          JSON.parse(text);
+        } catch (parseError) {
+          const detail = parseError instanceof Error && parseError.message ? ` (${parseError.message})` : "";
+          throw validationError(field, `${field.label} is not valid JSON${detail}.`);
         }
       }
       return text;
@@ -191,21 +219,27 @@ function validateFieldValue(field: CmsField, raw: CmsRecordValue, enforceRequire
 /**
  * Builds a full, validated `values` map for a collection from client input,
  * falling back to `existingValues` (on save) or a type-appropriate default
- * (on create/import) for any field the client didn't send. Readonly-type
- * fields are never accepted from the client: their existing stored value is
- * kept as-is (or "" when there isn't one yet).
+ * (on create/import) for any field the client didn't send.
+ *
+ * Readonly fields (`isReadOnlyField`: `readOnly: true` or `type: "readonly"`)
+ * are never accepted from an editor: their existing stored value is kept
+ * as-is (or the field's default when there isn't one yet, e.g. on create).
+ * Pass `allowReadOnlyInput: true` for the site's system write path
+ * (`createSystemRecord`/`updateSystemRecord`), which is the only legitimate
+ * way to set them.
  */
 function buildRecordValues(
   collection: CmsCollection,
   input: Partial<Record<string, CmsRecordValue>> | undefined,
   existingValues: Record<string, CmsRecordValue> | undefined,
-  enforceRequired = false
+  options: { enforceRequired?: boolean; allowReadOnlyInput?: boolean } = {}
 ): Record<string, CmsRecordValue> {
+  const { enforceRequired = false, allowReadOnlyInput = false } = options;
   const values: Record<string, CmsRecordValue> = {};
 
   for (const field of collection.fields) {
-    if (field.type === "readonly") {
-      values[field.key] = existingValues?.[field.key] ?? "";
+    if (isReadOnlyField(field) && !allowReadOnlyInput) {
+      values[field.key] = existingValues?.[field.key] ?? defaultValueForField(field);
       continue;
     }
 
@@ -289,6 +323,21 @@ export async function listPublishedRecords(collectionId: string, options: ListRe
   return store.listRecords(collection, { ...options, publishStatus: "published" });
 }
 
+/** Alias for `listPublishedRecords`: what the live site renders for a collection, by its public name. */
+export const listLiveRecords = listPublishedRecords;
+
+/**
+ * Internal convenience for callers that need every record matching a
+ * predicate (e.g. the redirects route, or a future order-number lookup) —
+ * loads the whole collection via the store with no `limit`, then filters
+ * in-process. Not for editor-facing paginated listing; use `listRecords`.
+ */
+export async function findRecords(collectionId: string, predicate: (record: CmsRecord) => boolean): Promise<CmsRecord[]> {
+  const collection = getCollectionOrThrow(collectionId);
+  const { records } = await getDataStore().listRecords(collection, {});
+  return records.filter(predicate);
+}
+
 export async function getRecord(collectionId: string, recordId: string): Promise<CmsRecord> {
   const collection = getCollectionOrThrow(collectionId);
   const record = await getDataStore().getRecord(collection, recordId);
@@ -319,11 +368,78 @@ async function assertSingletonCapacity(collection: CmsCollection, incoming: numb
 }
 
 export async function createRecord(collectionId: string, values?: Partial<Record<string, CmsRecordValue>>): Promise<CmsRecord> {
-  const collection = assertWritable(getCollectionOrThrow(collectionId));
+  const collection = assertCanCreate(assertWritable(getCollectionOrThrow(collectionId)));
   await assertSingletonCapacity(collection, 1);
   const normalizedValues = buildRecordValues(collection, values, undefined);
   const [record] = await getDataStore().insertRecords(collection, [{ publishStatus: "not_published", values: normalizedValues }]);
   return record;
+}
+
+/**
+ * The site's own write path (checkout, sign-up, form submissions): creates a
+ * record bypassing `recordSource`/`readOnly` gating entirely — those gates
+ * exist to stop editors from fabricating operational data, not to stop the
+ * site from writing the data it owns. Field values are still validated, with
+ * required fields enforced (a system create is always a complete record, not
+ * an editor's in-progress draft).
+ */
+export async function createSystemRecord(
+  collectionId: string,
+  values: Partial<Record<string, CmsRecordValue>>,
+  publishStatus: PublishStatus = "not_published"
+): Promise<CmsRecord> {
+  const collection = getCollectionOrThrow(collectionId);
+  await assertSingletonCapacity(collection, 1);
+  const normalizedValues = buildRecordValues(collection, values, undefined, { enforceRequired: true, allowReadOnlyInput: true });
+  const [record] = await getDataStore().insertRecords(collection, [{ publishStatus, values: normalizedValues }]);
+  return record;
+}
+
+/**
+ * The site's own write path for updating a record it already created (e.g.
+ * decrementing inventory, aggregating a customer's order totals). Merges
+ * `patch` over the record's stored values — untouched fields keep their
+ * current value — bypassing `recordSource`/`readOnly` gating like
+ * `createSystemRecord`, and leaves `publishStatus` untouched. Pass
+ * `{ live: true }` for operational changes to a published record (inventory,
+ * availability) so they land in the live snapshot too instead of creating a
+ * draft the editor would have to publish.
+ */
+export async function updateSystemRecord(
+  collectionId: string,
+  recordId: string,
+  patch: Partial<Record<string, CmsRecordValue>>,
+  options: { live?: boolean } = {}
+): Promise<CmsRecord> {
+  const collection = getCollectionOrThrow(collectionId);
+  const store = getDataStore();
+  const existing = await store.getRecord(collection, recordId);
+  if (!existing) {
+    throw new CmsError("not_found", `Unknown record: ${recordId}`);
+  }
+
+  const normalizedValues = buildRecordValues(collection, patch, existing.values, { enforceRequired: true, allowReadOnlyInput: true });
+  const nextRecord: CmsRecord = {
+    id: existing.id,
+    publishStatus: existing.publishStatus,
+    createdAt: existing.createdAt,
+    modifiedAt: existing.modifiedAt,
+    values: normalizedValues
+  };
+
+  // `live`: the patch is operational (stock, availability), not an editorial
+  // draft — it must reach the live snapshot immediately so the public
+  // catalogue and the next checkout see it, and it must not flip a published
+  // record into a draft. Only the patched keys are pushed to the snapshot.
+  const liveValuesPatch =
+    options.live && hasPublishWorkflow(collection)
+      ? Object.fromEntries(Object.keys(patch).filter((key) => key in normalizedValues).map((key) => [key, normalizedValues[key]]))
+      : undefined;
+  const result = await store.updateRecord(collection, nextRecord, undefined, liveValuesPatch ? { liveValuesPatch } : undefined);
+  if (result === "conflict" || result === null) {
+    throw new CmsError("not_found", `Unknown record: ${recordId}`);
+  }
+  return result;
 }
 
 export async function saveRecord(
@@ -347,7 +463,7 @@ export async function saveRecord(
   const publishStatus = isPublishStatus(record.publishStatus) ? record.publishStatus : existing.publishStatus;
   // Required fields gate publishing, not drafting.
   const enforceRequired = publishStatus === "published" || publishStatus === "queued_to_publish";
-  const normalizedValues = buildRecordValues(collection, record.values, existing.values, enforceRequired);
+  const normalizedValues = buildRecordValues(collection, record.values, existing.values, { enforceRequired });
 
   const nextRecord: CmsRecord = {
     id: existing.id,
@@ -379,7 +495,7 @@ export async function deleteRecord(collectionId: string, recordId: string): Prom
 }
 
 export async function importRecords(collectionId: string, rows: Array<Record<string, CmsRecordValue>>): Promise<CmsRecord[]> {
-  const collection = assertWritable(getCollectionOrThrow(collectionId));
+  const collection = assertCanCreate(assertWritable(getCollectionOrThrow(collectionId)));
 
   if (!Array.isArray(rows)) {
     throw new CmsError("validation", "rows must be an array.");
@@ -399,7 +515,7 @@ export async function importRecords(collectionId: string, rows: Array<Record<str
 }
 
 export async function uploadAsset(collectionId: string, fieldKey: string, body: UploadAssetBody): Promise<AssetUploadResult> {
-  const collection = assertWritable(getCollectionOrThrow(collectionId));
+  const collection = assertCanCreate(assertWritable(getCollectionOrThrow(collectionId)));
   const field = collection.fields.find((item) => item.key === fieldKey);
 
   // Uploads serve generic files (`asset`) as well as typed singles:

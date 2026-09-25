@@ -9,3 +9,8 @@ coverage
 *.local
 .playwright-mcp
 .astro
+
+# CMS file data store (apps/api/api/_lib/cms/file-store.ts): local dev/test
+# state only, never committed content.
+apps/api/data/*
+!apps/api/data/.gitkeep

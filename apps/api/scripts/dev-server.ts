@@ -17,7 +17,12 @@ const routes = {
   "/api/meta": () => import("../api/meta"),
   "/api/deploy": () => import("../api/deploy"),
   "/api/deploy-status": () => import("../api/deploy-status"),
-  "/api/contact": () => import("../api/contact"),
+  "/api/forms/submit": () => import("../api/forms/submit"),
+  "/api/auth/sign-up": () => import("../api/auth/sign-up"),
+  "/api/auth/sign-in": () => import("../api/auth/sign-in"),
+  "/api/auth/sign-out": () => import("../api/auth/sign-out"),
+  "/api/auth/session": () => import("../api/auth/session"),
+  "/api/auth/account": () => import("../api/auth/account"),
   "/api/cms/collections": () => import("../api/cms/collections"),
   "/api/cms/collections/[collectionId]/records": () => import("../api/cms/collections/[collectionId]/records"),
   "/api/cms/collections/[collectionId]/records/[recordId]": () =>
@@ -27,20 +32,35 @@ const routes = {
     import("../api/cms/collections/[collectionId]/assets/[fieldKey]"),
   "/api/cms/collections/[collectionId]/status": () => import("../api/cms/collections/[collectionId]/status"),
   "/api/cms/publish": () => import("../api/cms/publish"),
-  "/api/content/collections/[collectionId]/records": () => import("../api/content/collections/[collectionId]/records")
+  "/api/content/collections/[collectionId]/records": () => import("../api/content/collections/[collectionId]/records"),
+  "/api/content/redirects": () => import("../api/content/redirects"),
+  "/api/uploads/[...path]": () => import("../api/uploads/[...path]"),
+  "/api/shop/products": () => import("../api/shop/products"),
+  "/api/shop/products/[slug]": () => import("../api/shop/products/[slug]"),
+  "/api/shop/products/[slug]/reviews": () => import("../api/shop/products/[slug]/reviews"),
+  "/api/shop/discounts/validate": () => import("../api/shop/discounts/validate"),
+  "/api/shop/checkout": () => import("../api/shop/checkout"),
+  "/api/shop/orders": () => import("../api/shop/orders"),
+  "/api/shop/orders/[orderNumber]": () => import("../api/shop/orders/[orderNumber]")
 } satisfies Record<string, RouteLoader>;
 
 type CompiledRoute = {
   regex: RegExp;
   paramNames: string[];
+  catchAllParams: Set<string>;
   load: RouteLoader;
 };
 
-const dynamicSegment = /^\[(.+)\]$/;
+// `[param]` matches exactly one path segment; `[...param]` (a catch-all, e.g.
+// `/api/uploads/[...path]`) greedily matches the rest of the path and lands
+// in `request.query[param]` as an array of segments, mirroring how Vercel
+// resolves the same file-based pattern in production.
+const dynamicSegment = /^\[(\.\.\.)?(.+)\]$/;
 
 /** Turns a route pattern like `/api/cms/collections/[collectionId]/records` into a matcher + its param names. */
 function compileRoute(pattern: string, load: RouteLoader): CompiledRoute {
   const paramNames: string[] = [];
+  const catchAllParams = new Set<string>();
 
   const regexSegments = pattern
     .split("/")
@@ -48,7 +68,13 @@ function compileRoute(pattern: string, load: RouteLoader): CompiledRoute {
     .map((segment) => {
       const dynamicMatch = segment.match(dynamicSegment);
       if (dynamicMatch) {
-        paramNames.push(dynamicMatch[1]);
+        const isCatchAll = Boolean(dynamicMatch[1]);
+        const name = dynamicMatch[2];
+        paramNames.push(name);
+        if (isCatchAll) {
+          catchAllParams.add(name);
+          return "(.+)";
+        }
         return "([^/]+)";
       }
       return segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -57,23 +83,25 @@ function compileRoute(pattern: string, load: RouteLoader): CompiledRoute {
   return {
     regex: new RegExp(`^/${regexSegments.join("/")}/?$`),
     paramNames,
+    catchAllParams,
     load
   };
 }
 
 const compiledRoutes = Object.entries(routes).map(([pattern, load]) => compileRoute(pattern, load));
 
-/** First matching route for `pathname`, plus the dynamic segment values extracted from it. */
-function matchRoute(pathname: string): { load: RouteLoader; params: Record<string, string> } | undefined {
+/** First matching route for `pathname`, plus the dynamic segment values extracted from it (catch-all segments become string arrays, like Vercel's). */
+function matchRoute(pathname: string): { load: RouteLoader; params: Record<string, string | string[]> } | undefined {
   for (const route of compiledRoutes) {
     const match = route.regex.exec(pathname);
     if (!match) {
       continue;
     }
 
-    const params: Record<string, string> = {};
+    const params: Record<string, string | string[]> = {};
     route.paramNames.forEach((name, index) => {
-      params[name] = decodeURIComponent(match[index + 1]);
+      const raw = decodeURIComponent(match[index + 1]);
+      params[name] = route.catchAllParams.has(name) ? raw.split("/").filter(Boolean) : raw;
     });
 
     return { load: route.load, params };

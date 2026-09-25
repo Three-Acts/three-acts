@@ -12,6 +12,8 @@ export type ApiFailure = {
   error: {
     code: string;
     message: string;
+    /** Extra machine-readable failure detail (e.g. a per-field validation error map). Omitted when there isn't any. */
+    details?: unknown;
   };
 };
 
@@ -32,12 +34,15 @@ export type ApiHandler = (
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
+  /** Extra machine-readable failure detail (e.g. a per-field validation error map), surfaced in the response envelope. */
+  readonly details?: unknown;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, details?: unknown) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -57,11 +62,12 @@ export const error = (
   response: VercelResponse,
   status: number,
   code: string,
-  message: string
+  message: string,
+  details?: unknown
 ) => {
   json(response, status, {
     ok: false,
-    error: { code, message }
+    error: details === undefined ? { code, message } : { code, message, details }
   });
 };
 
@@ -72,7 +78,7 @@ export const error = (
  */
 export const toApiError = (caughtError: unknown): unknown => {
   if (isCmsError(caughtError)) {
-    return new ApiError(caughtError.status, caughtError.code, caughtError.message);
+    return new ApiError(caughtError.status, caughtError.code, caughtError.message, caughtError.details);
   }
   return caughtError;
 };
@@ -105,7 +111,7 @@ export const withApi = (
       const normalizedError = caughtError instanceof ApiError ? caughtError : toApiError(caughtError);
 
       if (normalizedError instanceof ApiError) {
-        error(response, normalizedError.status, normalizedError.code, normalizedError.message);
+        error(response, normalizedError.status, normalizedError.code, normalizedError.message, normalizedError.details);
         return;
       }
 
