@@ -7,11 +7,11 @@ import type { CmsCollection, SelectOption } from "./types";
  * The registry models a realistic small brand site: an editorial blog
  * (articles, authors, categories), marketing content (FAQs, testimonials), a
  * storefront (products, categories, reviews, orders, customers, discount
- * codes), CMS users, inbound form submissions and the site settings screens.
+ * codes), inbound form submissions and the site settings screens.
  *
  * There is no relation field type yet: cross-collection references are plain
  * text/slug fields whose helpText names the target (e.g. "matches
- * authors.slug"). Sidebar groups follow registry order: Content, Shop, People,
+ * authors.slug"). Sidebar groups follow registry order: Content, Shop,
  * Site.
  */
 
@@ -269,6 +269,15 @@ export const collectionRegistry: CmsCollection[] = [
       { key: "body", label: "Review", type: "textarea" },
       { key: "verifiedPurchase", label: "Verified purchase", type: "boolean" },
       { key: "approved", label: "Approved", type: "boolean", helpText: "Only approved reviews appear on the product page." },
+      {
+        key: "source",
+        label: "Source",
+        type: "select",
+        options: [
+          { label: "Submitted on site", value: "site" },
+          { label: "Added by staff", value: "manual" }
+        ]
+      },
       { key: "submittedAt", label: "Submitted at", type: "datetime" }
     ],
     listColumns: [
@@ -286,12 +295,13 @@ export const collectionRegistry: CmsCollection[] = [
     tableName: "orders",
     // Created by checkout; staff update status, tracking and notes — no publish workflow.
     mode: "data",
+    recordSource: "site",
     group: "Shop",
     titleField: "orderNumber",
     description: "Storefront orders with fulfilment and payment status, totals and shipping destination.",
     fields: [
-      { key: "orderNumber", label: "Order number", type: "text", required: true, unique: true, helpText: "e.g. TA-10421." },
-      { key: "customerEmail", label: "Customer email", type: "text", required: true, helpText: "Matches customers.email." },
+      { key: "orderNumber", label: "Order number", type: "text", required: true, unique: true, readOnly: true, helpText: "e.g. TA-10421." },
+      { key: "customerEmail", label: "Customer email", type: "text", required: true, readOnly: true, helpText: "Matches customers.email." },
       { key: "customerName", label: "Customer name", type: "text" },
       {
         key: "status",
@@ -325,6 +335,7 @@ export const collectionRegistry: CmsCollection[] = [
         key: "paymentMethod",
         label: "Payment method",
         type: "select",
+        readOnly: true,
         options: [
           { label: "Card", value: "card" },
           { label: "Instant EFT", value: "eft" },
@@ -333,19 +344,31 @@ export const collectionRegistry: CmsCollection[] = [
           { label: "Gift card", value: "gift_card" }
         ]
       },
-      { key: "itemCount", label: "Items", type: "number", helpText: "Total units across all line items." },
-      { key: "subtotal", label: "Subtotal", type: "number", required: true },
-      { key: "discountTotal", label: "Discount", type: "number" },
-      { key: "discountCode", label: "Discount code", type: "text", helpText: "Matches discount-codes.code when one was applied." },
-      { key: "taxTotal", label: "Tax", type: "number" },
-      { key: "shippingTotal", label: "Shipping", type: "number" },
-      { key: "total", label: "Total", type: "number", required: true, helpText: "subtotal − discount + tax + shipping." },
-      { key: "currency", label: "Currency", type: "select", required: true, options: currencyOptions },
-      { key: "placedAt", label: "Placed at", type: "datetime", required: true },
+      { key: "itemCount", label: "Items", type: "number", readOnly: true, helpText: "Total units across all line items." },
+      {
+        key: "items",
+        label: "Line items",
+        type: "textarea",
+        format: "json",
+        readOnly: true,
+        helpText: "JSON array of line items written by checkout."
+      },
+      { key: "subtotal", label: "Subtotal", type: "number", required: true, readOnly: true },
+      { key: "discountTotal", label: "Discount", type: "number", readOnly: true },
+      { key: "discountCode", label: "Discount code", type: "text", readOnly: true, helpText: "Matches discount-codes.code when one was applied." },
+      { key: "taxTotal", label: "Tax", type: "number", readOnly: true },
+      { key: "shippingTotal", label: "Shipping", type: "number", readOnly: true },
+      { key: "total", label: "Total", type: "number", required: true, readOnly: true, helpText: "subtotal − discount + tax + shipping." },
+      { key: "currency", label: "Currency", type: "select", required: true, readOnly: true, options: currencyOptions },
+      { key: "placedAt", label: "Placed at", type: "datetime", required: true, readOnly: true },
       { key: "shippingCity", label: "Shipping city", type: "text" },
       { key: "shippingCountry", label: "Shipping country", type: "text", helpText: "ISO country code, e.g. ZA." },
       { key: "trackingNumber", label: "Tracking number", type: "text" },
-      { key: "notes", label: "Internal notes", type: "textarea" }
+      { key: "notes", label: "Internal notes", type: "textarea" },
+      { key: "shippingName", label: "Shipping name", type: "text" },
+      { key: "shippingAddress", label: "Shipping address", type: "textarea" },
+      { key: "shippingPostalCode", label: "Shipping postal code", type: "text" },
+      { key: "customerPhone", label: "Customer phone", type: "text" }
     ],
     listColumns: [
       { key: "orderNumber", label: "Order", width: "120px" },
@@ -363,20 +386,23 @@ export const collectionRegistry: CmsCollection[] = [
     tableName: "customers",
     // Shopper accounts synced from checkout — editable, no publish workflow.
     mode: "data",
+    recordSource: "site",
     group: "Shop",
     titleField: "name",
     description: "Shopper accounts with contact details, marketing consent and order totals.",
     fields: [
       { key: "name", label: "Name", type: "text", required: true },
-      { key: "email", label: "Email", type: "text", required: true, unique: true },
+      { key: "email", label: "Email", type: "text", required: true, unique: true, readOnly: true },
       { key: "phone", label: "Phone", type: "text", helpText: "International format, e.g. +27 82 555 0142." },
+      { key: "address", label: "Address", type: "textarea" },
       { key: "city", label: "City", type: "text" },
+      { key: "postalCode", label: "Postal code", type: "text" },
       { key: "country", label: "Country", type: "text", helpText: "ISO country code, e.g. ZA." },
       { key: "marketingOptIn", label: "Marketing opt-in", type: "boolean", helpText: "Consented to marketing email." },
-      { key: "totalOrders", label: "Total orders", type: "number" },
-      { key: "lifetimeValue", label: "Lifetime value", type: "number", helpText: "Sum of paid order totals, in ZAR." },
-      { key: "firstOrderAt", label: "First order at", type: "datetime" },
-      { key: "lastOrderAt", label: "Last order at", type: "datetime" },
+      { key: "totalOrders", label: "Total orders", type: "number", readOnly: true },
+      { key: "lifetimeValue", label: "Lifetime value", type: "number", readOnly: true, helpText: "Sum of paid order totals, in ZAR." },
+      { key: "firstOrderAt", label: "First order at", type: "datetime", readOnly: true },
+      { key: "lastOrderAt", label: "Last order at", type: "datetime", readOnly: true },
       { key: "notes", label: "Internal notes", type: "textarea" }
     ],
     listColumns: [
@@ -430,55 +456,6 @@ export const collectionRegistry: CmsCollection[] = [
     ]
   },
 
-  // --- People ----------------------------------------------------------------
-  {
-    id: "cms-users",
-    label: "CMS users",
-    tableName: "cms_users",
-    // Team accounts for this CMS — editable, no publish workflow.
-    mode: "data",
-    group: "People",
-    titleField: "name",
-    description: "People who can sign in to this CMS, with their role and account status.",
-    fields: [
-      { key: "name", label: "Name", type: "text", required: true },
-      { key: "email", label: "Email", type: "text", required: true, unique: true },
-      {
-        key: "role",
-        label: "Role",
-        type: "select",
-        required: true,
-        options: [
-          { label: "Admin", value: "admin" },
-          { label: "Editor", value: "editor" },
-          { label: "Author", value: "author" },
-          { label: "Viewer", value: "viewer" }
-        ]
-      },
-      {
-        key: "status",
-        label: "Status",
-        type: "select",
-        required: true,
-        options: [
-          { label: "Active", value: "active" },
-          { label: "Invited", value: "invited" },
-          { label: "Suspended", value: "suspended" }
-        ]
-      },
-      { key: "authorSlug", label: "Author profile", type: "text", helpText: "Optional author slug — matches authors.slug — for users who write articles." },
-      { key: "avatar", label: "Avatar", type: "image", bucket: "cms-assets", accept: "image/*", altText: false },
-      { key: "lastActiveAt", label: "Last active at", type: "datetime" }
-    ],
-    listColumns: [
-      { key: "name", label: "Name", width: "minmax(180px, 1.1fr)" },
-      { key: "email", label: "Email", width: "minmax(220px, 1.4fr)" },
-      { key: "role", label: "Role", width: "110px" },
-      { key: "status", label: "Status", width: "110px" },
-      { key: "lastActiveAt", label: "Last active", valueType: "datetime", width: "170px" }
-    ]
-  },
-
   // --- Site ------------------------------------------------------------------
   {
     id: "form-submissions",
@@ -488,23 +465,24 @@ export const collectionRegistry: CmsCollection[] = [
     mode: "readonly",
     group: "Site",
     titleField: "submittedBy",
-    description: "Inbound contact, newsletter, wholesale and support form submissions from the site, with lead score, consent and attachments.",
+    description: "Inbound contact, newsletter and inquiry form submissions from the site, with lead score, consent and attachments.",
     fields: [
       { key: "submittedBy", label: "Submitted by", type: "text", required: true },
       { key: "email", label: "Email", type: "text", required: true },
       { key: "message", label: "Message", type: "textarea" },
       {
-        key: "source",
-        label: "Source",
+        key: "form",
+        label: "Form",
         type: "select",
+        required: true,
         options: [
-          { label: "Contact page", value: "contact" },
+          { label: "Contact", value: "contact" },
           { label: "Newsletter", value: "newsletter" },
-          { label: "Product enquiry", value: "product_enquiry" },
-          { label: "Wholesale", value: "wholesale" },
-          { label: "Support", value: "support" }
+          { label: "Inquiry", value: "inquiry" }
         ]
       },
+      { key: "company", label: "Company", type: "text", helpText: "Optional — filled by inquiry forms." },
+      { key: "phone", label: "Phone", type: "text" },
       { key: "score", label: "Score", type: "number" },
       { key: "consent", label: "Consent", type: "boolean" },
       { key: "attachment", label: "Attachment", type: "asset", bucket: "cms-documents", accept: ".pdf,.png,.jpg,.jpeg" },
@@ -514,7 +492,7 @@ export const collectionRegistry: CmsCollection[] = [
     listColumns: [
       { key: "submittedBy", label: "Name", width: "minmax(180px, 1.2fr)" },
       { key: "email", label: "Email", width: "minmax(220px, 1.3fr)" },
-      { key: "source", label: "Source", width: "120px" },
+      { key: "form", label: "Form", width: "120px" },
       { key: "score", label: "Score", width: "80px" },
       { key: "consent", label: "Consent", valueType: "boolean", width: "100px" },
       { key: "createdAt", label: "Created", valueType: "datetime", width: "170px" }

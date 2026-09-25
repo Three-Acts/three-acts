@@ -18,7 +18,7 @@
     "build:cms": "npm run build -w @three-acts/cms",
     "build:api": "npm run build -w @three-acts/api",
     "lint": "npm run lint -w ./apps --if-present",
-    "test": "tsx --test \"packages/cms-schema/src/**/*.test.ts\" \"apps/cms/tests/**/*.test.ts\"",
+    "test": "tsx --test \"packages/*/src/**/*.test.ts\" \"apps/*/tests/**/*.test.ts\" \"apps/api/api/**/*.test.ts\"",
     "typecheck": "npm run typecheck -w ./apps --if-present"
   },
   "devDependencies": {

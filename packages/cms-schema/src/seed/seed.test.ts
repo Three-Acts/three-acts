@@ -122,10 +122,6 @@ describe("merged seed", () => {
 
   it("resolves author references", () => {
     const authors = slugSet("authors");
-    for (const user of records("cms-users")) {
-      const slug = String(user.values.authorSlug ?? "");
-      if (slug) assert.ok(authors.has(slug), `cms-users/${user.id}: author ${slug} exists`);
-    }
     for (const article of records("articles")) {
       for (const values of [article.values, article.liveValues].filter(Boolean)) {
         assert.ok(authors.has(String(values?.author)), `articles/${article.id}: author ${values?.author} exists`);
@@ -140,6 +136,31 @@ describe("merged seed", () => {
         const slug = String(valuesOf(record).product ?? "");
         if (slug) assert.ok(products.has(slug), `${id}/${record.id}: product ${slug} exists`);
       }
+    }
+  });
+
+  it("orders' line items sum to itemCount and reference real products", () => {
+    const products = slugSet("products");
+    for (const order of records("orders")) {
+      let items: unknown;
+      assert.doesNotThrow(() => {
+        items = JSON.parse(String(order.values.items));
+      }, `${order.id}: items is valid JSON`);
+      assert.ok(Array.isArray(items) && items.length > 0, `${order.id}: items is a non-empty array`);
+      const quantity = (items as Array<{ slug: string; quantity: number }>).reduce((sum, item) => sum + Number(item.quantity), 0);
+      assert.equal(quantity, Number(order.values.itemCount), `${order.id}: item quantities sum to itemCount`);
+      for (const item of items as Array<{ slug: string }>) {
+        assert.ok(products.has(item.slug), `${order.id}: item ${item.slug} is a real product`);
+      }
+    }
+  });
+
+  it("form submissions only use the registry's form options", () => {
+    const formField = collectionRegistry.find((c) => c.id === "form-submissions")?.fields.find((f) => f.key === "form");
+    assert.ok(formField && formField.type === "select", "form-submissions has a form select field");
+    const allowed = new Set(formField && formField.type === "select" ? formField.options.map((option) => option.value) : []);
+    for (const submission of records("form-submissions")) {
+      assert.ok(allowed.has(String(submission.values.form)), `${submission.id}: form "${String(submission.values.form)}" is a valid option`);
     }
   });
 });

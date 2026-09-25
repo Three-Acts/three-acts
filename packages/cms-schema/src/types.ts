@@ -22,6 +22,16 @@ export type PublishStatus = "published" | "draft" | "queued_to_publish" | "not_p
  */
 export type CollectionMode = "editorial" | "data" | "readonly";
 
+/**
+ * Where a collection's records come from:
+ * - "editors" (default): created in the CMS (New / Import).
+ * - "site": created by the public site's own flows (checkout, sign-up, form
+ *   submissions). The CMS can view, edit the editable fields and delete, but
+ *   never create or import — inventing an order or a customer would fabricate
+ *   operational data. `readonly` mode always implies "site".
+ */
+export type RecordSource = "editors" | "site";
+
 export type FieldType =
   | "text"
   | "slug"
@@ -75,17 +85,25 @@ type FieldBase<TType extends FieldType> = {
    * collection's `columnNaming` strategy (default: snake_case of `key`).
    */
   column?: string;
+  /**
+   * The editor shows the value but never an input, and the API keeps the
+   * stored value on editor saves. Only the site's system write path (checkout,
+   * sign-up, forms) sets it. Use it for money, identity and audit fields that
+   * editors must not be able to falsify.
+   */
+  readOnly?: boolean;
 };
 
 export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "asset" | "image" | "image-gallery" | "video" | "file">> & {
   /**
    * Structured-text format for `text`/`textarea` fields. `"json-ld"` marks a
    * schema markup field: the value must be empty or a JSON object / array of
-   * objects (see `parseSchemaMarkup` in `./schema-markup`). The API rejects
-   * invalid values on every save (draft included); editors may render a
-   * code-style input for it.
+   * objects (see `parseSchemaMarkup` in `./schema-markup`). `"json"` marks a
+   * field holding any JSON value (e.g. an order's line items). The API rejects
+   * invalid values on every save (draft included); editors render a
+   * code-style input for both.
    */
-  format?: "json-ld";
+  format?: "json-ld" | "json";
 };
 
 export type SelectField = FieldBase<"select"> & {
@@ -168,6 +186,8 @@ export type CmsCollection = {
   tableName: string;
   /** Defaults to "editorial" when omitted. */
   mode?: CollectionMode;
+  /** Defaults to "editors"; `readonly` mode always behaves as "site". See `RecordSource`. */
+  recordSource?: RecordSource;
   group?: string;
   titleField?: string;
   description?: string;

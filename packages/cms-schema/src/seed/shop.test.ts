@@ -163,6 +163,25 @@ describe("shop seed — references", () => {
       const customer = customerByEmail.get(String(r.values.customerEmail));
       assert.ok(customer, `${r.id}: customer exists`);
       assert.equal(r.values.customerName, customer.values.name);
+      assert.equal(r.values.shippingName, customer.values.name, `${r.id}: shippingName matches the customer`);
+      assert.equal(r.values.shippingAddress, customer.values.address, `${r.id}: shippingAddress matches the customer`);
+      assert.equal(r.values.shippingPostalCode, customer.values.postalCode, `${r.id}: shippingPostalCode matches the customer`);
+      assert.equal(r.values.customerPhone, customer.values.phone, `${r.id}: customerPhone matches the customer`);
+
+      const items = JSON.parse(String(r.values.items)) as Array<{ slug: string; sku: string; title: string; quantity: number; unitPrice: number; lineTotal: number; currency: string }>;
+      assert.ok(items.length > 0, `${r.id}: items is non-empty`);
+      for (const item of items) {
+        const product = productBySlug.get(item.slug);
+        assert.ok(product, `${r.id}: item ${item.slug} is a real product`);
+        assert.equal(item.sku, product.values.sku, `${r.id}: item sku matches the product`);
+        assert.equal(item.currency, "ZAR", `${r.id}: item currency`);
+        assert.equal(cents(item.lineTotal), Math.round(cents(item.unitPrice) * item.quantity), `${r.id}: item lineTotal = unitPrice × quantity`);
+      }
+      assert.equal(
+        items.reduce((sum, item) => sum + item.quantity, 0),
+        Number(r.values.itemCount),
+        `${r.id}: item quantities sum to itemCount`
+      );
     }
     for (const r of records("product-reviews")) {
       assert.ok(productBySlug.has(String(r.values.product)), `${r.id}: product exists`);
@@ -172,6 +191,25 @@ describe("shop seed — references", () => {
         assert.ok(String(r.values.submittedAt) > String(customer.values.firstOrderAt), `${r.id}: submitted after the first order`);
       }
     }
+  });
+
+  it("reviews carry a valid source, mostly site with a handful added by staff", () => {
+    const reviews = records("product-reviews");
+    const sources = reviews.map((r) => r.values.source);
+    for (const source of sources) assert.ok(source === "site" || source === "manual", `unexpected review source ${String(source)}`);
+    const manualCount = sources.filter((s) => s === "manual").length;
+    assert.ok(manualCount >= 5 && manualCount <= 20, `expected roughly 10 manual reviews, got ${manualCount}`);
+    assert.ok(manualCount < reviews.length, "most reviews came from the site");
+  });
+
+  it("customers who have ordered have a shipping address on file", () => {
+    for (const r of records("customers")) {
+      if (Number(r.values.totalOrders) > 0 && r.values.country === "ZA") {
+        assert.ok(String(r.values.address).trim().length > 0, `${r.id}: address is filled`);
+        assert.ok(String(r.values.postalCode).trim().length > 0, `${r.id}: postalCode is filled`);
+      }
+    }
+    assert.ok(records("customers").some((r) => r.values.address === "" && r.values.totalOrders === 0), "a browsers-only customer has no address on file");
   });
 });
 

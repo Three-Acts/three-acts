@@ -1,18 +1,18 @@
 import { serializeImageValue } from "../images";
 import type { CmsRecord, CmsRecordValue } from "../types";
-import { authorSlugs, productSlugs, seedBrand, staticPagePaths } from "./keys";
+import { productSlugs, seedBrand, staticPagePaths } from "./keys";
 import { createRandom, daysAgo, seedRecord, type SeedCollections } from "./types";
 
 /**
  * Site seed: the settings screens and operational data of the launched
  * Fynbos & Fire website — sitewide SEO defaults, per-page SEO for every static
- * route, redirects carried over from the old Shopify store, the media library,
- * inbound form submissions and the CMS team.
+ * route, redirects carried over from the old Shopify store, the media library
+ * and inbound form submissions.
  *
  * `site-settings` and `page-settings` are editorial (publish workflow).
- * `redirect-rules`, `media-library` and `cms-users` are `data` and
- * `form-submissions` is `readonly`: like records the API creates, they sit at
- * `not_published` with no live snapshot.
+ * `redirect-rules` and `media-library` are `data` and `form-submissions` is
+ * `readonly`: like records the API creates, they sit at `not_published` with
+ * no live snapshot.
  */
 
 const origin = `https://${seedBrand.domain}`;
@@ -623,6 +623,28 @@ const messages: Record<Source, string[]> = {
 
 const sources: Source[] = ["contact", "newsletter", "product_enquiry", "wholesale", "support"];
 
+/** Maps the legacy Shopify-era source taxonomy onto the registry's `form` options. */
+const formForSource: Record<Source, "contact" | "newsletter" | "inquiry"> = {
+  contact: "contact",
+  newsletter: "newsletter",
+  product_enquiry: "inquiry",
+  wholesale: "inquiry",
+  support: "contact"
+};
+
+/** Index-aligned with `messages.wholesale`, so a message about a specific business gets that business's name. */
+const wholesaleCompanies = ["Muizenberg Bay Café", "Foreshore Office Collective", "Franschhoek Vineyard Guesthouse", "Southern Suburbs Bakery Co.", "Stellenbosch Restaurant Group", "Cape Trade Coffee Buyers"];
+
+/** Company is only realistic for the wholesale-derived inquiries; product enquiries stay personal. */
+function companyFor(source: Source, index: number): string {
+  if (source !== "wholesale") return "";
+  return wholesaleCompanies[index % wholesaleCompanies.length];
+}
+
+function phoneFor(index: number): string {
+  return `+27 ${pick(["60", "61", "71", "72", "73", "74", "76", "79", "81", "82", "83", "84"])} ${int(100, 999)} ${String(int(0, 9999)).padStart(4, "0")}`;
+}
+
 function emailFor(name: string, index: number): string {
   const local = name
     .normalize("NFD")
@@ -649,13 +671,16 @@ for (let index = 0; index < 78; index += 1) {
     ? `${cdn}/uploads/form-submissions/${id}-${source === "support" ? "damaged-bag.jpg" : "cafe-floor-plan.pdf"}`
     : "";
   const baseScore = { wholesale: 70, product_enquiry: 45, contact: 30, support: 20, newsletter: 10 }[source];
+  const form = formForSource[source];
 
   formSubmissions.push(
     dataRecord(id, submittedAt, {
       submittedBy: source === "newsletter" && index % 3 === 0 ? "Newsletter subscriber" : name,
       email: emailFor(name, index),
       message,
-      source,
+      form,
+      company: companyFor(source, index),
+      phone: form === "inquiry" ? phoneFor(index) : "",
       score: Math.min(100, baseScore + int(0, 30)),
       consent: source === "newsletter" ? true : rand() > 0.35,
       attachment,
@@ -671,7 +696,9 @@ formSubmissions.push(
     submittedBy: "SEO Expert",
     email: "rank1.guaranteed@seo-growth-pros.biz",
     message: "Dear Sir/Madam, I checked fynbosandfire.co.za and found 47 SEO errors!!! We guarantee page 1 on Google in 7 days. Reply for FREE audit >>> http://bit.ly/xx",
-    source: "contact",
+    form: "contact",
+    company: "",
+    phone: "",
     score: 0,
     consent: false,
     attachment: "",
@@ -682,7 +709,9 @@ formSubmissions.push(
     submittedBy: "Мария",
     email: "xq7f2k@mail-temp.ru",
     message: "Crypto investment opportunity 300% monthly returns — WhatsApp +44 7700 900000 now",
-    source: "wholesale",
+    form: "inquiry",
+    company: "",
+    phone: "",
     score: 0,
     consent: false,
     attachment: "",
@@ -691,63 +720,10 @@ formSubmissions.push(
   })
 );
 
-// --- CMS users -----------------------------------------------------------------
-
-type UserInput = {
-  id: string;
-  name: string;
-  email: string;
-  role: "admin" | "editor" | "author" | "viewer";
-  status: "active" | "invited" | "suspended";
-  authorSlug?: (typeof authorSlugs)[number];
-  lastActiveDaysAgo?: number;
-  joinedDaysAgo: number;
-};
-
-const userInputs: UserInput[] = [
-  { id: "user-lindiwe", name: "Lindiwe Khumalo", email: "lindiwe@fynbosandfire.co.za", role: "admin", status: "active", authorSlug: "lindiwe-khumalo", lastActiveDaysAgo: 0, joinedDaysAgo: 220 },
-  { id: "user-pieter", name: "Pieter van Wyk", email: "pieter@fynbosandfire.co.za", role: "author", status: "active", authorSlug: "pieter-van-wyk", lastActiveDaysAgo: 3, joinedDaysAgo: 215 },
-  { id: "user-ama", name: "Ama Mensah", email: "ama@fynbosandfire.co.za", role: "editor", status: "active", authorSlug: "ama-mensah", lastActiveDaysAgo: 1, joinedDaysAgo: 200 },
-  { id: "user-jordan", name: "Jordan le Roux", email: "jordan@fynbosandfire.co.za", role: "author", status: "active", authorSlug: "jordan-le-roux", lastActiveDaysAgo: 12, joinedDaysAgo: 180 },
-  { id: "user-zanele", name: "Zanele Ndlovu", email: "zanele@fynbosandfire.co.za", role: "author", status: "active", authorSlug: "zanele-ndlovu", lastActiveDaysAgo: 6, joinedDaysAgo: 170 },
-  { id: "user-marco", name: "Marco Ferreira", email: "marco@fynbosandfire.co.za", role: "author", status: "suspended", authorSlug: "marco-ferreira", lastActiveDaysAgo: 74, joinedDaysAgo: 160 },
-  { id: "user-fatima", name: "Fatima Patel", email: "fatima@fynbosandfire.co.za", role: "author", status: "invited", authorSlug: "fatima-patel", joinedDaysAgo: 4 },
-  { id: "user-sam", name: "Sam Okafor", email: "sam@fynbosandfire.co.za", role: "author", status: "active", authorSlug: "sam-okafor", lastActiveDaysAgo: 21, joinedDaysAgo: 95 },
-  { id: "user-thabo", name: "Thabo Mokoena", email: "thabo@fynbosandfire.co.za", role: "admin", status: "active", lastActiveDaysAgo: 2, joinedDaysAgo: 218 },
-  { id: "user-kirsten", name: "Kirsten Engelbrecht", email: "kirsten@fynbosandfire.co.za", role: "editor", status: "active", lastActiveDaysAgo: 0, joinedDaysAgo: 140 },
-  { id: "user-accounts", name: "Nadia Isaacs", email: "accounts@fynbosandfire.co.za", role: "viewer", status: "active", lastActiveDaysAgo: 30, joinedDaysAgo: 120 },
-  { id: "user-agency-dev", name: "Riaan Steyn (Salt Studio)", email: "riaan@saltstudio.agency", role: "editor", status: "active", lastActiveDaysAgo: 9, joinedDaysAgo: 230 },
-  { id: "user-intern", name: "Olwethu Gqola", email: "olwethu@fynbosandfire.co.za", role: "viewer", status: "invited", joinedDaysAgo: 1 }
-];
-
-const cmsUsers: CmsRecord[] = userInputs.map((input, index) => {
-  const createdAt = daysAgo(input.joinedDaysAgo, index);
-  const lastActiveAt = input.lastActiveDaysAgo === undefined ? "" : daysAgo(input.lastActiveDaysAgo, index + 1);
-  const avatarSeed = `avatar-${input.id.replace(/^user-/, "")}`;
-  return dataRecord(
-    input.id,
-    createdAt,
-    {
-      name: input.name,
-      email: input.email,
-      role: input.role,
-      status: input.status,
-      authorSlug: input.authorSlug ?? "",
-      avatar:
-        input.status === "invited"
-          ? ""
-          : serializeImageValue({ src: photo(avatarSeed, 400, 400), fileName: `${avatarSeed}.jpg`, size: 38_000 + index * 1_210, width: 400, height: 400 }),
-      lastActiveAt
-    },
-    input.status === "suspended" ? daysAgo(70) : daysAgo(Math.max(0, input.joinedDaysAgo - 1 - (index % 3)), 0)
-  );
-});
-
 export const siteSeed: SeedCollections = {
   "site-settings": siteSettings,
   "page-settings": pageSettings,
   "redirect-rules": redirectRules,
   "media-library": mediaLibrary,
-  "form-submissions": formSubmissions,
-  "cms-users": cmsUsers
+  "form-submissions": formSubmissions
 };

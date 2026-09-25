@@ -6,7 +6,7 @@ import { parseImageGallery, parseImageValue } from "../images";
 import { collectionRegistry } from "../registry";
 import { parseSchemaMarkup } from "../schema-markup";
 import type { CmsCollection, CmsRecordValue } from "../types";
-import { authorSlugs, productSlugs, staticPagePaths } from "./keys";
+import { productSlugs, staticPagePaths } from "./keys";
 import { siteSeed } from "./site";
 
 function collectionFor(id: string): CmsCollection {
@@ -23,12 +23,11 @@ const entries = Object.entries(siteSeed);
 
 describe("site seed", () => {
   it("covers the site collections with realistic volumes", () => {
-    assert.deepEqual(Object.keys(siteSeed).sort(), ["cms-users", "form-submissions", "media-library", "page-settings", "redirect-rules", "site-settings"]);
+    assert.deepEqual(Object.keys(siteSeed).sort(), ["form-submissions", "media-library", "page-settings", "redirect-rules", "site-settings"]);
     assert.equal(siteSeed["site-settings"].length, 1);
     assert.ok(siteSeed["redirect-rules"].length >= 40);
     assert.ok(siteSeed["media-library"].length >= 55);
     assert.ok(siteSeed["form-submissions"].length >= 75);
-    assert.ok(siteSeed["cms-users"].length >= 10);
   });
 
   it("uses only real field keys, valid selects and well-formed stored values", () => {
@@ -112,7 +111,6 @@ describe("site seed", () => {
     };
     unique("redirect-rules", "sourcePath");
     unique("page-settings", "pagePath");
-    unique("cms-users", "email");
   });
 
   it("orders timestamps and applies the live snapshot rules", () => {
@@ -169,21 +167,14 @@ describe("site seed", () => {
       assert.equal(record.values.permanent, record.values.statusCode === "301" || record.values.statusCode === "308", `${record.id}: permanent matches code`);
     }
     assert.ok(siteSeed["redirect-rules"].some((record) => /^\/shop\/[^/?#]+/.test(String(record.values.targetUrl))));
-
-    const knownAuthors = new Set<string>(authorSlugs);
-    for (const record of siteSeed["cms-users"]) {
-      const slug = String(record.values.authorSlug ?? "");
-      if (slug) assert.ok(knownAuthors.has(slug), `${record.id}: unknown author ${slug}`);
-      if (record.values.role === "author") assert.ok(slug, `${record.id}: author-role user without authorSlug`);
-      if (record.values.status === "invited") assert.equal(record.values.lastActiveAt, "", `${record.id}: invited users have not been active`);
-    }
   });
 
-  it("covers every form source and every media edge case", () => {
-    const sources = new Set(siteSeed["form-submissions"].map((record) => record.values.source));
-    const options = collectionFor("form-submissions").fields.find((field) => field.key === "source");
+  it("covers every form option and every media edge case", () => {
+    const forms = new Set(siteSeed["form-submissions"].map((record) => record.values.form));
+    const options = collectionFor("form-submissions").fields.find((field) => field.key === "form");
     assert.ok(options?.type === "select");
-    for (const option of options.options) assert.ok(sources.has(option.value), `no ${option.value} submissions`);
+    for (const option of options.options) assert.ok(forms.has(option.value), `no ${option.value} submissions`);
+    assert.ok(siteSeed["form-submissions"].some((record) => record.values.form === "inquiry" && !isEmpty(record.values.company)), "an inquiry submission has a company");
     assert.ok(siteSeed["media-library"].some((record) => isEmpty(record.values.altText) && /^https:\/\/picsum/.test(String(record.values.file))), "an image missing alt text");
     assert.ok(siteSeed["media-library"].some((record) => String(record.values.file).endsWith(".pdf")));
     assert.ok(siteSeed["media-library"].some((record) => String(record.values.file).endsWith(".mp4")));

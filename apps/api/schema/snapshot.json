@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-25T11:10:08.918Z",
+  "generatedAt": "2026-09-25T12:11:26.543Z",
   "tables": {
     "articles": {
       "collectionId": "articles",
@@ -634,6 +634,15 @@
           "kind": "field",
           "fieldType": "boolean"
         },
+        "source": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "select",
+          "selectOptions": [
+            "site",
+            "manual"
+          ]
+        },
         "submitted_at": {
           "type": "timestamptz",
           "kind": "field",
@@ -729,6 +738,11 @@
           "kind": "field",
           "fieldType": "number"
         },
+        "items": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
         "subtotal": {
           "type": "numeric",
           "kind": "field",
@@ -794,6 +808,26 @@
           "type": "text",
           "kind": "field",
           "fieldType": "textarea"
+        },
+        "shipping_name": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "shipping_address": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "shipping_postal_code": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "customer_phone": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
         }
       },
       "publishStatuses": [
@@ -842,7 +876,17 @@
           "kind": "field",
           "fieldType": "text"
         },
+        "address": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
         "city": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "postal_code": {
           "type": "text",
           "kind": "field",
           "fieldType": "text"
@@ -977,84 +1021,6 @@
         "not_published"
       ]
     },
-    "cms_users": {
-      "collectionId": "cms-users",
-      "columns": {
-        "id": {
-          "type": "uuid",
-          "kind": "system",
-          "fieldType": "id"
-        },
-        "publish_status": {
-          "type": "text",
-          "kind": "system",
-          "fieldType": "publishStatus"
-        },
-        "created_at": {
-          "type": "timestamptz",
-          "kind": "system",
-          "fieldType": "createdAt"
-        },
-        "updated_at": {
-          "type": "timestamptz",
-          "kind": "system",
-          "fieldType": "modifiedAt"
-        },
-        "name": {
-          "type": "text",
-          "kind": "field",
-          "fieldType": "text"
-        },
-        "email": {
-          "type": "text",
-          "kind": "field",
-          "fieldType": "text",
-          "unique": true
-        },
-        "role": {
-          "type": "text",
-          "kind": "field",
-          "fieldType": "select",
-          "selectOptions": [
-            "admin",
-            "editor",
-            "author",
-            "viewer"
-          ]
-        },
-        "status": {
-          "type": "text",
-          "kind": "field",
-          "fieldType": "select",
-          "selectOptions": [
-            "active",
-            "invited",
-            "suspended"
-          ]
-        },
-        "author_slug": {
-          "type": "text",
-          "kind": "field",
-          "fieldType": "text"
-        },
-        "avatar": {
-          "type": "text",
-          "kind": "field",
-          "fieldType": "image"
-        },
-        "last_active_at": {
-          "type": "timestamptz",
-          "kind": "field",
-          "fieldType": "datetime"
-        }
-      },
-      "publishStatuses": [
-        "published",
-        "draft",
-        "queued_to_publish",
-        "not_published"
-      ]
-    },
     "form_submissions": {
       "collectionId": "form-submissions",
       "columns": {
@@ -1093,17 +1059,25 @@
           "kind": "field",
           "fieldType": "textarea"
         },
-        "source": {
+        "form": {
           "type": "text",
           "kind": "field",
           "fieldType": "select",
           "selectOptions": [
             "contact",
             "newsletter",
-            "product_enquiry",
-            "wholesale",
-            "support"
+            "inquiry"
           ]
+        },
+        "company": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "phone": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
         },
         "score": {
           "type": "numeric",

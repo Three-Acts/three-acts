@@ -1,6 +1,6 @@
 import { collectionRegistry } from "../registry";
 import { serializeFileValue, serializeVideoValue } from "../files";
-import { serializeImageGallery, serializeImageValue } from "../images";
+import { parseImageGallery, serializeImageGallery, serializeImageValue } from "../images";
 import type { CmsRecord, CmsRecordValue, PublishStatus } from "../types";
 import { productCategorySlugs, productSlugs, seedBrand } from "./keys";
 import { createRandom, daysAgo, seedNow, seedRecord, type SeedCollections } from "./types";
@@ -1392,7 +1392,9 @@ type Customer = {
   name: string;
   email: string;
   phone: string;
+  address: string;
   city: string;
+  postalCode: string;
   country: string;
   optIn: boolean;
   weight: number;
@@ -1422,6 +1424,31 @@ const zaCities: ReadonlyArray<readonly [string, number]> = [
   ["Gqeberha", 5], ["Bloemfontein", 4], ["Paarl", 3], ["Franschhoek", 2], ["Hermanus", 3], ["Knysna", 2], ["Somerset West", 3]
 ];
 
+/** One representative postal code per city — real seeded data doesn't need street-level precision. */
+const cityPostalCodes: Record<string, string> = {
+  "Cape Town": "8001",
+  Johannesburg: "2000",
+  Durban: "4001",
+  Pretoria: "0002",
+  Stellenbosch: "7600",
+  Gqeberha: "6001",
+  Bloemfontein: "9301",
+  Paarl: "7646",
+  Franschhoek: "7690",
+  Hermanus: "7200",
+  Knysna: "6570",
+  "Somerset West": "7130"
+};
+
+const streetNames = [
+  "Long Street", "Kloof Street", "Bree Street", "Main Road", "Church Street", "Buitengracht Street", "Voortrekker Road", "Adderley Street",
+  "Loop Street", "Regent Road", "Somerset Road", "Bird Street", "High Street", "Market Street", "Station Road", "Dorp Street"
+];
+
+function streetAddress(city: string): string {
+  return `${int(1, 199)} ${pick(streetNames)}, ${city}`;
+}
+
 const emailDomains: ReadonlyArray<readonly [string, number]> = [
   ["gmail.com", 55], ["outlook.com", 14], ["icloud.com", 14], ["yahoo.com", 5], ["webmail.co.za", 5], ["mweb.co.za", 4], ["hotmail.com", 3]
 ];
@@ -1436,18 +1463,18 @@ function emailLocal(text: string): string {
 
 const handCustomers: Array<Omit<Customer, "id">> = [
   // Wholesale accounts (cafés and offices) — heavy repeat buyers of 1kg bags.
-  { name: "Kloof Street Kitchen", email: "orders@kloofstreetkitchen.co.za", phone: "+27 21 555 0187", city: "Cape Town", country: "ZA", optIn: true, weight: 6, wholesale: true, notes: "Wholesale café account. Standing order: 6 × 1kg House Espresso every second Monday. Invoice to accounts@." },
-  { name: "Bean There Braamfontein", email: "hello@beantherebraam.co.za", phone: "+27 11 555 0133", city: "Johannesburg", country: "ZA", optIn: true, weight: 4, wholesale: true, notes: "Wholesale — filter programme. Prefers Table Mountain Filter Blend 1kg." },
-  { name: "Stellenbosch Wine Estates Tasting Room", email: "procurement@swetastingroom.co.za", phone: "+27 21 555 0199", city: "Stellenbosch", country: "ZA", optIn: false, weight: 2.5, wholesale: true, notes: "Wholesale — seasonal. Deliver to the tasting-room back gate." },
-  { name: "Umhlanga Co-Working", email: "office@umhlangacowork.co.za", phone: "+27 31 555 0120", city: "Durban", country: "ZA", optIn: false, weight: 2.5, wholesale: true, notes: "Office coffee supply, 30-day terms approved May 2026." },
-  { name: "Mzansi Design Studio", email: "studio@mzansidesign.co.za", phone: "+27 12 555 0111", city: "Pretoria", country: "ZA", optIn: true, weight: 1.8, wholesale: true, notes: "Office account; used WHOLESALE15 before it was paused." },
+  { name: "Kloof Street Kitchen", email: "orders@kloofstreetkitchen.co.za", phone: "+27 21 555 0187", address: "38 Kloof Street", city: "Cape Town", postalCode: "8001", country: "ZA", optIn: true, weight: 6, wholesale: true, notes: "Wholesale café account. Standing order: 6 × 1kg House Espresso every second Monday. Invoice to accounts@." },
+  { name: "Bean There Braamfontein", email: "hello@beantherebraam.co.za", phone: "+27 11 555 0133", address: "142 Melle Street, Braamfontein", city: "Johannesburg", postalCode: "2001", country: "ZA", optIn: true, weight: 4, wholesale: true, notes: "Wholesale — filter programme. Prefers Table Mountain Filter Blend 1kg." },
+  { name: "Stellenbosch Wine Estates Tasting Room", email: "procurement@swetastingroom.co.za", phone: "+27 21 555 0199", address: "1 Vineyard Road", city: "Stellenbosch", postalCode: "7600", country: "ZA", optIn: false, weight: 2.5, wholesale: true, notes: "Wholesale — seasonal. Deliver to the tasting-room back gate." },
+  { name: "Umhlanga Co-Working", email: "office@umhlangacowork.co.za", phone: "+27 31 555 0120", address: "5 Chartwell Drive, Umhlanga", city: "Durban", postalCode: "4319", country: "ZA", optIn: false, weight: 2.5, wholesale: true, notes: "Office coffee supply, 30-day terms approved May 2026." },
+  { name: "Mzansi Design Studio", email: "studio@mzansidesign.co.za", phone: "+27 12 555 0111", address: "22 Hatfield Street, Hatfield", city: "Pretoria", postalCode: "0028", country: "ZA", optIn: true, weight: 1.8, wholesale: true, notes: "Office account; used WHOLESALE15 before it was paused." },
   // International shoppers (DHL Express, zero-rated exports).
-  { name: "Oliver Bennett", email: "oliver.bennett@outlook.com", phone: "+44 7700 900412", city: "London", country: "GB", optIn: true, weight: 1.4, wholesale: false, notes: "Ex-Capetonian. Ships to Hackney." },
-  { name: "Charlotte Hughes", email: "charlotte.hughes@icloud.com", phone: "+44 7700 900871", city: "London", country: "GB", optIn: false, weight: 0.8, wholesale: false, notes: "" },
-  { name: "Lena Hoffmann", email: "lena.hoffmann@gmail.com", phone: "+49 151 23456789", city: "Berlin", country: "DE", optIn: true, weight: 0.9, wholesale: false, notes: "" },
-  { name: "Jonas Müller", email: "jonas.mueller@outlook.com", phone: "", city: "Berlin", country: "DE", optIn: false, weight: 0.6, wholesale: false, notes: "No phone on file — contact by email only." },
-  { name: "Wanjiru Kamau", email: "wanjiru.kamau@gmail.com", phone: "+254 712 345678", city: "Nairobi", country: "KE", optIn: true, weight: 0.8, wholesale: false, notes: "" },
-  { name: "Brian Otieno", email: "brian.otieno@icloud.com", phone: "+254 722 901234", city: "Nairobi", country: "KE", optIn: false, weight: 0.5, wholesale: false, notes: "" }
+  { name: "Oliver Bennett", email: "oliver.bennett@outlook.com", phone: "+44 7700 900412", address: "14 Broadway Market, Hackney", city: "London", postalCode: "E8 4PH", country: "GB", optIn: true, weight: 1.4, wholesale: false, notes: "Ex-Capetonian. Ships to Hackney." },
+  { name: "Charlotte Hughes", email: "charlotte.hughes@icloud.com", phone: "+44 7700 900871", address: "9 Colebrooke Row, Islington", city: "London", postalCode: "N1 8AA", country: "GB", optIn: false, weight: 0.8, wholesale: false, notes: "" },
+  { name: "Lena Hoffmann", email: "lena.hoffmann@gmail.com", phone: "+49 151 23456789", address: "12 Kastanienallee", city: "Berlin", postalCode: "10435", country: "DE", optIn: true, weight: 0.9, wholesale: false, notes: "" },
+  { name: "Jonas Müller", email: "jonas.mueller@outlook.com", phone: "", address: "", city: "Berlin", postalCode: "", country: "DE", optIn: false, weight: 0.6, wholesale: false, notes: "No phone on file — contact by email only." },
+  { name: "Wanjiru Kamau", email: "wanjiru.kamau@gmail.com", phone: "+254 712 345678", address: "45 Kilimani Road", city: "Nairobi", postalCode: "00100", country: "KE", optIn: true, weight: 0.8, wholesale: false, notes: "" },
+  { name: "Brian Otieno", email: "brian.otieno@icloud.com", phone: "+254 722 901234", address: "", city: "Nairobi", postalCode: "00100", country: "KE", optIn: false, weight: 0.5, wholesale: false, notes: "" }
 ];
 
 const CUSTOMER_COUNT = 150;
@@ -1478,15 +1505,21 @@ const customers: Customer[] = (() => {
     const index = list.length;
     const noPhone = index % 23 === 7;
     const phone = noPhone ? "" : `+27 ${pick(["60", "61", "71", "72", "73", "74", "76", "79", "81", "82", "83", "84"])} ${int(100, 999)} ${String(int(0, 9999)).padStart(4, "0")}`;
+    const city = weighted(zaCities);
     // Pareto-ish: most shoppers buy once or twice, a few are regulars; ~10% never ordered.
     const r = rand();
     const weight = index % 10 === 3 ? 0 : r < 0.12 ? 3 + rand() * 3 : r < 0.4 ? 1 + rand() : 0.25 + rand() * 0.5;
+    // Browsers-only customers (never ordered) never had a shipping address collected.
+    const address = weight === 0 ? "" : streetAddress(city);
+    const postalCode = weight === 0 ? "" : (cityPostalCodes[city] ?? "");
     list.push({
       id: "",
       name,
       email,
       phone,
-      city: weighted(zaCities),
+      address,
+      city,
+      postalCode,
       country: "ZA",
       optIn: chance(0.62),
       weight,
@@ -1591,6 +1624,29 @@ const orderPlacements: number[] = (() => {
 })();
 
 const sellable = productDefs.filter((p) => p.status !== "queued_to_publish");
+const productDefBySlug = new Map(productDefs.map((p) => [p.slug, p]));
+/** First gallery image of each product, read back from the already-built product records so it always matches what shipped. */
+const productImageBySlug = new Map(productRecords.map((r) => [String(r.values.slug), parseImageGallery(r.values.images)[0]?.src ?? ""]));
+
+/** Serializes an order's line items to the `OrderLineItem[]` shape from `@three-acts/ecommerce`. */
+function serializeOrderItems(items: LineItem[]): string {
+  return JSON.stringify(
+    items.map((item) => {
+      const product = productDefBySlug.get(item.slug)!;
+      const image = productImageBySlug.get(item.slug);
+      return {
+        slug: item.slug,
+        sku: product.sku,
+        title: product.title,
+        quantity: item.qty,
+        unitPrice: money(item.unitCents),
+        lineTotal: money(item.unitCents * item.qty),
+        currency: seedBrand.currency,
+        ...(image ? { image } : {})
+      };
+    })
+  );
+}
 
 function onSaleAt(p: ProductDef, daysAgoValue: number): boolean {
   if (p.createdDaysAgo < daysAgoValue) return false;
@@ -1767,6 +1823,7 @@ const orders: Order[] = (() => {
         paymentStatus,
         paymentMethod,
         itemCount,
+        items: serializeOrderItems(items),
         subtotal: money(subtotal),
         discountTotal: money(discount),
         discountCode: code?.code ?? "",
@@ -1778,7 +1835,11 @@ const orders: Order[] = (() => {
         shippingCity: customer.city,
         shippingCountry: customer.country,
         trackingNumber,
-        notes
+        notes,
+        shippingName: customer.name,
+        shippingAddress: customer.address,
+        shippingPostalCode: customer.postalCode,
+        customerPhone: customer.phone
       })
     });
   });
@@ -1831,7 +1892,9 @@ const customerRecords: CmsRecord[] = customers.map((c, index) => {
       name: c.name,
       email: c.email,
       phone: c.phone,
+      address: c.address,
       city: c.city,
+      postalCode: c.postalCode,
       country: c.country,
       marketingOptIn: c.optIn,
       totalOrders: own.length,
@@ -2010,7 +2073,14 @@ const reviewRecords: CmsRecord[] = (() => {
     const submittedMs = nowMs - Math.round((1 + rand() * Math.min(300, product.createdDaysAgo - 1)) * DAY);
     push({ product, name: guestNames[i % guestNames.length], email: "", verified: false, submittedMs });
   }
-  return records.sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map((r, i) => ({ ...r, id: `review-${String(i + 1).padStart(4, "0")}` }));
+  return records
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .map((r, i) => ({
+      ...r,
+      id: `review-${String(i + 1).padStart(4, "0")}`,
+      // ~10 of the 120 reviews were phoned or emailed in and added by staff; the rest came through the site form.
+      values: { ...r.values, source: i % 12 === 0 ? "manual" : "site" }
+    }));
 })();
 
 // --- Testimonials ------------------------------------------------------------

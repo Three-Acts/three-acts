@@ -1,4 +1,4 @@
-import type { CmsCollection, CmsField, PublishStatus } from "./types";
+import type { CmsCollection, CmsField, PublishStatus, RecordSource } from "./types";
 
 /** snake_case for camelCase keys: heroImage -> hero_image. */
 export function toSnakeCase(value: string): string {
@@ -37,6 +37,22 @@ export function isUniqueField(field: CmsField): boolean {
 /** Only `editorial` (or default-mode) collections carry a publish workflow; `data`/`readonly` collections never queue or publish. */
 export function hasPublishWorkflow(collection: CmsCollection): boolean {
   return collection.mode === undefined || collection.mode === "editorial";
+}
+
+/** Where a collection's records come from. `readonly` collections are always site-generated. */
+export function recordSourceFor(collection: CmsCollection): RecordSource {
+  if (collection.mode === "readonly") return "site";
+  return collection.recordSource ?? "editors";
+}
+
+/** Whether editors may create or import records (New / Import). False for site-generated collections. */
+export function canCreateRecords(collection: CmsCollection): boolean {
+  return collection.mode !== "readonly" && recordSourceFor(collection) === "editors";
+}
+
+/** Whether editors see the field's value without being able to change it. `readonly`-type fields count too. */
+export function isReadOnlyField(field: CmsField): boolean {
+  return field.readOnly === true || field.type === "readonly";
 }
 
 /** Every publish status a record can hold, in the order the editor shows them. */

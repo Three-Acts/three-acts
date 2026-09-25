@@ -15,7 +15,7 @@ export const seedBrand = {
   currency: "ZAR"
 } as const;
 
-/** authors.slug (owned by content seed). cms-users.authorSlug references these. */
+/** authors.slug (owned by content seed). */
 export const authorSlugs = ["lindiwe-khumalo", "pieter-van-wyk", "ama-mensah", "jordan-le-roux", "zanele-ndlovu", "marco-ferreira", "fatima-patel", "sam-okafor"] as const;
 
 /** article-categories.slug (owned by content seed). */
