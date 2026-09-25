@@ -115,7 +115,6 @@ export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Pro
         }}
         onChangeStatus={() => undefined}
         onDelete={() => void deleteRecord()}
-        onDiscard={() => setDraft(saved)}
         onDuplicate={() => undefined}
         onGalleryItemUpload={() => undefined}
         onGalleryUpload={() => undefined}

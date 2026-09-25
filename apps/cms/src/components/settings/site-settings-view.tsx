@@ -25,7 +25,7 @@ const HIDDEN_KEYS = new Set(["titleTemplate"]);
 
 export function SiteSettingsView({ collection, onDirtyChange, onSaved, redirectCollection }: SettingsViewProps) {
   const { data } = useCmsBackend();
-  const { discard, draft, isDirty, isSaving, load, reportError, save, updateValue, uploadAsset, uploadGallery, uploadGalleryItem, uploadingField } =
+  const { draft, isDirty, isSaving, load, reportError, save, updateValue, uploadAsset, uploadGallery, uploadGalleryItem, uploadingField } =
     useSettingsRecord({ collection, onDirtyChange, onSaved });
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -159,18 +159,15 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved, redirectC
     <SettingsShell
       actions={
         <>
-          {isDirty ? (
-            <>
+          <div className="grid justify-items-end gap-0.5">
+            <StatusPill status={draft.publishStatus} />
+            {isDirty ? (
               <span className="inline-flex items-center gap-1.5 px-1 text-ui text-cms-subtle">
                 <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-cms-pending" />
                 Unsaved
               </span>
-              <Button disabled={isSaving} onClick={discard} variant="ghost">
-                Discard
-              </Button>
-            </>
-          ) : null}
-          <StatusPill status={draft.publishStatus} />
+            ) : null}
+          </div>
           <Button disabled={isSaving || saveBlocked} onClick={() => void save("queued_to_publish")}>
             {isSaving ? "Saving…" : "Save"}
           </Button>

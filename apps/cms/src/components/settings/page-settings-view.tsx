@@ -113,18 +113,15 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
               <span className="truncate font-mono text-ui text-cms-subtle">{pagePath}</span>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
-              {isDirty ? (
-                <>
+              <div className="grid justify-items-end gap-0.5">
+                {publishable ? <StatusPill status={draft.publishStatus} /> : null}
+                {isDirty ? (
                   <span className="inline-flex items-center gap-1.5 px-1 text-ui text-cms-subtle">
                     <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-cms-pending" />
                     Unsaved
                   </span>
-                  <Button disabled={isSaving} onClick={() => void settings.discard()} variant="ghost">
-                    Discard
-                  </Button>
-                </>
-              ) : null}
-              {publishable ? <StatusPill status={draft.publishStatus} /> : null}
+                ) : null}
+              </div>
               {editable ? (
                 <Button disabled={isSaving || !isDirty} onClick={() => void handleSave()} variant={publishable ? "normal" : "primary"}>
                   {isSaving ? "Saving…" : "Save"}

@@ -21,8 +21,6 @@ type RecordEditorProps = {
   onBack: () => void;
   onChangeStatus: (status: Exclude<PublishStatus, "published">) => void;
   onDelete: () => void;
-  /** Drops local edits and reloads the stored record (also the recovery path after a save conflict). */
-  onDiscard: () => void;
   onDuplicate: () => void;
   onSave: () => void;
   onUpdateValue: (fieldKey: string, value: CmsRecordValue) => void;
@@ -40,7 +38,6 @@ export function RecordEditor({
   onBack,
   onChangeStatus,
   onDelete,
-  onDiscard,
   onDuplicate,
   onSave,
   onUpdateValue,
@@ -62,39 +59,33 @@ export function RecordEditor({
           <h2 className="truncate text-ui-lg font-semibold text-cms-text">{getRecordTitle(collection, draftRecord)}</h2>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {isDirty ? (
-            <>
+          <div className="grid justify-items-end gap-0.5">
+            {publishable ? (
+              <div className="flex items-center gap-1.5">
+                <StatusPill status={draftRecord.publishStatus} />
+                <SplitButton
+                  disabled={isSaving}
+                  label={isSaving ? "Saving…" : "Queue to publish"}
+                  onClick={() => onChangeStatus("queued_to_publish")}
+                  options={[
+                    { label: "Save as draft", onSelect: () => onChangeStatus("not_published") },
+                    {
+                      disabled: draftRecord.publishStatus !== "published",
+                      label: "Unpublish",
+                      onSelect: () => onChangeStatus("not_published")
+                    }
+                  ]}
+                  primaryDisabled={draftRecord.publishStatus === "queued_to_publish"}
+                />
+              </div>
+            ) : null}
+            {isDirty ? (
               <span className="inline-flex items-center gap-1.5 px-1 text-ui text-cms-subtle">
                 <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-cms-pending" />
                 Unsaved
               </span>
-              <Button disabled={isSaving} onClick={onDiscard} variant="ghost">
-                Discard
-              </Button>
-            </>
-          ) : null}
-          {publishable ? (
-            <>
-              <StatusPill status={draftRecord.publishStatus} />
-              <SplitButton
-                disabled={isSaving}
-                label={isSaving ? "Saving…" : "Queue to publish"}
-                onClick={() => onChangeStatus("queued_to_publish")}
-                options={[
-                  // Keeping the current status a draft is "not published", not
-                  // whatever status is already on the record — this would
-                  // silently keep a Published record published otherwise.
-                  { label: "Save as draft", onSelect: () => onChangeStatus("not_published") },
-                  {
-                    disabled: draftRecord.publishStatus !== "published",
-                    label: "Unpublish",
-                    onSelect: () => onChangeStatus("not_published")
-                  }
-                ]}
-                primaryDisabled={draftRecord.publishStatus === "queued_to_publish"}
-              />
-            </>
-          ) : null}
+            ) : null}
+          </div>
           {editable ? (
             <Button disabled={isSaving} onClick={onSave} variant={publishable ? "normal" : "primary"}>
               {isSaving ? "Saving…" : "Save"}

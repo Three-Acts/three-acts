@@ -50,7 +50,6 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
     records,
     refreshCollections,
     refreshRecords,
-    reloadRecord,
     search,
     selectedIds,
     selectedRecordId,
@@ -289,7 +288,6 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
                   onBack={handleGuardedBack}
                   onChangeStatus={(status) => handleSaveRecord(status)}
                   onDelete={() => handleDeleteRecords([draftRecord.id])}
-                  onDiscard={reloadRecord}
                   onDuplicate={handleDuplicateRecord}
                   onSave={() => handleSaveRecord()}
                   onUpdateValue={updateDraftValue}
