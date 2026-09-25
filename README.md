@@ -1,17 +1,54 @@
-# Three Acts React
+# Three Acts
 
-Astro, React, Tailwind, and Vercel API monorepo with a static public web app, an auth-gated CMS app, and a server-side API bridge.
+A reusable foundation for client websites. It starts as a lightweight Astro site and can opt into a private editorial workspace, server-side APIs, persistent content, asset storage, authentication, payments, webhooks, or other application behavior without changing the public site's rendering model.
+
+The repository is a template, not a finished client implementation. Keep only the apps and capabilities a project needs, replace the example content and collection registry, and add providers behind the existing boundaries rather than coupling client-facing code to a vendor.
+
+## Choose a project path
+
+### Lightweight website
+
+Use `apps/web` with the built-in mock content source. Static pages ship as HTML and CSS; React is only sent for components explicitly hydrated as Astro islands. No API, CMS, database, auth provider, or external service is required.
+
+```sh
+npm install
+npm run dev:web
+```
+
+### Application-backed website
+
+Run the public site, CMS, and API together when a project needs editorial content or server-side behavior:
+
+```sh
+npm install
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+cp apps/cms/.env.example apps/cms/.env
+npm run dev
+```
+
+The zero-configuration development defaults still use mock content in the web app, the mock CMS backend, and in-process API stores. Opt into the REST CMS and a persistent provider only when the project needs them; see [CMS backend](#cms-backend) and [Environment variables](#environment-variables).
 
 ## Apps
 
 - `apps/web` - public **Astro** website that prerenders to **zero-JS static HTML**, with React **islands** for interactivity, a **build-time content layer** (mock by default, or the API's public published-content route), route-level SEO + AEO metadata (JSON-LD, `sitemap.xml`, `robots.txt`, `llms.txt`), build-time **AVIF** image compression, and a same-origin `/api/*` convention.
 - `apps/cms` - private CMS shell with `noindex,nofollow`, disallowing `robots.txt`, a provider-shaped auth interface ready for Clerk, Auth0, or Supabase, a pluggable CMS backend (mock or REST) built on the shared `packages/cms-schema` collection registry, and the same same-origin `/api/*` convention.
-- `apps/api` - Vercel serverless API app for server-only template functionality such as CMS writes, payment callbacks, webhook handling, record validation, and integration bridges.
+- `apps/api` - Vercel serverless API app for optional server-only functionality. It currently provides health and metadata routes, contact submissions, CMS/content routes, and Vercel publish orchestration; it is also the home for project-specific payments, webhooks, and integration bridges.
 - `packages/cms-schema` - shared collection registry, field types, typed errors, REST wire contract, and column-mapping helpers for the CMS, exported from `@three-acts/cms-schema`. Consumed by `apps/cms` and `apps/api` so both validate against the same schema. See [ADR 0003](docs/adr/0003-pluggable-cms-backend.md).
 - `packages/utils` - shared utility helpers such as `cn`, `clsx`, and `cv`, exported from `@three-acts/utils`.
 - `packages/config` - shared theme tokens consumed by Tailwind.
 
 Base UI is installed per app through `@base-ui-components/react`, and web-specific template components live inside `apps/web`.
+
+## Architecture boundaries
+
+- `apps/web` owns public routes, presentation, SEO, islands, and build-time content reads. It does not write directly to a database.
+- `apps/cms` owns private editorial UI. It talks to a `CmsBackend`, using either a browser-local mock or the API's REST bridge.
+- `apps/api` owns secrets, privileged operations, provider implementations, CMS writes, and public published-content reads.
+- `packages/cms-schema` owns the collection registry and CMS contract shared by the editor, API, and build-time content source.
+- `packages/config` and `packages/utils` contain provider-neutral styling and utility code shared by the apps.
+
+Supabase is one included server-side Data Store and Blob Store implementation. It is not required by the web app or CMS UI, and it is not the architecture's default identity.
 
 ## Template UI
 
@@ -33,7 +70,7 @@ import { Typography } from "./components/ui/typography";
 </Section.Root>
 ```
 
-## Scripts
+## Commands
 
 ```sh
 npm install
@@ -46,11 +83,13 @@ npm run lint
 npm run typecheck
 ```
 
-Set `VITE_SITE_URL` before `npm run build:web` to control canonical URLs and sitemap locations. Set `CONTENT_SOURCE=api` (with `API_ORIGIN` pointing at the deployed API) to source published content from the API's public content route instead of the built-in mock (see `apps/web/.env.example`).
+The root `build`, `lint`, and `typecheck` commands run their corresponding scripts in every app workspace. Package-specific commands can be run with the named scripts above or npm's `-w` flag.
+
+Set `VITE_SITE_URL` before `npm run build:web` to control canonical URLs and sitemap locations. Set `CONTENT_SOURCE=api` with `CONTENT_API_ORIGIN` or `API_ORIGIN` pointing at the deployed API to source published content from the public content route instead of the built-in mock. See `apps/web/.env.example`.
 
 ## API App
 
-`apps/api` is designed to deploy as its own Vercel project from the `apps/api` root. It starts with:
+`apps/api` is designed to deploy as its own Vercel project from the `apps/api` root. The included routes are template capabilities, not requirements for every client site:
 
 - `GET /api/health` - health check endpoint.
 - `GET /api/meta` - template metadata endpoint.
@@ -60,7 +99,7 @@ Set `VITE_SITE_URL` before `npm run build:web` to control canonical URLs and sit
 - `API_ALLOWED_ORIGINS` - optional comma-separated browser origins for direct cross-origin calls.
 - `PUBLISH_TOKEN` (API) + `VITE_PUBLISH_TOKEN` (CMS) - shared bearer secret for the Publish flow; the two values must match exactly.
 - `VERCEL_API_BASE` - optional override for the Vercel REST API base URL (self-hosted proxies or local testing); defaults to `https://api.vercel.com`.
-- Server-side Supabase (service-role) client foundation in `api/_lib/supabase.ts` for privileged writes/webhooks/payment callbacks. See `apps/api/.env.example` for all variables.
+- Optional server-side Supabase implementations for persistent CMS records, assets, and contact submissions. Provider credentials remain in the API app. See `apps/api/.env.example`.
 
 `apps/web` and `apps/cms` call `/api/*` by default. In local development, their Vite dev servers proxy `/api/*` to `API_ORIGIN`. In Vercel, their `vercel.ts` files rewrite `/api/*` to the deployed API app. This keeps browser requests same-origin and avoids per-app CORS configuration for normal traffic.
 
@@ -142,10 +181,17 @@ Review generated SQL before applying it with `psql` or the Supabase SQL editor.
 
 See [ADR 0003](docs/adr/0003-pluggable-cms-backend.md) for the backend interfaces and [ADR 0004](docs/adr/0004-registry-driven-schema-and-public-content.md) for the schema tooling and the public content route.
 
-### Env matrix
+## Environment variables
+
+The `.env.example` files are the authoritative per-app setup references. The matrix below explains how the variables fit together; most are optional for the lightweight path.
 
 | Variable | App | Purpose |
 | --- | --- | --- |
+| `VITE_SITE_URL` | web | Canonical public-site origin used for metadata, sitemap, robots, and social URLs. Required for production unless Vercel can derive it. |
+| `API_ORIGIN` | web, cms | Server/build-time API origin used by local proxies and production `/api/*` rewrites. Required in production for app features that call the API. |
+| `PUBLIC_API_URL` | web | Optional direct browser API base URL instead of the same-origin rewrite. Requires matching API CORS configuration. |
+| `VITE_API_URL` | cms | Optional direct browser API base URL instead of the same-origin rewrite. Requires matching API CORS configuration. |
+| `API_ALLOWED_ORIGINS` | api | Optional comma-separated origins allowed to call the API directly from browsers. Normal same-origin rewrite traffic does not need it. |
 | `PUBLISH_TOKEN` | api | Bearer secret required by `/api/deploy`, `/api/deploy-status`, and `/api/cms/*`. Unset is dev-only and 503s in production. |
 | `VITE_PUBLISH_TOKEN` | cms | Must match `PUBLISH_TOKEN` exactly; sent as `Authorization: Bearer <token>`. |
 | `VITE_CMS_BACKEND` | cms | `mock` (default) or `rest`. Picks the CMS backend implementation. |
@@ -188,3 +234,10 @@ Put owned raster images in `apps/web/public/` and render them with `<Image>` (`s
 ## Publishing (CMS → Vercel)
 
 Editors change data, then click **Publish** in the CMS top bar. That calls `POST /api/deploy` (which triggers a Vercel Deploy Hook to rebuild the static site) and polls `GET /api/deploy-status` for live state, surfacing progress in a bottom-right toast: **queued → building → deployed ✓** (or failed). Configure `VERCEL_DEPLOY_HOOK_URL`, `VERCEL_TOKEN`, and `VERCEL_PROJECT_ID` in `apps/api`; when unset, the flow degrades gracefully with a clear message.
+
+## Documentation map
+
+- [`CONTEXT.md`](CONTEXT.md) - current architecture, boundaries, domain language, and adaptation rules for developers and coding agents.
+- [`docs/adr/`](docs/adr/) - decisions and their history. Superseded ADRs remain as historical records and are labeled accordingly.
+- [`docs/superpowers/specs/`](docs/superpowers/specs/) - dated design snapshots; read their status notes before treating them as current guidance.
+- [`apps/api/schema/README.md`](apps/api/schema/README.md) - registry-driven Postgres schema and migration workflow.

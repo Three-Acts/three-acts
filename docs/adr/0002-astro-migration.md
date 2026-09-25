@@ -17,7 +17,7 @@ Replace the custom rendering machinery with Astro (`output: "static"` + `@astroj
    - Static with islands → `<Component client:visible />` in the `.astro` page replaces `<Island>` + registry + `islands-client.tsx`.
    - Client routes → `client:load` on the page's root React component (now also server-rendered as a static shell instead of an empty `#root`).
 3. **SEO/AEO** — per-page metadata is centralized in `src/page-meta.ts` (the successor of the route table) and rendered by `src/layouts/BaseLayout.astro`; `sitemap.xml`, `robots.txt`, and `llms.txt` are static-file endpoints in `src/pages/` reusing the same metadata.
-4. **Content stays build-only** — the content source is imported only from page frontmatter and `page-meta.ts`, which run at build; the Supabase client still never ships to the browser.
+4. **Content stays build-only** — the content source is imported only from page frontmatter and `page-meta.ts`, which run at build. At the time of this decision it could use a Supabase-backed source; [ADR 0004](./0004-registry-driven-schema-and-public-content.md) later replaced that provider-specific path with the API's public content route. No privileged data client ships to the browser.
 5. **Kept as-is** — Tailwind v4 theme pipeline, `@three-acts/utils` (`cn`/`cv`) component conventions, the AVIF post-build script (`scripts/optimize-images.mjs`, now over `dist/`), and the same-origin `/api/*` convention (Vite proxy in dev via `astro.config.mjs`, Vercel rewrite in prod).
 
 `react-router-dom` was removed entirely: the only client route (`/dashboard`) is a self-contained hydrated component, and navigation is plain anchors (MPA).
@@ -27,5 +27,5 @@ Replace the custom rendering machinery with Astro (`output: "static"` + `@astroj
 - ~350 lines of bespoke SSR/prerender/island-runtime code are deleted; dev/build parity is Astro's responsibility (`astro dev` renders live data per request, `astro build` freezes it — same lifecycle as before).
 - Hydration markers change from `data-island` divs to Astro's `<astro-island>` elements; island props must remain JSON-serializable (unchanged constraint).
 - The Vercel project uses `framework: "astro"` with `outputDirectory: "dist"` (previously `dist/client`).
-- `VITE_SITE_URL` now feeds Astro's `site` config and is read as `import.meta.env.SITE`; `VITE_SUPABASE_*` variables are unchanged.
+- `VITE_SITE_URL` feeds Astro's `site` config and is read as `import.meta.env.SITE`. The provider-specific web content variables that existed when this ADR was accepted were later removed by ADR 0004; current configuration is documented in `apps/web/.env.example`.
 - Typechecking runs through `astro check` (covers `.astro` files as well as TS/TSX).

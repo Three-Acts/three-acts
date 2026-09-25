@@ -1,6 +1,53 @@
-# Three Acts CMS
+# Three Acts project context
 
-Three Acts CMS is the private editorial context for managing website content and related assets, stored in a pluggable Data Store and Blob Store.
+Three Acts is a reusable client-website foundation, not a single finished site. The core is a static Astro public app. A project can add the private CMS, Vercel API, persistent data, asset storage, authentication, payments, webhooks, and integrations only when its requirements justify them.
+
+## Current architecture
+
+- **Public Web App** (`apps/web`): Astro with static output and React islands. It owns public routes, presentation, SEO/AEO, image optimization, and build-time content reads.
+- **Editorial App** (`apps/cms`): a private, desktop-first React/Vite workspace. It owns editing UX but no provider credentials or server-side storage implementations.
+- **API App** (`apps/api`): Vercel functions and a matching local development server. It owns privileged operations, secrets, CMS/data routes, public published-content routes, contact handling, and deploy orchestration.
+- **Collection Schema Package** (`packages/cms-schema`): the provider-neutral collection registry, field model, errors, REST contract, and column mapping shared by the CMS and API. The web app also consumes its field keys when mapping API content.
+- **Shared Packages** (`packages/config`, `packages/utils`): theme tokens and provider-neutral utilities used across apps.
+
+## Supported project shapes
+
+**Lightweight website:** run `apps/web` with mock or file-backed content. Static pages need no CMS, API, database, auth, or third-party provider. Add Astro islands only where interaction is required.
+
+**Application-backed website:** run `apps/web`, `apps/cms`, and `apps/api`. The CMS reaches provider-neutral Data Store and Blob Store interfaces through the REST Bridge; the public site reads published content at build time. Auth, payments, webhooks, and other integrations belong behind the API boundary.
+
+The paths are incremental: begin lightweight and add application capabilities without moving public rendering or provider credentials into the browser.
+
+## Architectural rules
+
+- Keep `apps/web` static-first. Do not hydrate a whole page when a small island is sufficient.
+- Keep secrets and provider SDKs that require privileged credentials in `apps/api`.
+- Treat Supabase as an included Data Store/Blob Store implementation, not as the definition of the CMS or the only supported provider.
+- Change CMS fields in the Collection Registry first, then generate and review schema changes. Do not derive the editor from live database introspection.
+- Keep browser API calls same-origin through `/api/*` by default. Direct cross-origin URLs are an explicit deployment choice.
+- The mock web content, mock CMS backend, and Memory stores are zero-configuration development paths. They are not production persistence.
+- A client project should replace example content and configure only the collections and capabilities it needs.
+
+## Repository terminology
+
+**Public Web App**:
+The static Astro site in `apps/web`. It may include isolated React islands and application-like client routes, but static HTML remains the default output.
+
+**Editorial App**:
+The private CMS workspace in `apps/cms`.
+
+**API App**:
+The server-side boundary in `apps/api`. It hosts Vercel functions in production and an equivalent local server for development.
+
+**Lightweight Path**:
+The Public Web App using its zero-configuration content source without the CMS, API, or a persistent provider.
+
+**Application-Backed Path**:
+The Public Web App plus whichever server-side capabilities a client needs, typically the Editorial App, API App, and persistent stores.
+
+## CMS language
+
+The private editorial context manages website content and related assets through pluggable Data Store and Blob Store implementations.
 
 ## Language
 

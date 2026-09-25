@@ -1,8 +1,10 @@
-# Generic Supabase CMS Design
+# Generic CMS Design (historical baseline)
+
+> **Status: Superseded.** This dated design snapshot describes the first mock-only CMS phase. The current architecture is provider-neutral and is documented in [`CONTEXT.md`](../../../CONTEXT.md), [ADR 0003](../../adr/0003-pluggable-cms-backend.md), and [ADR 0004](../../adr/0004-registry-driven-schema-and-public-content.md). Supabase is now one server-side Data Store/Blob Store implementation rather than the CMS's architectural destination.
 
 ## Goal
 
-Build the CMS app as a generic collection editor shaped like Webflow's compact CMS workspace. The first implementation uses real async data/storage interfaces with mock data, so the UI and data flow are production-shaped without requiring live Supabase credentials, RLS policies, or storage buckets yet.
+Build the CMS app as a generic collection editor shaped like Webflow's compact CMS workspace. This first phase used async interfaces with mock data so the UI and data flow were production-shaped without requiring a live provider.
 
 ## Architecture
 
@@ -11,9 +13,9 @@ The CMS centers on two boundaries:
 - `Collection Registry`: app-owned configuration that allowlists editable collections. It defines table name, label, grouping, title field, list columns, editable fields, publish status support, and storage settings for asset fields.
 - `CMS Data Adapter`: runtime interface used by the UI to list collections, list records, fetch one record, save a record, and upload asset-field files.
 
-The first adapter is a mock adapter with realistic async functions and a purpose-built test collection set. A later Supabase adapter will implement the same interface against Supabase tables and Supabase Storage.
+The first adapter was a mock adapter with realistic async functions and a purpose-built test collection set. The shipped architecture later split the browser-facing CMS Backend from server-side Data Store and Blob Store interfaces. The REST backend now reaches those stores through `apps/api`; Memory and Supabase implementations ship today, and other providers can implement the same interfaces.
 
-The current mock auth remains in place for this phase. Supabase Auth is deferred until live Supabase access is introduced.
+The mock auth remained in place for this phase. A production auth provider is still an explicit project choice rather than a Supabase-specific requirement.
 
 ## UI
 
@@ -41,7 +43,7 @@ Each collection defines editor-facing fields in config. The initial field types 
 
 List columns are configured separately from editable fields so tables remain compact. `titleField` is explicit, with fallback to `name`, `title`, then `id` when missing.
 
-`asset` fields upload through the data adapter and store a file reference on the record. The mock adapter returns a realistic mock file reference; the future Supabase adapter will upload to the configured bucket/path.
+`asset` fields upload through the backend's storage adapter and store a file reference on the record. The mock backend returns a realistic mock reference; the REST backend delegates uploads to its configured Blob Store.
 
 ## Test Collection Set
 
