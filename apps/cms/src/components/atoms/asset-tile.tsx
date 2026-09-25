@@ -53,7 +53,7 @@ function Root({
 }
 
 function Preview({ children }: { children: ReactNode }) {
-  return <div className="aspect-square h-full min-h-0 w-auto overflow-hidden rounded-cms bg-cms-bg">{children}</div>;
+  return <div className="aspect-square h-24 w-auto overflow-hidden rounded-cms bg-cms-bg">{children}</div>;
 }
 
 function Icon({ children }: { children: ReactNode }) {
