@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-25T06:37:03.376Z",
+  "generatedAt": "2026-09-25T08:44:28.214Z",
   "tables": {
     "posts": {
       "collectionId": "posts",
@@ -976,6 +976,172 @@
           "type": "text",
           "kind": "field",
           "fieldType": "readonly"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "site_settings": {
+      "collectionId": "site-settings",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "site_name": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "title_template": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "default_meta_description": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "default_og_image": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "image"
+        },
+        "favicon": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "image"
+        },
+        "twitter_handle": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "locale": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "allow_indexing": {
+          "type": "boolean",
+          "kind": "field",
+          "fieldType": "boolean"
+        },
+        "schema_markup": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        }
+      },
+      "publishStatuses": [
+        "published",
+        "not_published",
+        "queued_to_publish"
+      ]
+    },
+    "page_settings": {
+      "collectionId": "page-settings",
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "kind": "system",
+          "fieldType": "id"
+        },
+        "publish_status": {
+          "type": "text",
+          "kind": "system",
+          "fieldType": "publishStatus"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "createdAt"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "kind": "system",
+          "fieldType": "modifiedAt"
+        },
+        "page_name": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "page_path": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text",
+          "unique": true
+        },
+        "meta_title": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "meta_description": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "canonical_url": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "og_title": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "og_description": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "og_image": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "image"
+        },
+        "search_title": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "text"
+        },
+        "search_description": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
+        },
+        "search_image": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "image"
+        },
+        "schema_markup": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "textarea"
         }
       },
       "publishStatuses": [

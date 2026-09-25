@@ -58,7 +58,16 @@ type FieldBase<TType extends FieldType> = {
   column?: string;
 };
 
-export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "asset" | "image" | "image-gallery" | "video" | "file">>;
+export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "asset" | "image" | "image-gallery" | "video" | "file">> & {
+  /**
+   * Structured-text format for `text`/`textarea` fields. `"json-ld"` marks a
+   * schema markup field: the value must be empty or a JSON object / array of
+   * objects (see `parseSchemaMarkup` in `./schema-markup`). The API rejects
+   * invalid values on every save (draft included); editors may render a
+   * code-style input for it.
+   */
+  format?: "json-ld";
+};
 
 export type SelectField = FieldBase<"select"> & {
   type: "select";
@@ -150,6 +159,10 @@ export type CmsCollection = {
   systemColumns?: Partial<Record<"id" | "publishStatus" | "createdAt" | "modifiedAt", string>>;
   /** Column naming used when a field has no explicit `column`. Defaults to "snake_case". */
   columnNaming?: "snake_case" | "as_is";
+  /** Collection holds at most one record (e.g. site settings). The API rejects a second create. */
+  singleton?: boolean;
+  /** Rendered by a dedicated settings screen instead of the generic collection table; hidden from the Collections sidebar list. */
+  settingsView?: "site" | "pages";
 };
 
 export type CmsCollectionSummary = CmsCollection & {

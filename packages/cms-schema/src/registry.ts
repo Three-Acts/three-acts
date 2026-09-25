@@ -472,5 +472,136 @@ export const collectionRegistry: CmsCollection[] = [
       { key: "characterLimit", label: "Limit", width: "90px" },
       { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
     ]
+  },
+  {
+    id: "site-settings",
+    label: "Site settings",
+    tableName: "site_settings",
+    group: "Settings",
+    titleField: "siteName",
+    // Exactly one record: sitewide defaults every page falls back to.
+    singleton: true,
+    settingsView: "site",
+    description: "Sitewide SEO defaults, social metadata, and indexing. Only the published record reaches the site.",
+    fields: [
+      { key: "siteName", label: "Site name", type: "text", required: true },
+      { key: "titleTemplate", label: "Title template", type: "text", helpText: "Use %s for the page title, e.g. %s | Three Acts." },
+      {
+        key: "defaultMetaDescription",
+        label: "Default meta description",
+        type: "textarea",
+        helpText: "Used when a page has no meta description of its own."
+      },
+      {
+        key: "defaultOgImage",
+        label: "Default open graph image",
+        type: "image",
+        bucket: "cms-assets",
+        accept: "image/*",
+        helpText: "Shared-link preview used when a page has no open graph image of its own."
+      },
+      { key: "favicon", label: "Favicon", type: "image", bucket: "cms-assets", accept: "image/png,image/svg+xml,image/x-icon" },
+      { key: "twitterHandle", label: "Twitter handle", type: "text", helpText: "e.g. @threeacts" },
+      { key: "locale", label: "Locale", type: "text", helpText: "e.g. en_US" },
+      {
+        key: "allowIndexing",
+        label: "Allow search engine indexing",
+        type: "boolean",
+        helpText: "Off adds noindex to every page and disallows crawling in robots.txt."
+      },
+      {
+        key: "schemaMarkup",
+        label: "Sitewide schema markup",
+        type: "textarea",
+        format: "json-ld",
+        helpText: "JSON-LD object or array of objects (e.g. Organization, WebSite) merged into every page's structured data."
+      }
+    ],
+    listColumns: [
+      { key: "siteName", label: "Name", width: "minmax(220px, 1.5fr)" },
+      { key: "publishStatus", label: "Status", valueType: "status", width: "160px" },
+      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
+    ]
+  },
+  {
+    id: "page-settings",
+    label: "Page settings",
+    tableName: "page_settings",
+    group: "Settings",
+    titleField: "pageName",
+    settingsView: "pages",
+    description: "Per-page SEO for static routes. Empty fields fall back: open graph/search → meta → site defaults.",
+    fields: [
+      { key: "pageName", label: "Page name", type: "text", required: true },
+      {
+        key: "pagePath",
+        label: "Page path",
+        type: "text",
+        required: true,
+        unique: true,
+        helpText: "Route path of the static page, e.g. /about."
+      },
+      {
+        key: "metaTitle",
+        label: "Meta title",
+        type: "text",
+        helpText: "Inserted into the site title template. Empty falls back to the page name."
+      },
+      {
+        key: "metaDescription",
+        label: "Meta description",
+        type: "textarea",
+        helpText: "Empty falls back to the site's default meta description."
+      },
+      {
+        key: "canonicalUrl",
+        label: "Canonical URL",
+        type: "text",
+        helpText: "Absolute URL or path. Empty uses the page path."
+      },
+      { key: "ogTitle", label: "Open graph title", type: "text", helpText: "Empty falls back to the meta title." },
+      {
+        key: "ogDescription",
+        label: "Open graph description",
+        type: "textarea",
+        helpText: "Empty falls back to the meta description."
+      },
+      {
+        key: "ogImage",
+        label: "Open graph image",
+        type: "image",
+        bucket: "cms-assets",
+        accept: "image/*",
+        helpText: "Empty falls back to the site's default open graph image."
+      },
+      { key: "searchTitle", label: "Search title", type: "text", helpText: "Title shown in search results. Empty falls back to the meta title." },
+      {
+        key: "searchDescription",
+        label: "Search description",
+        type: "textarea",
+        helpText: "Description shown in search results. Empty falls back to the meta description."
+      },
+      {
+        key: "searchImage",
+        label: "Search image",
+        type: "image",
+        bucket: "cms-assets",
+        accept: "image/*",
+        helpText: "Image for search features. Empty falls back to the open graph image."
+      },
+      {
+        key: "schemaMarkup",
+        label: "Schema markup",
+        type: "textarea",
+        format: "json-ld",
+        helpText: "JSON-LD object or array of objects merged with the sitewide schema markup on this page."
+      }
+    ],
+    listColumns: [
+      { key: "pageName", label: "Name", width: "minmax(200px, 1.3fr)" },
+      { key: "pagePath", label: "Path", width: "minmax(160px, 1fr)" },
+      { key: "publishStatus", label: "Status", valueType: "status", width: "160px" },
+      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
+    ]
   }
 ];

@@ -6,6 +6,7 @@ import {
   parseFileValue,
   parseImageGallery,
   parseImageValue,
+  parseSchemaMarkup,
   parseVideoValue,
   serializeFileValue,
   serializeImageGallery,
@@ -75,6 +76,14 @@ function validateFieldValue(field: CmsField, raw: CmsRecordValue, enforceRequire
       const text = raw === null || raw === undefined ? "" : String(raw);
       if (enforceRequired && field.required && !text.trim()) {
         throw validationError(field, `${field.label} is required.`);
+      }
+      // Schema markup fields must hold valid JSON-LD on every save, drafts
+      // included: a malformed value is a format error, not a missing one.
+      if ((field.type === "text" || field.type === "textarea") && field.format === "json-ld") {
+        const markup = parseSchemaMarkup(text);
+        if (!markup.ok) {
+          throw validationError(field, markup.error);
+        }
       }
       return text;
     }
@@ -283,8 +292,29 @@ export async function getRecord(collectionId: string, recordId: string): Promise
   return record;
 }
 
+/**
+ * Singleton collections (e.g. site settings) hold at most one record: reject
+ * a create/import that would push the count past one.
+ */
+async function assertSingletonCapacity(collection: CmsCollection, incoming: number): Promise<void> {
+  if (!collection.singleton || incoming === 0) return;
+  const existing = await getDataStore().countRecords(collection);
+  if (existing + incoming > 1) {
+    // "validation" (not "conflict") so the editor shows this message instead
+    // of the generic "changed elsewhere, reload" copy reserved for conflicts.
+    throw new CmsError(
+      "validation",
+      existing > 0
+        ? `${collection.label} already has a record. Edit the existing record instead of creating another.`
+        : `${collection.label} holds a single record; import at most one row.`,
+      { details: { singleton: true } }
+    );
+  }
+}
+
 export async function createRecord(collectionId: string, values?: Partial<Record<string, CmsRecordValue>>): Promise<CmsRecord> {
   const collection = assertWritable(getCollectionOrThrow(collectionId));
+  await assertSingletonCapacity(collection, 1);
   const normalizedValues = buildRecordValues(collection, values, undefined);
   const [record] = await getDataStore().insertRecords(collection, [{ publishStatus: "not_published", values: normalizedValues }]);
   return record;
@@ -351,6 +381,8 @@ export async function importRecords(collectionId: string, rows: Array<Record<str
   if (rows.length > MAX_IMPORT_ROWS) {
     throw new CmsError("validation", `Import is limited to ${MAX_IMPORT_ROWS} rows per request.`);
   }
+
+  await assertSingletonCapacity(collection, rows.length);
 
   const prepared = rows.map((row) => ({
     publishStatus: "not_published" as const,
