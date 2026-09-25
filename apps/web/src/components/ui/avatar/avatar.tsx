@@ -32,7 +32,7 @@ function Root({ src, name, size = "md", className, ...props }: RootProps) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-card border border-line bg-surface-raised font-semibold text-ink",
+        "inline-flex shrink-0 items-center justify-center overflow-hidden border border-line bg-block font-medium text-ink",
         SIZE[size],
         className
       )}

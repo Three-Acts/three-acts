@@ -16,19 +16,19 @@ type RootProps = Omit<HTMLAttributes<HTMLElement>, "children"> & {
 /** Wayfinding trail above a page's title, e.g. Home / Shop / Single origin / Ethiopia Yirgacheffe. */
 function Root({ items, className, ...props }: RootProps) {
   return (
-    <nav aria-label="Breadcrumb" className={cn("text-sm text-muted", className)} {...props}>
+    <nav aria-label="Breadcrumb" className={cn("text-small text-ink", className)} {...props}>
       <ol className="flex flex-wrap items-center gap-2">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
           return (
             <li key={`${item.label}-${index}`} className="flex items-center gap-2">
               {index > 0 && (
-                <span aria-hidden="true" className="text-line-strong/30">
+                <span aria-hidden="true" className="text-block">
                   /
                 </span>
               )}
               {item.href && !isLast ? (
-                <a href={item.href} className="focus-ring transition-colors duration-150 hover:text-ink">
+                <a href={item.href} className="focus-ring hover:underline">
                   {item.label}
                 </a>
               ) : (

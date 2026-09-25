@@ -13,14 +13,14 @@ import {
   productCategoryMeta,
   productMeta,
   shopIndexMeta,
-  wholesaleMeta
+  agenciesMeta
 } from "./builders";
 import type { PageMeta } from "./types";
 
 /** The `page-settings` static routes handled by `infoPageMeta` (see the build contract's `/web app/` section). */
-const INFO_PAGE_PATHS = ["/visit-the-roastery", "/shipping", "/returns", "/terms", "/privacy", "/careers", "/subscriptions"] as const;
+const INFO_PAGE_PATHS = ["/docs", "/licenses", "/refunds", "/terms", "/privacy", "/careers", "/changelog"] as const;
 
-/** `/visit-the-roastery` -> "Visit The Roastery" — a plain fallback title used only when a route has no live `page-settings` record of its own. */
+/** `/docs` -> "Docs" — a plain fallback title used only when a route has no live `page-settings` record of its own. */
 function titleFromPath(path: string): string {
   const last = path.split("/").filter(Boolean).pop() ?? "home";
   return last
@@ -63,7 +63,7 @@ export async function getSitemapPages(): Promise<PageMeta[]> {
     blogIndexMeta(),
     aboutMeta(),
     contactMeta(),
-    wholesaleMeta(),
+    agenciesMeta(),
     faqMeta(faqs),
     ...INFO_PAGE_PATHS.map((path) => infoPageMeta(path, { title: `${titleFromPath(path)} | ${site.name}`, description: site.description }))
   ]);

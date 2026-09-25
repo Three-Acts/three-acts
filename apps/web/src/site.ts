@@ -5,44 +5,44 @@ export type FooterNavGroup = { title: string; links: NavLink[] };
 export type OpeningHours = { days: string; hours: string };
 
 /**
- * Brand fallbacks for a Cape Town specialty coffee roaster. These mirror the
- * `site-settings`/`page-settings` organisation JSON-LD in
- * `packages/cms-schema/src/seed/site.ts` (`organizationLd`/`roasteryLd`) so
- * the layout renders sensible chrome even before the content wave wires
- * `SiteSettings` through `@three-acts/content`. `lib/seo.ts` and
- * `page-meta.ts` read `name`/`url`/`description`/`defaultImage`/`locale`/
- * `twitter` — keep those keys stable.
+ * Brand fallbacks for the Three Acts template's own site — the template
+ * selling itself. These mirror the organisation JSON-LD in
+ * `packages/cms-schema/src/seed/site.ts` so the layout renders sensible
+ * chrome even when the API returns no `site-settings` record. `lib/seo.ts`
+ * and `page-meta` read `name`/`url`/`description`/`defaultImage`/`locale`/
+ * `twitter` — keep those keys stable. A client fork edits this file.
  */
 export const site = {
-  name: "Fynbos & Fire",
+  name: "Three Acts",
   // `site` from astro.config.mjs (sourced from VITE_SITE_URL at build time,
   // derived from the Vercel project on production, or thrown on a
   // misconfigured production build — see astro.config.mjs `resolveSiteUrl`).
   url: import.meta.env.SITE.replace(/\/+$/, ""),
   description:
-    "Small-batch specialty coffee roasted in Observatory, Cape Town. Single origins, house blends and brewing gear, delivered fresh across South Africa.",
+    "A static-first client website template: an Astro site, a private CMS and an API bridge, with a storefront, journal, forms and accounts built in. Fork it, configure the registry, ship.",
   /** Local raster (compressed to AVIF at build) used as the default social image. */
   defaultImage: "/og-default.png",
-  locale: "en_ZA",
-  twitter: "@fynbosandfire",
-  email: "hello@fynbosandfire.co.za",
-  phone: "+27 21 447 1290",
-  phoneHref: "+27214471290",
+  locale: "en_US",
+  twitter: "@threeacts",
+  email: "hello@threeacts.dev",
+  phone: "+27 21 000 0000",
+  phoneHref: "+27210000000",
   address: {
-    street: "14 Lower Main Road",
-    locality: "Observatory, Cape Town",
+    street: "Woodstock Exchange, 66 Albert Road",
+    locality: "Woodstock, Cape Town",
     postalCode: "7925",
     region: "Western Cape",
     country: "South Africa"
   },
+  /** Support hours (SAST). */
   hours: [
-    { days: "Monday – Friday", hours: "7:00 – 15:00" },
-    { days: "Saturday", hours: "8:00 – 13:00" }
+    { days: "Monday – Friday", hours: "9:00 – 17:00 SAST" },
+    { days: "Weekends", hours: "Email only" }
   ],
   social: [
-    { label: "Instagram", href: "https://www.instagram.com/fynbosandfire" },
-    { label: "X", href: "https://x.com/fynbosandfire" },
-    { label: "Facebook", href: "https://www.facebook.com/fynbosandfire" }
+    { label: "GitHub", href: "https://github.com/Three-Acts" },
+    { label: "X", href: "https://x.com/threeacts" },
+    { label: "LinkedIn", href: "https://www.linkedin.com/company/threeacts" }
   ]
 } as const;
 
@@ -50,9 +50,10 @@ export const site = {
 export const navLinks: NavLink[] = [
   { label: "Shop", href: "/shop" },
   { label: "Journal", href: "/blog" },
+  { label: "Docs", href: "/docs" },
   { label: "About", href: "/about" },
   { label: "FAQ", href: "/faq" },
-  { label: "Wholesale", href: "/wholesale" },
+  { label: "Agencies", href: "/agencies" },
   { label: "Contact", href: "/contact" }
 ];
 
@@ -61,36 +62,42 @@ export const footerNav: FooterNavGroup[] = [
   {
     title: "Shop",
     links: [
-      { label: "All coffee", href: "/shop" },
-      { label: "Single origin", href: "/shop/category/single-origin" },
-      { label: "Blends", href: "/shop/category/blends" },
-      { label: "Decaf", href: "/shop/category/decaf" },
-      { label: "Brewers", href: "/shop/category/brewers" },
-      { label: "Grinders", href: "/shop/category/grinders" },
-      { label: "Accessories", href: "/shop/category/accessories" },
-      { label: "Merch", href: "/shop/category/merch" },
-      { label: "Gift sets", href: "/shop/category/gift-sets" }
+      { label: "Everything", href: "/shop" },
+      { label: "Apps", href: "/shop/category/apps" },
+      { label: "Packages", href: "/shop/category/packages" },
+      { label: "Modules", href: "/shop/category/modules" },
+      { label: "Themes", href: "/shop/category/themes" },
+      { label: "Integrations", href: "/shop/category/integrations" },
+      { label: "Licences", href: "/shop/category/licenses" },
+      { label: "Services", href: "/shop/category/services" },
+      { label: "Bundles", href: "/shop/category/bundles" }
     ]
   },
   {
     title: "Journal",
-    links: [{ label: "The brewing journal", href: "/blog" }]
+    links: [
+      { label: "All posts", href: "/blog" },
+      { label: "Guides", href: "/blog/category/guides" },
+      { label: "Architecture", href: "/blog/category/architecture" },
+      { label: "Release notes", href: "/blog/category/release-notes" }
+    ]
   },
   {
     title: "Company",
     links: [
       { label: "About", href: "/about" },
-      { label: "Visit the roastery", href: "/visit-the-roastery" },
+      { label: "Docs", href: "/docs" },
+      { label: "Changelog", href: "/changelog" },
       { label: "Careers", href: "/careers" },
-      { label: "Wholesale", href: "/wholesale" }
+      { label: "Agencies", href: "/agencies" }
     ]
   },
   {
     title: "Help",
     links: [
       { label: "FAQ", href: "/faq" },
-      { label: "Shipping", href: "/shipping" },
-      { label: "Returns", href: "/returns" },
+      { label: "Licences", href: "/licenses" },
+      { label: "Refunds", href: "/refunds" },
       { label: "Contact", href: "/contact" },
       { label: "Terms", href: "/terms" },
       { label: "Privacy", href: "/privacy" }

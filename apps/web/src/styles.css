@@ -1,37 +1,52 @@
 @import "tailwindcss";
 @import "./theme.css";
 
-:root {
-  color: var(--color-ink);
-  background: var(--color-paper);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/*
+ * Base element resets live in Tailwind's `base` layer (not unlayered), so
+ * that any `text-*`/`bg-*` utility — which Tailwind puts in the `utilities`
+ * layer — reliably wins over them regardless of selector specificity.
+ * Unlayered CSS always beats layered CSS in the cascade, so an unlayered
+ * `a { color: inherit }` would silently defeat `text-ink` on every anchor
+ * (exactly the bug that made inverse buttons render invisible on the black
+ * band — the `<a>` kept inheriting white instead of taking its own class).
+ */
+@layer base {
+  :root {
+    color: var(--color-ink);
+    background: var(--color-surface);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background: var(--color-surface);
-  font-family: var(--font-sans);
-}
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    letter-spacing: var(--tracking-ui);
+  }
 
-a {
-  color: inherit;
-}
+  a {
+    color: inherit;
+  }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
 
-::selection {
-  background: var(--color-accent);
-  color: var(--color-panel);
+  ::selection {
+    background: var(--color-ink);
+    color: var(--color-surface);
+  }
 }
 
 /*

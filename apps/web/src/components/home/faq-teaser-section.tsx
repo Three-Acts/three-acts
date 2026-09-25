@@ -15,29 +15,29 @@ export function FaqTeaserSection({ faqs }: FaqTeaserSectionProps) {
   }
 
   return (
-    <Section.Root className="bg-surface-raised">
+    <Section.Root>
       <Section.Container className="max-w-3xl">
         <Section.Header
           align="center"
           eyebrow="Good to know"
           title="Common questions"
           action={
-            <Button.Link href="/faq" variant="ghost">
-              See all FAQs →
+            <Button.Link href="/faq" variant="ghost" icon="arrow">
+              See all FAQs
             </Button.Link>
           }
         />
-        <div className="flex flex-col divide-y divide-line border-y border-line">
+        <div className="flex flex-col border-t border-line">
           {faqs.map((faq) => (
-            <details key={faq.id} className="group py-5">
-              <summary className="focus-ring flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-ink [&::-webkit-details-marker]:hidden">
+            <details key={faq.id} className="group border-b border-line py-5">
+              <summary className="focus-ring flex cursor-pointer list-none items-center justify-between gap-4 text-body font-medium text-ink [&::-webkit-details-marker]:hidden">
                 {faq.question}
-                <span aria-hidden="true" className="shrink-0 text-xl leading-none text-muted group-open:rotate-45 transition-transform duration-150">
+                <span aria-hidden="true" className="shrink-0 text-h3 leading-none text-ink">
                   +
                 </span>
               </summary>
-              <div className="mt-4 text-base">
-                <Prose.Root body={faq.answer} className="text-base leading-7" />
+              <div className="mt-4">
+                <Prose.Root body={faq.answer} />
               </div>
             </details>
           ))}

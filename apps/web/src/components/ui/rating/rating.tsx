@@ -17,28 +17,24 @@ type RootProps = HTMLAttributes<HTMLDivElement> & {
   size?: RatingSize;
 };
 
-/**
- * Gold on paper fails text-contrast (~2:1), so stars are outlined in ink so
- * the shape reads without relying on gold's own contrast, and the numeric
- * value is exposed to assistive tech via `aria-label` rather than color.
- */
+/** Black filled / gray empty stars — the numeric value is also exposed to assistive tech via `aria-label`. */
 function Star({ fill, sizePx }: { fill: number; sizePx: number }) {
   const style: CSSProperties = { width: sizePx, height: sizePx };
   return (
     <span className="relative inline-block shrink-0" style={style} aria-hidden="true">
       <svg viewBox="0 0 20 20" className="absolute inset-0 size-full">
-        <path d={STAR_PATH} fill="var(--color-surface-raised)" stroke="var(--color-line-strong)" strokeOpacity="0.3" strokeWidth="1" />
+        <path d={STAR_PATH} fill="var(--color-block)" />
       </svg>
       <span className="absolute inset-0 overflow-hidden" style={{ width: `${Math.round(fill * 100)}%` }}>
         <svg viewBox="0 0 20 20" style={style}>
-          <path d={STAR_PATH} fill="var(--color-gold)" stroke="var(--color-line-strong)" strokeOpacity="0.45" strokeWidth="1" />
+          <path d={STAR_PATH} fill="var(--color-ink)" />
         </svg>
       </span>
     </span>
   );
 }
 
-/** A 0–5 star rating, e.g. on Card.Product and product reviews. Always pass the real numeric value in `aria-label`, never rely on the gold fill alone. */
+/** A 0–5 star rating, e.g. on Card.Product and product reviews. Always pass the real numeric value in `aria-label`, never rely on fill alone. */
 function Root({ value, count, size = "md", className, ...props }: RootProps) {
   const clamped = Math.max(0, Math.min(5, value));
   const sizePx = SIZE_PX[size];
@@ -50,7 +46,7 @@ function Root({ value, count, size = "md", className, ...props }: RootProps) {
           <Star key={index} fill={Math.max(0, Math.min(1, clamped - index))} sizePx={sizePx} />
         ))}
       </span>
-      {typeof count === "number" && <span className="text-sm text-muted">({count})</span>}
+      {typeof count === "number" && <span className="text-small text-ink">({count})</span>}
     </div>
   );
 }

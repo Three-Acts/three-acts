@@ -76,7 +76,7 @@ function autolink(text: string, keyPrefix: string): ReactNode[] {
       <a
         key={`${keyPrefix}-${index++}`}
         href={href}
-        className="text-ink underline decoration-1 underline-offset-2 hover:text-accent"
+        className="text-ink underline decoration-1 underline-offset-2 hover:no-underline"
         {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       >
         {href}
@@ -106,18 +106,18 @@ function Root({ body, className, ...props }: ProseProps) {
   const blocks = parseBlocks(body);
 
   return (
-    <div className={cn("flex flex-col gap-5 text-lg leading-8 text-ink", className)} {...props}>
+    <div className={cn("flex flex-col gap-5 text-body text-ink", className)} {...props}>
       {blocks.map((block, blockIndex) => {
         if (block.type === "h2") {
           return (
-            <h2 key={blockIndex} className="mt-2 text-2xl font-semibold tracking-tight text-ink font-serif first:mt-0">
+            <h2 key={blockIndex} className="mt-2 text-h3 font-medium text-ink first:mt-0">
               {autolink(block.text, `h${blockIndex}`)}
             </h2>
           );
         }
         if (block.type === "ul") {
           return (
-            <ul key={blockIndex} className="list-disc flex flex-col gap-2 pl-5 marker:text-accent">
+            <ul key={blockIndex} className="flex list-disc flex-col gap-2 pl-5 marker:text-ink">
               {block.items.map((item, itemIndex) => (
                 <li key={itemIndex}>{autolink(item, `u${blockIndex}-${itemIndex}`)}</li>
               ))}

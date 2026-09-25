@@ -6,14 +6,17 @@ type RootProps = HTMLAttributes<HTMLDivElement> & {
   className?: string;
   label: ReactNode;
   value: ReactNode;
+  /** An optional supporting line under the label — 14px. */
+  description?: ReactNode;
 };
 
-/** A single labelled number — trust metrics, order totals, review counts. Renders as a `<dl>` term/definition pair; wrap a group of them in a `<dl>`. */
-function Root({ className, label, value, ...props }: RootProps) {
+/** A single labelled number in a 1px black border on white — trust metrics, order totals, review counts. `dt`/`dd` pair; wrap a group of them in a `<dl>`. */
+function Root({ className, label, value, description, ...props }: RootProps) {
   return (
-    <div className={cn("border-l-2 border-line-strong pl-4", className)} {...props}>
-      <dt className="text-3xl font-semibold tracking-tight text-ink font-serif">{value}</dt>
-      <dd className="mt-1 text-sm leading-5 text-muted">{label}</dd>
+    <div className={cn("flex flex-col gap-2 border border-line-strong bg-surface p-6", className)} {...props}>
+      <dt className="text-h2 font-normal text-ink">{value}</dt>
+      <dd className="text-body text-ink">{label}</dd>
+      {description && <p className="text-small text-ink">{description}</p>}
     </div>
   );
 }

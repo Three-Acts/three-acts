@@ -8,7 +8,7 @@ import { Notice } from "../ui/notice";
 /**
  * Footer newsletter signup — `form: "newsletter"` needs no `name`/`message`
  * (see `@three-acts/forms`'s `validateSubmission`), just an email and a
- * consent checkbox. Styled for the dark footer surface (light borders/text).
+ * consent checkbox.
  */
 export function NewsletterForm() {
   const { status, errors, message, submit } = useFormSubmission({ apiFetch });
@@ -26,11 +26,7 @@ export function NewsletterForm() {
   }
 
   if (status === "success") {
-    return (
-      <Notice.Root tone="success" className="border-paper/20 bg-paper/10 text-paper">
-        Thanks — you&apos;re on the list.
-      </Notice.Root>
-    );
+    return <Notice.Root tone="success">Thanks — you&apos;re on the list.</Notice.Root>;
   }
 
   return (
@@ -48,7 +44,7 @@ export function NewsletterForm() {
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@example.com"
           aria-invalid={Boolean(errors.email) || undefined}
-          className="focus-ring min-h-11 flex-1 border border-paper/40 bg-transparent px-4 py-3 text-sm text-paper placeholder:text-paper/50 focus-visible:outline-paper"
+          className="focus-ring min-h-11 flex-1 border border-line-strong bg-surface px-3 text-body text-ink"
         />
         {/* Honeypot: real visitors never see or fill this in. A bot that fills every input tips itself off to the API. */}
         <input
@@ -61,26 +57,21 @@ export function NewsletterForm() {
           aria-hidden="true"
           className="sr-only"
         />
-        <Button.Root type="submit" variant="light" loading={status === "submitting"} className="w-fit">
+        <Button.Root type="submit" variant="primary" loading={status === "submitting"} className="w-fit">
           Subscribe
         </Button.Root>
       </div>
       <Field.Checkbox
-        label="I'd like occasional emails about new coffee, roastery events and offers."
+        label="I'd like occasional emails about product updates and releases."
         checked={consent}
         onChange={(event) => setConsent(event.target.checked)}
-        className="text-paper/80 [&_label]:text-paper/80"
       />
       {errors.email && (
-        <p role="alert" className="text-sm text-red-300">
-          {errors.email}
+        <p role="alert" className="text-small text-ink">
+          Error: {errors.email}
         </p>
       )}
-      {status === "error" && message && (
-        <Notice.Root tone="error" className="border-red-300/40 bg-red-950/30 text-red-200">
-          {message}
-        </Notice.Root>
-      )}
+      {status === "error" && message && <Notice.Root tone="error">{message}</Notice.Root>}
     </form>
   );
 }

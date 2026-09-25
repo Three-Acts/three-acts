@@ -12,7 +12,7 @@ type FieldContextValue = {
 const FieldContext = createContext<FieldContextValue | null>(null);
 
 const CONTROL_BASE =
-  "focus-ring block w-full rounded-card border border-line bg-surface-raised px-3.5 py-2.5 text-sm text-ink transition-colors duration-150 placeholder:text-muted aria-invalid:border-red-400 disabled:cursor-not-allowed disabled:opacity-60";
+  "focus-ring block min-h-11 w-full border border-line-strong bg-surface px-3 text-body text-ink transition-colors duration-150 aria-invalid:border-2 disabled:cursor-not-allowed disabled:opacity-60";
 
 /** Reads the enclosing Field.Root's id/aria wiring; every Field.* control uses this so it "just works" nested in Root without repeating props. */
 function useFieldContext() {
@@ -47,23 +47,23 @@ function Root({ id: idProp, label, error, hint, required, className, children }:
   return (
     <FieldContext.Provider value={{ id, describedBy, invalid: Boolean(error) }}>
       <div className={cn("flex flex-col gap-1.5", className)}>
-        <label htmlFor={id} className="text-sm font-medium text-ink">
+        <label htmlFor={id} className="text-body font-medium text-ink">
           {label}
           {required && (
-            <span aria-hidden="true" className="ml-0.5 text-accent">
+            <span aria-hidden="true" className="ml-0.5">
               *
             </span>
           )}
         </label>
         {children}
         {hint && !error && (
-          <p id={hintId} className="text-xs text-muted">
+          <p id={hintId} className="text-small text-ink">
             {hint}
           </p>
         )}
         {error && (
-          <p id={errorId} role="alert" className="text-xs font-medium text-red-700">
-            {error}
+          <p id={errorId} role="alert" className="text-small font-medium text-ink">
+            Error: {error}
           </p>
         )}
       </div>
@@ -149,26 +149,26 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Checkbox(
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label htmlFor={id} className="flex cursor-pointer items-start gap-2.5 text-sm text-ink">
+      <label htmlFor={id} className="flex cursor-pointer items-start gap-2.5 text-body text-ink">
         <input
           ref={ref}
           id={id}
           type="checkbox"
           aria-invalid={Boolean(error) || undefined}
           aria-describedby={describedBy}
-          className="focus-ring mt-0.5 size-4 shrink-0 rounded-card border border-line-strong/40 accent-accent"
+          className="focus-ring mt-0.5 size-4 shrink-0 border border-line-strong accent-ink"
           {...props}
         />
         <span>{label}</span>
       </label>
       {hint && !error && (
-        <p id={hintId} className="pl-6 text-xs text-muted">
+        <p id={hintId} className="pl-6 text-small text-ink">
           {hint}
         </p>
       )}
       {error && (
-        <p id={errorId} role="alert" className="pl-6 text-xs font-medium text-red-700">
-          {error}
+        <p id={errorId} role="alert" className="pl-6 text-small font-medium text-ink">
+          Error: {error}
         </p>
       )}
     </div>

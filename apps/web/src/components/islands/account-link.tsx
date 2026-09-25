@@ -1,7 +1,7 @@
 import { useAuth } from "@three-acts/auth/react";
 import { AppProviders } from "../../lib/providers";
 
-const LINK_CLASS = "focus-ring text-sm font-medium text-ink transition-colors duration-150 hover:text-accent";
+const LINK_CLASS = "focus-ring text-body text-ink hover:underline";
 
 function AccountLinkInner() {
   const { user, status } = useAuth();

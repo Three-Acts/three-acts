@@ -8,7 +8,7 @@ function featuredFirst<T extends { featured: boolean }>(items: readonly T[], cou
   return [...featured, ...rest].slice(0, count);
 }
 
-/** "Fresh off the roaster": featured products first, then the rest — capped at `count` — skipping any product with no image to show. */
+/** "Featured pieces": featured products first, then the rest — capped at `count` — skipping any product with no image to show. */
 export function pickFeaturedProducts(products: readonly Product[], count: number): Product[] {
   return featuredFirst(
     products.filter((product) => product.images.length > 0),
@@ -39,9 +39,4 @@ export function pickFaqTeaser(faqs: readonly Faq[], count: number): Faq[] {
     .filter((faq) => faq.topic === "general" || faq.topic === "shipping")
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .slice(0, count);
-}
-
-/** Distinct single-origin coffees currently live in the shop — the hero's "origins" stat. */
-export function countOrigins(products: readonly Product[]): number {
-  return products.filter((product) => product.categorySlug === "single-origin").length;
 }

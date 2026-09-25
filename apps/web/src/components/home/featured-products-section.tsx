@@ -15,7 +15,7 @@ const AVAILABILITY_LABEL: Partial<Record<Product["availability"], string>> = {
   preorder: "Pre-order"
 };
 
-/** "Fresh off the roaster" — a grid of featured (then most-recent) live products. */
+/** "Featured pieces" — a grid of featured (then most-recent) live products. */
 export function FeaturedProductsSection({ products }: FeaturedProductsSectionProps) {
   if (products.length === 0) {
     return null;
@@ -25,12 +25,12 @@ export function FeaturedProductsSection({ products }: FeaturedProductsSectionPro
     <Section.Root>
       <Section.Container>
         <Section.Header
-          eyebrow="This week's roast"
-          title="Fresh off the roaster"
-          lede="A rotating edit of what's freshest off the drum and back in stock."
+          eyebrow="Featured"
+          title="Featured pieces"
+          lede="A rotating edit of what's live in the shop right now."
           action={
-            <Button.Link href="/shop" variant="ghost">
-              Shop all →
+            <Button.Link href="/shop" variant="ghost" icon="arrow">
+              Shop all
             </Button.Link>
           }
         />
@@ -46,7 +46,6 @@ export function FeaturedProductsSection({ products }: FeaturedProductsSectionPro
                 price={product.price}
                 compareAtPrice={product.compareAtPrice}
                 currency={product.currency}
-                excerpt={product.shortDescription}
                 meta={availabilityLabel && <Badge.Root tone="warning">{availabilityLabel}</Badge.Root>}
               />
             );

@@ -6,7 +6,7 @@ import type { PageMeta, SeoMetadata } from "./types";
 
 /**
  * Every `PageMeta` builder in this file. The static-route builders
- * (`homeMeta`, `aboutMeta`, `faqMeta`, `contactMeta`, `wholesaleMeta`,
+ * (`homeMeta`, `aboutMeta`, `faqMeta`, `contactMeta`, `agenciesMeta`,
  * `infoPageMeta`, `shopIndexMeta`, `blogIndexMeta`) overlay a live
  * `page-settings` record over caller-supplied fallback copy via
  * `staticPageMeta`, so they're all `async`. The per-record builders
@@ -80,7 +80,7 @@ export async function staticPageMeta(path: string, fallback: { title: string; de
 export function homeMeta(): Promise<PageMeta> {
   return staticPageMeta(
     "/",
-    { title: "Specialty coffee roasted in Cape Town", description: site.description },
+    { title: "The client website template that ships production-ready", description: site.description },
     { changefreq: "weekly", priority: 1 }
   );
 }
@@ -88,7 +88,7 @@ export function homeMeta(): Promise<PageMeta> {
 export function aboutMeta(): Promise<PageMeta> {
   return staticPageMeta(
     "/about",
-    { title: `About`, description: `The story behind ${site.name}, our roastery in Observatory, Cape Town.` },
+    { title: `About`, description: `Who builds ${site.name}, why it exists, and how the template is put together.` },
     { changefreq: "monthly", priority: 0.7 }
   );
 }
@@ -97,15 +97,15 @@ export function contactMeta(): Promise<PageMeta> {
   return staticPageMeta("/contact", { title: `Contact`, description: `Get in touch with ${site.name}.` }, { changefreq: "yearly", priority: 0.4 });
 }
 
-export function wholesaleMeta(): Promise<PageMeta> {
+export function agenciesMeta(): Promise<PageMeta> {
   return staticPageMeta(
-    "/wholesale",
-    { title: `Wholesale`, description: `Wholesale coffee for cafés, offices and restaurants from ${site.name}.` },
+    "/agencies",
+    { title: `Agencies`, description: `Agency licensing, white-label options and partner support for ${site.name}.` },
     { changefreq: "monthly", priority: 0.5 }
   );
 }
 
-/** For `/visit-the-roastery`, `/shipping`, `/returns`, `/terms`, `/privacy`, `/careers`, `/subscriptions` — the caller supplies its own real-feeling fallback copy. */
+/** For `/docs`, `/licenses`, `/refunds`, `/terms`, `/privacy`, `/careers`, `/changelog` — the caller supplies its own real-feeling fallback copy. */
 export function infoPageMeta(path: string, fallback: { title: string; description: string }): Promise<PageMeta> {
   return staticPageMeta(path, fallback, { changefreq: "yearly", priority: 0.3 });
 }
@@ -113,7 +113,7 @@ export function infoPageMeta(path: string, fallback: { title: string; descriptio
 export function shopIndexMeta(): Promise<PageMeta> {
   return staticPageMeta(
     "/shop",
-    { title: `Shop`, description: `Shop single-origin coffee, blends and brewing gear from ${site.name}.` },
+    { title: `Shop`, description: `Apps, packages, modules, themes, integrations, licences and services that make up ${site.name}.` },
     { changefreq: "daily", priority: 0.9 }
   );
 }
@@ -121,7 +121,7 @@ export function shopIndexMeta(): Promise<PageMeta> {
 export function blogIndexMeta(): Promise<PageMeta> {
   return staticPageMeta(
     "/blog",
-    { title: `Journal`, description: `Brewing guides, origin notes and roastery news from ${site.name}.` },
+    { title: `Journal`, description: `Guides, architecture notes, design-system posts and release notes from the ${site.name} team.` },
     { changefreq: "daily", priority: 0.8 }
   );
 }
@@ -130,7 +130,7 @@ export function blogIndexMeta(): Promise<PageMeta> {
 export async function faqMeta(faqs: readonly Faq[]): Promise<PageMeta> {
   const base = await staticPageMeta(
     "/faq",
-    { title: `FAQ`, description: `Answers to common questions about ordering, brewing and shipping from ${site.name}.` },
+    { title: `FAQ`, description: `Answers to common questions about buying, licensing and using ${site.name}.` },
     { changefreq: "monthly", priority: 0.5 }
   );
   if (faqs.length === 0) {

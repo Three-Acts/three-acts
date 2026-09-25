@@ -4,10 +4,17 @@ import { cn } from "@three-acts/utils";
 
 type NoticeTone = "info" | "success" | "error";
 
-const TONE: Record<NoticeTone, { className: string; role: "status" | "alert" }> = {
-  info: { className: "border-line-strong/25 bg-surface-raised text-ink", role: "status" },
-  success: { className: "border-moss/30 bg-moss/10 text-moss", role: "status" },
-  error: { className: "border-red-200 bg-red-50 text-red-700", role: "alert" }
+/** No colour left to carry tone — the leading word does instead. */
+const TONE_WORD: Record<NoticeTone, string> = {
+  info: "Note:",
+  success: "Success:",
+  error: "Error:"
+};
+
+const TONE_ROLE: Record<NoticeTone, "status" | "alert"> = {
+  info: "status",
+  success: "status",
+  error: "alert"
 };
 
 type RootProps = Omit<HTMLAttributes<HTMLDivElement>, "title"> & {
@@ -19,15 +26,29 @@ type RootProps = Omit<HTMLAttributes<HTMLDivElement>, "title"> & {
 
 /**
  * An inline status message: form-submit confirmation, checkout errors, "your
- * cart changed" banners. `error` announces via `role="alert"` (interrupts);
- * `info`/`success` use `role="status"` (polite).
+ * cart changed" banners. A hairline box with a thicker left rule; the leading
+ * word ("Note:"/"Success:"/"Error:") carries the tone, not colour. `error`
+ * announces via `role="alert"` (interrupts); `info`/`success` use
+ * `role="status"` (polite).
  */
 function Root({ tone = "info", title, children, className, ...props }: RootProps) {
-  const { className: toneClassName, role } = TONE[tone];
+  const word = TONE_WORD[tone];
   return (
-    <div role={role} className={cn("flex flex-col gap-1 border px-4 py-3 text-sm leading-6", toneClassName, className)} {...props}>
-      {title && <p className="font-semibold">{title}</p>}
-      <div>{children}</div>
+    <div
+      role={TONE_ROLE[tone]}
+      className={cn("flex flex-col gap-1 border border-line-strong border-l-4 p-4 text-body text-ink", className)}
+      {...props}
+    >
+      {title ? (
+        <p className="font-medium">
+          <span className="mr-2">{word}</span>
+          {title}
+        </p>
+      ) : null}
+      <div>
+        {!title && <span className="mr-1 font-medium">{word}</span>}
+        {children}
+      </div>
     </div>
   );
 }

@@ -424,3 +424,149 @@ docs.
 
 Wave 3: integration (typecheck, lint, tests, build with `CONTENT_SOURCE=api`
 against the dev API, browser smoke of the shopper flow), review, fixes.
+
+## Design recalibration (2026-09-25, v3 — supersedes every earlier design section)
+
+The first pass was rejected (too bold, beige, serif, oversized, narrow). The
+user then gave two references to replicate for **layout, spacing and sizes**:
+https://altergresources.com (page frame, hero, tiles, team band, CTA band,
+footer) and https://thinkwise-consulting-template.webflow.io (stat tiles,
+three-column service cards with bullet lists, numbered process steps, FAQ
+accordion grouped by topic, 3-up blog grid, centred closing CTA, section
+padding 96px, gray-filled cards). Both measured at 1440px; screenshots in
+`.playwright-mcp/ref-alterg.jpeg`, `ref-alterg-mobile.jpeg`, `ref-thinkwise*.jpeg`.
+Colours, serif faces and pill buttons are NOT taken from them: the site is
+black, white and one light gray, Inter, square corners (`apps/web/src/theme.css`
+holds the tokens; nothing else may be used).
+
+### Structure (Relume wireframe) — NO page frame, NO vertical lines
+
+The user removed the hairline frame: nothing draws a vertical line around the
+content, and bands (black sections, the journal band, image rows) run **edge
+to edge** of the viewport. Follow the Relume Library wireframe conventions:
+
+- `Section.Root` = `py-section-sm landscape:py-section-md desktop:py-section`
+  (4rem / 6rem / 7rem). A full-bleed band is a `Section.Root` with `bg-ink
+  text-surface` (or a full-width image row) — the band itself spans the
+  viewport; only its content is constrained.
+- `Section.Container` = `mx-auto w-full max-w-content px-gutter` (80rem,
+  5% side padding). Nothing else sets a max-width or draws borders around it.
+- Section header pattern (Relume): tagline (14px, `Typography.Eyebrow`) →
+  heading (`text-h2`) → paragraph (`text-lede`), `max-w-[48rem]`, left or
+  centred; `mb-12 desktop:mb-20` before the content grid.
+- Grids: `grid gap-x-gap gap-y-gap-y` (2rem / 3rem), 1 → 2 → 3 (or 4) columns.
+- Cards, tiles, stat tiles, CTA rows: `border border-line-strong bg-surface`
+  (1px black on white), `p-6` (`p-8` on desktop for feature cards). Image
+  placeholders `bg-block` with the aspect kept. Nothing gray-filled.
+- Hero (home): Relume "Header 1" structure with the AlterG composition —
+  centred tagline/heading/lede/buttons, then a full-width image below
+  (`aspect-hero`), inside the container.
+- Nav: `h-header border-b border-line-strong`? No — a 1px BLACK bottom rule
+  is fine (`border-line-strong`); no side lines anywhere.
+- Footer: Relume "Footer 1": logo + tagline + newsletter left, link columns
+  right, then a `border-t border-line-strong pt-8` legal row.
+
+### Type (Inter only; tokens in theme.css, use the utilities, never raw sizes)
+
+| role | utility | measured |
+| --- | --- | --- |
+| hero h1 / closing CTA h2 | `text-display font-normal tracking-ui` | 56px (refs 56 / 60), weight 400 |
+| section h2 | `text-h2 font-normal tracking-ui` | 40px (refs 37.5 / 40), weight 400 |
+| sub-heading h3, card titles | `text-h3 font-medium tracking-ui` | 24px (refs 22.5 / 24), weight 500 |
+| intro paragraph / lede | `text-lede` | 18px, max-width ~450px when centred, ~640px in a column |
+| body, nav, tile titles | `text-body tracking-ui` (the default on `body`) | 16px / 24px |
+| meta, captions, card roles | `text-small` | 14px |
+| buttons | `text-body font-medium` | 16px, weight 500, 48px tall (`px-5 py-3`), 41px `sm`, 58px `lg` |
+
+`text-4xl`…`text-9xl`, `font-serif`, `font-bold` on headings, and any
+hard-coded px/rem font size are forbidden. Headings never use `font-semibold`;
+emphasis inside a heading may use `font-medium` on a span.
+
+### Spacing
+
+- Nav: `h-header` (72px), `border-b border-line-strong`, logo left, links
+  right (16px, gap-8), the last item a bordered button (41px tall).
+- Hero (home): `pt-[75px]`; centred column: h1 (`max-w-[660px] mx-auto`),
+  lede `mt-6 max-w-[450px] mx-auto`, button `mt-6` (58px tall: `px-7 py-4`);
+  then `mt-16` a full-container-width image block `aspect-hero object-cover`
+  (gray placeholder when missing).
+- Two-column intro section: `grid landscape:grid-cols-split gap-gap`; left =
+  h2 `max-w-[640px]` at top and the paragraph at the bottom
+  (`flex flex-col justify-between`); right = a `grid grid-cols-3 gap-gap` of
+  **tiles** (`border border-line-strong bg-surface p-5 aspect-tile flex flex-col justify-between`,
+  a small mark top-left, a 15px title bottom-left). Below the grid, `mt-[75px]`,
+  a **three-up image row** `grid grid-cols-3 gap-gap`, each `aspect-tall`.
+- Grouped-cards band (black `bg-ink text-surface`, full-bleed, `py-section`): h2 at top;
+  then for each group a `grid landscape:grid-cols-label-grid gap-gap` with the
+  group label (h3, plus a small counter mark) in the left column and a
+  `grid grid-cols-3 gap-gap` of **cards** in the right. Card = `aspect-card`
+  image block with a bottom **bar** (`bg-block text-ink p-3` on light; on the
+  black band `bg-surface text-ink`) holding name (15px) and role (13px).
+  Groups separated by `border-t border-surface/1` hairlines (white on black).
+- CTA row (inside a band or on white): `border border-line p-[30px] flex
+  items-center justify-between` with h2 left and a button right.
+- Closing CTA band: black, `py-[200px]`, centred h1-size heading
+  (`text-display`) `max-w-[660px] mx-auto` + button `mt-8`.
+- Footer: `py-[60px]`: row 1 = wordmark + tagline (`max-w-[400px]`, 15px) left,
+  link columns right (15px, `gap-8`); row 2 (`mt-[60px] pt-6 border-t border-line`)
+  = copyright (13px) left, legal links right. Newsletter form lives in row 1
+  under the tagline.
+- Gaps between cards/tiles/images are always `gap-gap` (16px). Inner padding
+  of tiles/rows/cards is `p-6` (24px). Sections are `py-section` (96px) on
+  desktop, 64px on phones.
+- **Stat tiles** (Thinkwise): 4-up `grid gap-gap`, each `border border-line-strong bg-surface p-6` with
+  the value in `text-h2`, a 16px label, a 14px description. Used under the
+  hero on the home page.
+- **Service / value cards** (Thinkwise): 3-up `border border-line-strong bg-surface p-6`, `text-h3`
+  title, 16px paragraph, then a bullet list (`text-body`, black square
+  bullets). Used for "why us"/values on About and Wholesale.
+- **Process steps** (Thinkwise): vertical list of numbered rows
+  (`border-t border-line py-8 grid landscape:grid-cols-[120px_1fr]`), the
+  number in `text-h2`, the step title `text-h3`, description below.
+- **FAQ**: topic sub-headings (`text-h3`) then `<details>` rows divided by
+  `border-t border-line`, `py-5`, question 16px medium, answer body.
+
+### Components (wireframe kit, hairline structure)
+
+- **Button**: `border border-line-strong text-body font-semibold tracking-ui`,
+  square. `primary` = black fill / white text (hover: white fill / black text).
+  `secondary` = white fill / black text (hover inverts). `ghost` = text +
+  underline. `inverse` = white fill / black text with white border, for black
+  bands. Sizes: `sm` 41px (`px-[17px] py-[11px]`), `md` 48px, `lg` 58px
+  (`px-7 py-4`). Optional trailing `↗` glyph via `icon="arrow"`.
+- **Card** (`Card.Product/Article/Testimonial`): WIREFRAME — `border
+  border-line-strong bg-surface` (1px black on white), an `aspect-card`
+  image block (`bg-block` placeholder, always rendered) + a `p-6` body with
+  `text-h3` title (or 16px medium for products in a 4-up grid) and one 14px
+  meta line (price for products, date · read-time for articles); testimonial
+  = quote 16px, black stars, name/role 14px, same bordered white card. Never
+  a gray card fill. No hover transforms — hover underlines the title. On a
+  black band, cards are white with a white border. **Card.Category** = `aspect-tile` tile with the name
+  bottom-left (like the feature tiles) and optional image behind at reduced
+  presence — or plain tile without image; both allowed.
+- **Tile** (new, `components/ui/tile`): the bordered square feature tile
+  (`border border-line-strong bg-surface`); props `title`, `mark?`, `href?`.
+- **Badge**: `outline` (1px black) / `solid` (black fill), 13px uppercase.
+  Old tone names alias to these. **Rating**: black filled / gray empty stars.
+  **Price**: 15px; compare-at struck through; saving as outline badge.
+- **Field**: inputs `border border-line-strong bg-surface px-3 min-h-11 text-body`;
+  label 15px; hint/error 13px, error = `border-2` + message prefixed "Error:".
+- **Notice**: `border border-line-strong border-l-4 p-4`, leading word carries
+  the tone. **Prose**: body text, underlined links, h2 = `text-h3`.
+  **Breadcrumb**: 13px, "/" separators. **EmptyState**: `border border-dashed
+  border-line-strong bg-block p-10 text-center`. **Avatar**: `bg-block`
+  square + initials. **Stat**: value `text-h2`, label 13px.
+- **Images**: every slot keeps its aspect ratio and shows `bg-block` when
+  empty. Never collapse.
+- **Header/Footer/Frame** live in `BaseLayout.astro` per the spacing rules.
+
+### Verification gate (every page agent)
+
+`npm run typecheck -w @three-acts/web`, `npm run lint -w @three-acts/web`,
+a scratch `astro build`, and the forbidden-class grep
+`grep -rnE "text-(4|5|6|7|8|9)xl|font-serif|neutral-|gray-[0-9]|slate-|paper|panel|moss|rust|gold|shadow-|rounded-(?!card)|bg-linear|text-ink/" <your files>`
+must return nothing. Then a **visual check**: screenshot each of your routes
+at 1440×900 and 390×844 with the Playwright MCP tools, LOOK at the images,
+and fix overlapping text, unreadable contrast, collapsed images, cramped or
+empty spacing before reporting. Compare against `.playwright-mcp/ref-alterg.jpeg`
+(desktop) and `.playwright-mcp/ref-alterg-mobile.jpeg` (phone).

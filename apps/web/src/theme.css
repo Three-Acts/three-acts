@@ -1,101 +1,115 @@
 /*
- * Public site theme — the paper-and-ink palette for apps/web.
+ * Public site theme — black, white and one light gray.
  * The CMS has its own isolated theme in apps/cms/src/theme.css.
  *
- * Brand: Fynbos & Fire, a Cape Town specialty coffee roaster. Warm, editorial,
- * confident — not a generic storefront theme. See the "Design direction"
- * section of docs/superpowers/specs/2026-09-25-storefront-domain-packages-and-api-bridge.md
- * for the full brief this file implements.
+ * Visual language (see "Design recalibration v3" in
+ * docs/superpowers/specs/2026-09-25-storefront-domain-packages-and-api-bridge.md):
+ * one grotesque typeface at regular weight, hairline structure, a page frame,
+ * square corners, no shadows, no tints. Hierarchy comes from size and spacing.
  */
 @theme {
   /* ---------------------------------------------------------------------
-   * Fonts
-   * Fraunces (serif, variable) carries display/headings; Inter (sans) carries
-   * body copy and UI chrome. Both are loaded via a Google Fonts <link> in
-   * BaseLayout.astro (preconnect + display=swap) — no @font-face here.
+   * Fonts — a single Swiss grotesque for everything. Inter is loaded via a
+   * Google Fonts <link> in BaseLayout.astro.
    * --------------------------------------------------------------------- */
-  --font-sans: "Inter", "Avenir Next", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Fraunces", Georgia, serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Inter", "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* ---------------------------------------------------------------------
-   * Palette — the four brand surfaces/inks. Every other color token below is
-   * an alias built from these so components never reach for a raw hex.
+   * Palette — exactly three values. Nothing else may be introduced.
+   *   black: text, strong strokes (buttons, inputs), dark bands, primary fills
+   *   white: the page and every card/panel
+   *   gray:  the ONE light gray — hairlines, image placeholders, muted panels,
+   *          disabled fills. Never a text colour.
    * --------------------------------------------------------------------- */
-  --color-ink: #171512; /* body text; dark "roastery" section backgrounds */
-  --color-paper: #f7f1e7; /* page background */
-  --color-panel: #fffaf0; /* card/raised-surface background */
-  --color-charcoal: #202733; /* secondary dark surface (deeper than ink) */
-  --color-moss: #365344; /* secondary accent: eyebrows, success, links on paper */
-  --color-rust: #ad5d3a; /* primary accent: CTAs, active states */
-  --color-gold: #d6a23f; /* ratings / highlight fills (decorative, not text) */
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-gray: #e6e6e6;
+
+  /* Semantic aliases — components reference these, not the raw names. */
+  --color-ink: var(--color-black);
+  --color-surface: var(--color-white);
+  --color-surface-raised: var(--color-white);
+  --color-block: var(--color-gray); /* placeholder / muted surface */
+  --color-line: var(--color-gray); /* hairline structure: frame, dividers, card and tile borders */
+  --color-line-soft: var(--color-gray);
+  --color-line-strong: var(--color-black); /* buttons, inputs, emphasised rules */
+  --color-accent: var(--color-black);
+  --color-accent-hover: var(--color-black);
+  --color-muted: var(--color-black); /* secondary text stays black; use size instead */
+  --color-paper: var(--color-white); /* legacy alias */
+  --color-panel: var(--color-white); /* legacy alias */
 
   /* ---------------------------------------------------------------------
-   * Semantic aliases — components reference intent (surface/line/accent/muted),
-   * not palette names, so the palette can move without touching component code.
-   * Contrast checked against WCAG AA (2026-09-25, sRGB relative luminance):
-   *   ink on paper           16.2:1   paper on ink            16.2:1
-   *   white text on rust      4.8:1   white text on accent-hover 6.5:1
-   *   muted on paper/panel    5.1:1 / 5.5:1
-   * Rust as small *text* on paper is only 4.2:1 (fails AA for body-size text,
-   * passes for large text/UI) — reserve --color-accent for fills, borders,
-   * icons and large headings; use --color-line-strong (ink) for inline links.
-   * --color-gold on paper is ~2:1 — never use gold as a text color; it is a
-   * decorative star fill only (paired with an ink stroke, see Rating).
+   * Type scale — measured from the reference. Headings are REGULAR weight;
+   * size and space carry the hierarchy. Tracking is a touch tight everywhere.
+   * Change sizes here, never in components.
    * --------------------------------------------------------------------- */
-  --color-surface: var(--color-paper);
-  --color-surface-raised: var(--color-panel);
-  --color-line: rgb(23 21 18 / 15%); /* hairline structure: card/input borders, dividers */
-  --color-line-strong: var(--color-ink); /* emphasized borders, inline link text */
-  --color-accent: var(--color-rust); /* primary interactive accent */
-  --color-accent-hover: #8f4b2e; /* rust, ~12% darker — hover/active fills */
-  --color-muted: #6b6560; /* secondary text: captions, meta, timestamps */
+  --text-display: 3.5rem; /* 56px — hero h1 and the closing CTA (refs: 56 / 60) */
+  --text-display--line-height: 1.1;
+  --text-h2: 2.5rem; /* 40px — section headings (refs: 37.5 / 40) */
+  --text-h2--line-height: 1.15;
+  --text-h3: 1.5rem; /* 24px — sub-headings, card titles (refs: 22.5 / 24) */
+  --text-h3--line-height: 1.3;
+  --text-lede: 1.125rem; /* 18px — intro paragraphs */
+  --text-lede--line-height: 1.5;
+  --text-body: 1rem; /* 16px — default (refs: 15 / 16) */
+  --text-body--line-height: 1.5;
+  --text-small: 0.875rem; /* 14px — meta, captions, card roles */
+  --text-small--line-height: 1.5;
+  --tracking-ui: -0.01em; /* a touch tight, as both references */
+  --tracking-eyebrow: 0.08em;
 
   /* ---------------------------------------------------------------------
-   * Shape — radius 0 everywhere (the "paper and ink" print feel: sharp cards,
-   * buttons and inputs, no rounded corners). `rounded-card` is an explicit,
-   * greppable escape hatch for anything that would otherwise reach for a
-   * default Tailwind radius utility; nothing in this kit uses `rounded-*`.
-   * One soft shadow token for lifted panels (menus, popovers) — flat surfaces
-   * otherwise rely on --color-line borders, not shadows.
+   * Shape — square everywhere, hairlines, no shadow.
    * --------------------------------------------------------------------- */
   --radius-card: 0px;
-  --shadow-soft: 0 24px 80px rgb(23 21 18 / 0.14);
+  --shadow-soft: none;
 
-  /* ---------------------------------------------------------------------
-   * Focus ring — one recipe, applied via the `.focus-ring` utility in
-   * styles.css (`focus-visible` only, so mouse clicks stay quiet).
-   * --------------------------------------------------------------------- */
-  --color-focus-ring: var(--color-rust);
+  /* Focus ring — black, 2px, offset, keyboard only (see .focus-ring in styles.css). */
+  --color-focus-ring: var(--color-black);
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
 
   /* ---------------------------------------------------------------------
-   * Breakpoints — no viewport-width media queries beyond these; mobile-first.
+   * Breakpoints — mobile-first.
    * --------------------------------------------------------------------- */
   --breakpoint-portrait: 30rem;
   --breakpoint-landscape: 48rem;
   --breakpoint-tablet: 64rem;
   --breakpoint-desktop: 80rem;
 
-  /* Marketing type: eyebrows and the hero display line. */
-  --tracking-eyebrow: 0.14em;
-  --leading-display: 0.95;
-
-  /* Hero fills the first viewport minus the site header (py-5 + 2.5rem nav). */
-  --spacing-hero: calc(100vh - 5.5rem);
-
   /* ---------------------------------------------------------------------
-   * Grid templates — named tracks reused by Section/Grid layouts.
-   * `products-*` back the Grid component's `cols` variants for the shop/
-   * article/testimonial card grids: 1-up portrait, 2-up landscape, 3-up
-   * tablet+, 4-up desktop.
+   * Layout — Relume wireframe structure. No page frame, no vertical lines:
+   * sections and bands run edge to edge; content sits in one centred
+   * container with 5% side padding. Sections are 4rem / 6rem / 7rem tall.
    * --------------------------------------------------------------------- */
-  --grid-template-columns-hero: 1.05fr 0.95fr;
-  --grid-template-columns-path: 0.8fr 1.2fr;
-  --grid-template-columns-step: 4.5rem 1fr; /* numbered step badge | copy */
-  --grid-template-columns-check: 2.75rem 1fr; /* check badge | copy */
+  --container-content: 90rem; /* 1280px — Relume "container-large" */
+  --spacing-gutter: 4rem; /* Relume side padding (px-[5%]) */
+  --spacing-gutter-sm: 4rem;
+  --spacing-gap: 2rem; /* 32px column gap between cards (Relume gap-x-8); rows use 3rem */
+  --spacing-gap-y: 3rem;
+  --spacing-header: 4.5rem; /* 72px — nav height */
+  --spacing-section: 7rem; /* 112px — desktop section padding (Relume lg:py-28) */
+  --spacing-section-md: 6rem; /* 96px — tablet (md:py-24) */
+  --spacing-section-sm: 4rem; /* 64px — phones (py-16) */
+  --container-frame: 80rem; /* legacy alias of --container-content */
+
+  /* Reference proportions reused by image blocks. */
+  --aspect-hero: 13 / 6; /* the 1318×608 landscape hero image */
+  --aspect-card: 4 / 5; /* the 326×405 card */
+  --aspect-tall: 5 / 7; /* the 429×602 three-up image */
+  --aspect-tile: 1 / 1;
+
+  /* Grid templates. */
+  --grid-template-columns-split: 1fr 1fr;
+  --grid-template-columns-label-grid: 1fr 3fr; /* label column + 3/4 grid (team section) */
+  --grid-template-columns-cards-sm: repeat(2, minmax(0, 1fr));
+  --grid-template-columns-cards-lg: repeat(3, minmax(0, 1fr));
+  --grid-template-columns-cards-xl: repeat(4, minmax(0, 1fr));
   --grid-template-columns-products-sm: repeat(2, minmax(0, 1fr));
   --grid-template-columns-products-lg: repeat(3, minmax(0, 1fr));
   --grid-template-columns-products-xl: repeat(4, minmax(0, 1fr));
+  --grid-template-columns-step: 4.5rem 1fr;
+  --grid-template-columns-check: 2.75rem 1fr;
 }

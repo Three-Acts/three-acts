@@ -15,18 +15,18 @@ function Root({ icon, title, description, action, className, ...props }: RootPro
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-3 border border-dashed border-line px-6 py-16 text-center",
+        "flex flex-col items-center gap-3 border border-dashed border-line-strong bg-block p-10 text-center",
         className
       )}
       {...props}
     >
       {icon && (
-        <span aria-hidden="true" className="text-muted">
+        <span aria-hidden="true" className="text-ink">
           {icon}
         </span>
       )}
-      <p className="text-lg font-semibold tracking-tight text-ink">{title}</p>
-      {description && <p className="max-w-sm text-sm leading-6 text-muted">{description}</p>}
+      <p className="text-h3 font-medium text-ink">{title}</p>
+      {description && <p className="max-w-sm text-body text-ink">{description}</p>}
       {action && <div className="mt-3">{action}</div>}
     </div>
   );

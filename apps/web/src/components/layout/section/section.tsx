@@ -8,10 +8,10 @@ type RootProps = HTMLAttributes<HTMLElement> & {
   className?: string;
 };
 
-/** A page section's outer `<section>` — vertical rhythm only (py-16, py-24 on desktop). Nest Section.Container inside for the horizontal max-width. */
+/** A page section's outer `<section>` — no frame, no borders: bands run edge to edge of the viewport. Nest Section.Container inside to centre and constrain the content. */
 function Root({ children, className, ...props }: RootProps) {
   return (
-    <section className={cn("py-16 desktop:py-24", className)} {...props}>
+    <section className={cn("py-section-sm landscape:py-section-md desktop:py-section", className)} {...props}>
       {children}
     </section>
   );
@@ -22,10 +22,10 @@ type ContainerProps = HTMLAttributes<HTMLDivElement> & {
   className?: string;
 };
 
-/** The horizontal container every section's content sits in: `max-w-6xl`, centered, with a mobile-first side gutter. */
+/** The Relume-style content container: centred, capped at `max-w-content` (80rem), 5% side padding. Nothing else sets a max-width or draws a border around it. */
 function Container({ children, className, ...props }: ContainerProps) {
   return (
-    <div className={cn("mx-auto w-full max-w-6xl px-6", className)} {...props}>
+    <div className={cn("mx-auto w-full max-w-content px-gutter", className)} {...props}>
       {children}
     </div>
   );
@@ -47,13 +47,13 @@ function Header({ eyebrow, title, lede, action, align = "left", className, ...pr
   return (
     <div
       className={cn(
-        "mb-10 flex flex-col gap-6",
+        "mb-12 flex flex-col gap-6 desktop:mb-20",
         centered ? "items-center text-center" : "items-start text-left landscape:flex-row landscape:items-end landscape:justify-between",
         className
       )}
       {...props}
     >
-      <div className={cn("flex flex-col gap-4", centered && "items-center")}>
+      <div className={cn("flex max-w-[48rem] flex-col gap-4", centered && "items-center")}>
         {eyebrow && <Typography.Eyebrow className={centered ? "justify-center" : undefined}>{eyebrow}</Typography.Eyebrow>}
         <Typography.Title>{title}</Typography.Title>
         {lede && <Typography.Lede className={centered ? "mx-auto" : undefined}>{lede}</Typography.Lede>}

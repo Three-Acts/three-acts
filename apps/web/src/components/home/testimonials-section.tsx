@@ -8,7 +8,7 @@ type TestimonialsSectionProps = {
   testimonials: Testimonial[];
 };
 
-/** Customer quotes, gold-star rated, pulled from the featured testimonials. */
+/** Quotes from the agencies shipping client sites on Three Acts. */
 export function TestimonialsSection({ testimonials }: TestimonialsSectionProps) {
   if (testimonials.length === 0) {
     return null;
@@ -17,7 +17,7 @@ export function TestimonialsSection({ testimonials }: TestimonialsSectionProps) 
   return (
     <Section.Root>
       <Section.Container>
-        <Section.Header align="center" eyebrow="Word on the street" title="What people are saying" />
+        <Section.Header align="center" eyebrow="Agencies" title="What agencies are saying" />
         <Grid.Root cols={testimonials.length >= 4 ? 4 : 3}>
           {testimonials.map((testimonial) => (
             <Card.Testimonial

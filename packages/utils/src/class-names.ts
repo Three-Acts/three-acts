@@ -14,7 +14,7 @@ import { extendTailwindMerge } from "tailwind-merge";
 const merge = extendTailwindMerge({
   extend: {
     theme: {
-      text: ["micro", "ui", "ui-lg", "field", "display"],
+      text: ["micro", "ui", "ui-lg", "field", "display", "h2", "h3", "lede", "body", "small"],
       spacing: ["pane", "select-col", "col-min", "modal-max-h", "hero"],
       container: ["viewport", "viewport-tight"],
       tracking: ["label", "eyebrow"],

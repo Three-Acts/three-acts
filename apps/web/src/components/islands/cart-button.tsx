@@ -2,7 +2,7 @@ import { useCart } from "@three-acts/ecommerce/react";
 import { cn } from "@three-acts/utils";
 import { AppProviders } from "../../lib/providers";
 
-const LINK_CLASS = "focus-ring inline-flex items-center gap-1.5 text-sm font-medium text-ink transition-colors duration-150 hover:text-accent";
+const LINK_CLASS = "focus-ring inline-flex items-center gap-1.5 text-body text-ink hover:underline";
 
 function CartButtonInner() {
   const { itemCount } = useCart();
@@ -11,9 +11,7 @@ function CartButtonInner() {
       Cart
       {itemCount > 0 && (
         <span
-          className={cn(
-            "inline-flex min-w-5 items-center justify-center rounded-card border border-accent bg-accent px-1 text-xs font-semibold leading-none text-panel"
-          )}
+          className={cn("inline-flex min-w-5 items-center justify-center border border-ink bg-ink px-1 text-small leading-none text-surface")}
         >
           {itemCount}
         </span>
