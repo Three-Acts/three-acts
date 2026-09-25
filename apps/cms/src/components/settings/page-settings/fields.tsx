@@ -33,6 +33,17 @@ export function SeoTextField({ countValue, error, hint, label, limit, mono, mult
 
   return (
     <FormField label={label} required={required}>
+      {showMeta ? (
+        <div className="flex items-start justify-between gap-3 text-ui">
+          <Field.Description className={cn("m-0 min-w-0", error ? "text-cms-danger" : "text-cms-subtle")}>{error || hint}</Field.Description>
+          {limit !== undefined && counted.length > 0 ? (
+            <span className={cn("shrink-0 tabular-nums", isOver ? "text-cms-danger" : "text-cms-subtle")}>
+              {counted.length} / {limit}
+              <span className="sr-only">{isOver ? " characters, over the recommended length" : " characters"}</span>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {multiline ? (
         <Textarea
           aria-invalid={error ? true : undefined}
@@ -51,17 +62,6 @@ export function SeoTextField({ countValue, error, hint, label, limit, mono, mult
           value={value}
         />
       )}
-      {showMeta ? (
-        <div className="flex items-start justify-between gap-3 text-ui">
-          <Field.Description className={cn("m-0 min-w-0", error ? "text-cms-danger" : "text-cms-subtle")}>{error || hint}</Field.Description>
-          {limit !== undefined && counted.length > 0 ? (
-            <span className={cn("shrink-0 tabular-nums", isOver ? "text-cms-danger" : "text-cms-subtle")}>
-              {counted.length} / {limit}
-              <span className="sr-only">{isOver ? " characters, over the recommended length" : " characters"}</span>
-            </span>
-          ) : null}
-        </div>
-      ) : null}
     </FormField>
   );
 }
@@ -79,14 +79,6 @@ export function SchemaMarkupField({ onChange, value }: { onChange: (value: strin
 
   return (
     <FormField label="JSON-LD">
-      <Textarea
-        aria-invalid={result.ok ? undefined : true}
-        className={cn("min-h-40 resize-y font-mono leading-5", !result.ok && "border-cms-danger")}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={SCHEMA_PLACEHOLDER}
-        spellCheck={false}
-        value={value}
-      />
       <div className="flex min-h-6 items-center justify-between gap-3 text-ui">
         <Field.Description
           className={cn(
@@ -117,6 +109,14 @@ export function SchemaMarkupField({ onChange, value }: { onChange: (value: strin
           </Button>
         ) : null}
       </div>
+      <Textarea
+        aria-invalid={result.ok ? undefined : true}
+        className={cn("min-h-40 resize-y font-mono leading-5", !result.ok && "border-cms-danger")}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={SCHEMA_PLACEHOLDER}
+        spellCheck={false}
+        value={value}
+      />
     </FormField>
   );
 }
