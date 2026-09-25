@@ -1,13 +1,26 @@
 import { randomUUID } from "node:crypto";
+import { hasPublishWorkflow } from "@three-acts/cms-schema";
 import type { CmsCollection, CmsRecord, CmsRecordValue, ListRecordsOptions, ListRecordsResult, PublishStatus } from "@three-acts/cms-schema";
+import type { SeedCollections } from "@three-acts/cms-schema/seed";
 import type { CmsBlobStore, CmsDataStore } from "./store";
 
 /** Field types whose values are matched against a free-text search term. */
 const SEARCHABLE_FIELD_TYPES = new Set(["text", "textarea", "slug"]);
 
 function cloneRecord(record: CmsRecord): CmsRecord {
-  return { ...record, values: { ...record.values } };
+  return { ...record, values: { ...record.values }, liveValues: record.liveValues ? { ...record.liveValues } : null };
 }
+
+function areValuesEqual(a: Record<string, CmsRecordValue>, b: Record<string, CmsRecordValue>): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if ((a[key] ?? "") !== (b[key] ?? "")) return false;
+  }
+  return true;
+}
+
+/** Statuses whose live snapshot is on the site (a draft or queued record keeps serving its last published snapshot). */
+const LIVE_STATUSES = new Set<PublishStatus>(["published", "draft", "queued_to_publish"]);
 
 function getSortValue(record: CmsRecord, key: string): CmsRecordValue {
   switch (key) {
@@ -41,10 +54,36 @@ function compareValues(a: CmsRecordValue, b: CmsRecordValue): number {
  * with no shared memory, so this store must never be selected in production —
  * `resolve-store.ts` only falls back to it when Supabase isn't configured,
  * which in practice means local/dev environments.
+ *
+ * Optionally starts from a seed (`resolve-store.ts` passes the shared
+ * "Fynbos & Fire" dataset outside production). The seed loader is awaited
+ * lazily by the first call, so the dataset is only evaluated when this store
+ * is actually used.
+ *
+ * Unlike the Supabase store, this store tracks the `liveValues` snapshot:
+ * saves keep it, `publishQueued` promotes values into it, `not_published`
+ * clears it, and `listLiveRecords` serves it to the public content route.
  */
 export class MemoryDataStore implements CmsDataStore {
   readonly name = "memory";
   private readonly collections = new Map<string, CmsRecord[]>();
+  private ready: Promise<void> | undefined;
+
+  constructor(private readonly loadSeed?: () => Promise<SeedCollections> | SeedCollections) {}
+
+  /** Loads the seed once, before the first read or write. */
+  private init(): Promise<void> {
+    if (!this.ready) {
+      this.ready = (async () => {
+        if (!this.loadSeed) return;
+        const seed = await this.loadSeed();
+        for (const [collectionId, records] of Object.entries(seed)) {
+          this.collections.set(collectionId, records.map(cloneRecord));
+        }
+      })();
+    }
+    return this.ready;
+  }
 
   private recordsFor(collectionId: string): CmsRecord[] {
     let records = this.collections.get(collectionId);
@@ -56,7 +95,28 @@ export class MemoryDataStore implements CmsDataStore {
   }
 
   async listRecords(collection: CmsCollection, options: ListRecordsOptions): Promise<ListRecordsResult> {
-    let records = this.recordsFor(collection.id).map(cloneRecord);
+    await this.init();
+    return this.query(collection, this.recordsFor(collection.id).map(cloneRecord), options);
+  }
+
+  /**
+   * What the live site renders: editorial records that have a live snapshot
+   * (published, or a draft/queued edit of a published record), with `values`
+   * replaced by that snapshot so unpublished working values never leak.
+   */
+  async listLiveRecords(collection: CmsCollection, options: ListRecordsOptions): Promise<ListRecordsResult> {
+    await this.init();
+    if (!hasPublishWorkflow(collection)) {
+      return { records: [], total: 0 };
+    }
+    const live = this.recordsFor(collection.id)
+      .filter((record) => LIVE_STATUSES.has(record.publishStatus) && record.liveValues)
+      .map(({ liveValues, ...record }): CmsRecord => ({ ...record, values: { ...(liveValues ?? {}) } }));
+    return this.query(collection, live, { ...options, publishStatus: undefined });
+  }
+
+  private query(collection: CmsCollection, input: CmsRecord[], options: ListRecordsOptions): ListRecordsResult {
+    let records = input;
 
     if (options.publishStatus) {
       records = records.filter((record) => record.publishStatus === options.publishStatus);
@@ -80,6 +140,7 @@ export class MemoryDataStore implements CmsDataStore {
   }
 
   async countRecords(collection: CmsCollection, filter?: { publishStatus?: PublishStatus }): Promise<number> {
+    await this.init();
     const records = this.recordsFor(collection.id);
     if (!filter?.publishStatus) {
       return records.length;
@@ -88,6 +149,7 @@ export class MemoryDataStore implements CmsDataStore {
   }
 
   async getRecord(collection: CmsCollection, recordId: string): Promise<CmsRecord | null> {
+    await this.init();
     const record = this.recordsFor(collection.id).find((item) => item.id === recordId);
     return record ? cloneRecord(record) : null;
   }
@@ -96,6 +158,7 @@ export class MemoryDataStore implements CmsDataStore {
     collection: CmsCollection,
     rows: Array<{ publishStatus: PublishStatus; values: Record<string, CmsRecordValue> }>
   ): Promise<CmsRecord[]> {
+    await this.init();
     const now = new Date().toISOString();
     const inserted = rows.map(
       (row): CmsRecord => ({
@@ -103,7 +166,8 @@ export class MemoryDataStore implements CmsDataStore {
         publishStatus: row.publishStatus,
         createdAt: now,
         modifiedAt: now,
-        values: { ...row.values }
+        values: { ...row.values },
+        liveValues: null
       })
     );
 
@@ -112,6 +176,7 @@ export class MemoryDataStore implements CmsDataStore {
   }
 
   async updateRecord(collection: CmsCollection, record: CmsRecord, expectedModifiedAt?: string): Promise<CmsRecord | "conflict" | null> {
+    await this.init();
     const records = this.recordsFor(collection.id);
     const index = records.findIndex((item) => item.id === record.id);
 
@@ -123,12 +188,39 @@ export class MemoryDataStore implements CmsDataStore {
       return "conflict";
     }
 
-    const updated: CmsRecord = { ...cloneRecord(record), modifiedAt: new Date().toISOString() };
+    const updated: CmsRecord = {
+      ...cloneRecord(record),
+      ...this.resolveSnapshot(collection, records[index], record),
+      modifiedAt: new Date().toISOString()
+    };
     records[index] = updated;
     return cloneRecord(updated);
   }
 
+  /**
+   * Publish model on save (the service doesn't track snapshots): the stored
+   * snapshot is kept, `not_published` clears it, and a `published` record
+   * whose values no longer match its snapshot becomes a `draft`.
+   */
+  private resolveSnapshot(collection: CmsCollection, stored: CmsRecord, next: CmsRecord): Pick<CmsRecord, "publishStatus" | "liveValues"> {
+    const liveValues = stored.liveValues ?? null;
+    if (!hasPublishWorkflow(collection)) {
+      return { publishStatus: stored.publishStatus, liveValues: null };
+    }
+    if (next.publishStatus === "not_published") {
+      return { publishStatus: "not_published", liveValues: null };
+    }
+    if (next.publishStatus === "published" && !(liveValues && areValuesEqual(next.values, liveValues))) {
+      return { publishStatus: "draft", liveValues };
+    }
+    if (next.publishStatus === "draft" && liveValues && areValuesEqual(next.values, liveValues)) {
+      return { publishStatus: "published", liveValues };
+    }
+    return { publishStatus: next.publishStatus, liveValues };
+  }
+
   async deleteRecord(collection: CmsCollection, recordId: string): Promise<boolean> {
+    await this.init();
     const records = this.recordsFor(collection.id);
     const index = records.findIndex((item) => item.id === recordId);
     if (index < 0) {
@@ -139,12 +231,14 @@ export class MemoryDataStore implements CmsDataStore {
   }
 
   async publishQueued(collection: CmsCollection): Promise<number> {
+    await this.init();
     const records = this.recordsFor(collection.id);
     let count = 0;
 
     for (const record of records) {
       if (record.publishStatus === "queued_to_publish") {
         record.publishStatus = "published";
+        record.liveValues = { ...record.values };
         record.modifiedAt = new Date().toISOString();
         count += 1;
       }
@@ -154,6 +248,7 @@ export class MemoryDataStore implements CmsDataStore {
   }
 
   async setPublishStatus(collection: CmsCollection, recordIds: string[], status: PublishStatus): Promise<CmsRecord[]> {
+    await this.init();
     const records = this.recordsFor(collection.id);
     const byId = new Map(records.map((record) => [record.id, record]));
     const now = new Date().toISOString();
@@ -165,6 +260,9 @@ export class MemoryDataStore implements CmsDataStore {
         continue;
       }
       record.publishStatus = status;
+      if (status === "not_published") {
+        record.liveValues = null;
+      }
       record.modifiedAt = now;
       updated.push(cloneRecord(record));
     }

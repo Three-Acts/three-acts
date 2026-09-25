@@ -20,13 +20,27 @@ function resolveBackendName(envValue: string | undefined): BackendName {
   return supabaseConfigured ? "supabase" : "memory";
 }
 
+function isProduction(): boolean {
+  return process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+}
+
+/**
+ * Local dev only: the memory store starts from the shared "Fynbos & Fire"
+ * seed so `npm run dev` serves the same realistic data as the CMS mock.
+ * Loaded on demand so production bundles never evaluate it.
+ */
+async function loadDevSeed() {
+  const { cloneSeedCollections } = await import("@three-acts/cms-schema/seed");
+  return cloneSeedCollections();
+}
+
 let cachedDataStore: CmsDataStore | undefined;
 let cachedBlobStore: CmsBlobStore | undefined;
 
 export function getDataStore(): CmsDataStore {
   if (!cachedDataStore) {
     const backend = resolveBackendName(process.env.CMS_DATA_BACKEND);
-    cachedDataStore = backend === "supabase" ? new SupabaseDataStore() : new MemoryDataStore();
+    cachedDataStore = backend === "supabase" ? new SupabaseDataStore() : new MemoryDataStore(isProduction() ? undefined : loadDevSeed);
     console.info(`[cms] data backend: ${cachedDataStore.name}`);
   }
 

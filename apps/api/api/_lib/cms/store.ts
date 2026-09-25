@@ -15,6 +15,15 @@ export interface CmsDataStore {
 
   listRecords(collection: CmsCollection, options: ListRecordsOptions): Promise<ListRecordsResult>;
 
+  /**
+   * Optional: the records the live site renders, with `values` set to each
+   * record's `liveValues` snapshot (published records plus draft/queued edits
+   * of published records). Stores that don't track snapshots omit this and the
+   * public content route falls back to `listRecords` with
+   * `publishStatus: "published"`.
+   */
+  listLiveRecords?(collection: CmsCollection, options: ListRecordsOptions): Promise<ListRecordsResult>;
+
   countRecords(collection: CmsCollection, filter?: { publishStatus?: PublishStatus }): Promise<number>;
 
   getRecord(collection: CmsCollection, recordId: string): Promise<CmsRecord | null>;

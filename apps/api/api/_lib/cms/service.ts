@@ -280,7 +280,13 @@ export async function listPublishedRecords(collectionId: string, options: ListRe
   if (!hasPublishWorkflow(collection)) {
     throw new CmsError("not_found", `Unknown collection: ${collectionId}`);
   }
-  return getDataStore().listRecords(collection, { ...options, publishStatus: "published" });
+  const store = getDataStore();
+  // Stores that track live snapshots serve those (so an unpublished draft
+  // edit never reaches the site); the rest serve `published` records as-is.
+  if (store.listLiveRecords) {
+    return store.listLiveRecords(collection, { ...options, publishStatus: undefined });
+  }
+  return store.listRecords(collection, { ...options, publishStatus: "published" });
 }
 
 export async function getRecord(collectionId: string, recordId: string): Promise<CmsRecord> {
