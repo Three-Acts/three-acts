@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { AssetField, CmsCollectionSummary, CmsRecord, FileField, ImageField, VideoField } from "../../cms/types";
+import type { AssetField, CmsCollectionSummary, CmsRecord, CmsRecordValue, FileField, ImageField, VideoField } from "../../cms/types";
 import { useCmsBackend } from "../../cms/backend-context";
-import { Button, Input, PanelHeader } from "../atoms";
 import { RecordEditor } from "../editor/record-editor";
+import { ImportDialog } from "../import";
+import { RecordsToolbar } from "../workspace/records-toolbar";
 import { RecordTable } from "../workspace/record-table";
 import type { SettingsViewProps } from "./index";
 
@@ -17,6 +18,9 @@ export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Pro
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const isDirty = Boolean(draft && saved && (draft.modifiedAt !== saved.modifiedAt || JSON.stringify(draft.values) !== JSON.stringify(saved.values)));
   const filteredRecords = useMemo(() => {
@@ -101,6 +105,49 @@ export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Pro
     }
   }
 
+  async function importRecords(rows: Array<Record<string, CmsRecordValue>>) {
+    try {
+      const imported = await data.importRecords(collection.id, rows);
+      setRecords((current) => [...imported, ...current]);
+      setIsImportOpen(false);
+      onSaved();
+    } catch {
+      // Keep the import dialog open so the user can retry.
+    }
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll(selected: boolean) {
+    setSelectedIds(selected ? new Set(filteredRecords.map((record) => record.id)) : new Set());
+  }
+
+  async function deleteSelected() {
+    await Promise.all(Array.from(selectedIds, (id) => data.deleteRecord(collection.id, id)));
+    setRecords((current) => current.filter((record) => !selectedIds.has(record.id)));
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+    onSaved();
+  }
+
+  function exportSelected() {
+    const rows = records.filter((record) => selectedIds.has(record.id));
+    const headers = collection.fields.map((field) => field.key);
+    const csv = [headers.join(","), ...rows.map((record) => headers.map((key) => JSON.stringify(record.values[key] ?? "")).join(","))].join("\n");
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    link.download = "redirect-rules.csv";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
   if (draft) {
     return (
       <RecordEditor
@@ -127,22 +174,33 @@ export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Pro
 
   return (
     <section aria-label="Redirects" className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
-      <PanelHeader className="gap-1.5">
-        <div className="min-w-0">
-          <h2 className="m-0 truncate text-ui-lg font-semibold text-cms-text">Redirects</h2>
-        </div>
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <Input aria-label="Search redirects" onChange={(event) => setSearch(event.target.value)} placeholder="Search redirects…" value={search} />
-          <Button onClick={() => void createRecord()} variant="primary">New redirect</Button>
-        </div>
-      </PanelHeader>
+      <RecordsToolbar
+        canQueueSelected={false}
+        canUnpublishSelected={false}
+        hasPublishWorkflow={false}
+        newLabel="redirect"
+        onCreate={() => void createRecord()}
+        onDeleteSelected={() => void deleteSelected()}
+        onExportSelected={exportSelected}
+        onImport={() => setIsImportOpen(true)}
+        onSearchChange={setSearch}
+        onToggleSelectionMode={() => {
+          setSelectionMode((current) => !current);
+          setSelectedIds(new Set());
+        }}
+        onUpdateSelectedStatus={() => undefined}
+        search={search}
+        selectedCount={selectedIds.size}
+        selectionMode={selectionMode}
+        title="Redirects"
+      />
       <RecordTable
         collection={collection}
         hasSearch={Boolean(search.trim())}
         isLoading={isLoading}
         onSelectRecord={selectRecord}
-        onToggleSelectAll={() => undefined}
-        onToggleSelected={() => undefined}
+        onToggleSelectAll={toggleAll}
+        onToggleSelected={toggleSelected}
         records={filteredRecords}
         selectedIds={new Set()}
         selectionMode={false}
@@ -150,6 +208,7 @@ export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Pro
       <footer className="flex h-7 shrink-0 items-center border-t border-cms-line px-3 text-ui tabular-nums text-cms-subtle">
         {filteredRecords.length === records.length ? `${records.length} records` : `${filteredRecords.length} of ${records.length} records`}
       </footer>
+      <ImportDialog collection={collection} onImport={importRecords} onOpenChange={setIsImportOpen} open={isImportOpen} />
     </section>
   );
 }
