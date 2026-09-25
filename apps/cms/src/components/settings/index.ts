@@ -3,6 +3,8 @@ import type { CmsCollectionSummary } from "../../cms/types";
 /** Props shared by every dedicated settings screen the workspace mounts in place of the table. */
 export type SettingsViewProps = {
   collection: CmsCollectionSummary;
+  /** Optional site subview collection rendered alongside the site singleton. */
+  redirectCollection?: CmsCollectionSummary;
   /** Lets the workspace guard navigation away from unsaved edits. */
   onDirtyChange: (dirty: boolean) => void;
   /** Called after a save/status change so the workspace can refresh summaries (queued counts). */

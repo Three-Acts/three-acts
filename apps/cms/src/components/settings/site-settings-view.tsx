@@ -10,6 +10,7 @@ import { useSettingsRecord } from "../../hooks/use-settings-record";
 import { Button, FormField, PanelHeader, ScrollArea, StatusPill, Textarea } from "../atoms";
 import { DetailRow, EditorSection, FieldControl } from "../editor";
 import type { SettingsViewProps } from "./index";
+import { RedirectSettingsView } from "./redirect-settings-view";
 
 /** Field keys per section, in display order. Unknown keys are skipped; unlisted fields land in "Other". */
 const SECTIONS: Array<{ title: string; keys: string[] }> = [
@@ -22,12 +23,13 @@ const SECTIONS: Array<{ title: string; keys: string[] }> = [
 const SCHEMA_KEY = "schemaMarkup";
 const HIDDEN_KEYS = new Set(["titleTemplate"]);
 
-export function SiteSettingsView({ collection, onDirtyChange, onSaved }: SettingsViewProps) {
+export function SiteSettingsView({ collection, onDirtyChange, onSaved, redirectCollection }: SettingsViewProps) {
   const { data } = useCmsBackend();
   const { discard, draft, isDirty, isSaving, load, reportError, save, updateValue, uploadAsset, uploadGallery, uploadGalleryItem, uploadingField } =
     useSettingsRecord({ collection, onDirtyChange, onSaved });
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [activeSection, setActiveSection] = useState<"general" | "redirects">("general");
 
   // A singleton: whatever the collection holds first is the site's settings.
   useEffect(() => {
@@ -56,6 +58,14 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved }: Setting
     };
   }, [collection.id, data, load, reportError]);
 
+  if (activeSection === "redirects" && redirectCollection) {
+    return (
+      <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showRedirects>
+        <RedirectSettingsView collection={redirectCollection} onDirtyChange={onDirtyChange} onSaved={onSaved} />
+      </SiteSettingsLayout>
+    );
+  }
+
   async function handleCreate() {
     setIsCreating(true);
 
@@ -71,17 +81,20 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved }: Setting
 
   if (isLoading) {
     return (
-      <SettingsShell title={collection.label}>
+      <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showRedirects={Boolean(redirectCollection)}>
+        <SettingsShell title={collection.label}>
         <div aria-busy="true" className="grid flex-1 place-items-center p-8 text-center">
           <p className="m-0 text-ui text-cms-subtle">Loading site settings…</p>
         </div>
-      </SettingsShell>
+        </SettingsShell>
+      </SiteSettingsLayout>
     );
   }
 
   if (!draft) {
     return (
-      <SettingsShell title={collection.label}>
+      <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showRedirects={Boolean(redirectCollection)}>
+        <SettingsShell title={collection.label}>
         <div className="grid flex-1 place-items-center p-8">
           <div className="grid max-w-sm justify-items-center gap-3 text-center">
             <span className="grid size-9 place-items-center rounded-cms-lg bg-cms-surface text-cms-muted shadow-cms-control">
@@ -98,7 +111,8 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved }: Setting
             </Button>
           </div>
         </div>
-      </SettingsShell>
+        </SettingsShell>
+      </SiteSettingsLayout>
     );
   }
 
@@ -141,6 +155,7 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved }: Setting
   const saveBlocked = !schemaResult.ok;
 
   return (
+    <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showRedirects={Boolean(redirectCollection)}>
     <SettingsShell
       actions={
         <>
@@ -233,6 +248,50 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved }: Setting
         </div>
       </ScrollArea>
     </SettingsShell>
+    </SiteSettingsLayout>
+  );
+}
+
+function SiteSettingsLayout({
+  activeSection,
+  children,
+  onSectionChange,
+  showRedirects
+}: {
+  activeSection: "general" | "redirects";
+  children: ReactNode;
+  onSectionChange: (section: "general" | "redirects") => void;
+  showRedirects: boolean;
+}) {
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1">
+      <aside aria-label="Site settings sections" className="flex w-pane shrink-0 flex-col border-r border-cms-line-strong bg-cms-bg">
+        <PanelHeader>
+          <span className="text-ui-lg font-semibold text-cms-text">Site settings</span>
+        </PanelHeader>
+        <nav className="grid gap-0.5 p-2" aria-label="Site settings sections">
+          <button
+            aria-current={activeSection === "general" ? "page" : undefined}
+            className={cn("h-8 rounded-cms px-2 text-left text-ui", activeSection === "general" ? "bg-cms-raised font-medium text-cms-text" : "text-cms-muted hover:bg-cms-surface hover:text-cms-text")}
+            onClick={() => onSectionChange("general")}
+            type="button"
+          >
+            General
+          </button>
+          {showRedirects ? (
+            <button
+              aria-current={activeSection === "redirects" ? "page" : undefined}
+              className={cn("h-8 rounded-cms px-2 text-left text-ui", activeSection === "redirects" ? "bg-cms-raised font-medium text-cms-text" : "text-cms-muted hover:bg-cms-surface hover:text-cms-text")}
+              onClick={() => onSectionChange("redirects")}
+              type="button"
+            >
+              Redirects
+            </button>
+          ) : null}
+        </nav>
+      </aside>
+      {children}
+    </div>
   );
 }
 

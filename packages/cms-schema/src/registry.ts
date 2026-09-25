@@ -388,8 +388,9 @@ export const collectionRegistry: CmsCollection[] = [
     tableName: "redirect_rules",
     // Operational config — editable, but no publish workflow.
     mode: "data",
-    group: "SEO",
+    group: "Settings",
     titleField: "sourcePath",
+    settingsView: "redirects",
     description: "Redirects with status codes, hit counts, and review notes.",
     fields: [
       { key: "sourcePath", label: "Source path", type: "slug", required: true, urlPrefix: "www.threeacts.test/" },

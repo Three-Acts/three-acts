@@ -164,7 +164,7 @@ export type CmsCollection = {
   /** Collection holds at most one record (e.g. site settings). The API rejects a second create. */
   singleton?: boolean;
   /** Rendered by a dedicated settings screen instead of the generic collection table; hidden from the Collections sidebar list. */
-  settingsView?: "site" | "pages";
+  settingsView?: "site" | "pages" | "redirects";
 };
 
 export type CmsCollectionSummary = CmsCollection & {
