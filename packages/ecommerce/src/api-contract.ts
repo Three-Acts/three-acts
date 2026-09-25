@@ -1,14 +1,23 @@
 import type { CartLine, Discount, Order, PaymentMethod, PriceBreakdown, ShippingMethod } from "./models";
 
-/** Path builders for the shop routes under `apps/api` (mounted at `/api/shop/*`; these paths omit the `/api` prefix, matching `shopApiPaths.products()` -> `/shop/products`). */
+/**
+ * Path builders for the shop routes under `apps/api` (mounted at
+ * `/api/shop/*`; these paths omit the `/api` prefix, matching
+ * `shopApiPaths.products()` -> `/shop/products`). Every builder is annotated
+ * `` `/${string}` `` (matching `@three-acts/auth`'s `authApiPaths`) so the
+ * return type is narrow enough to pass straight into `apiFetch`'s
+ * `` path: `/${string}` `` parameter without a cast at every call site —
+ * without it, a plain arrow function's string-literal body widens to
+ * `string`.
+ */
 export const shopApiPaths = {
-  products: () => "/shop/products",
-  product: (slug: string) => `/shop/products/${slug}`,
-  reviews: (slug: string) => `/shop/products/${slug}/reviews`,
-  validateDiscount: () => "/shop/discounts/validate",
-  checkout: () => "/shop/checkout",
-  orders: () => "/shop/orders",
-  order: (orderNumber: string) => `/shop/orders/${orderNumber}`
+  products: (): `/${string}` => "/shop/products",
+  product: (slug: string): `/${string}` => `/shop/products/${slug}`,
+  reviews: (slug: string): `/${string}` => `/shop/products/${slug}/reviews`,
+  validateDiscount: (): `/${string}` => "/shop/discounts/validate",
+  checkout: (): `/${string}` => "/shop/checkout",
+  orders: (): `/${string}` => "/shop/orders",
+  order: (orderNumber: string): `/${string}` => `/shop/orders/${orderNumber}`
 };
 
 export type CheckoutRequest = {

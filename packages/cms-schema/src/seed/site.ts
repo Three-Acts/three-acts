@@ -398,7 +398,6 @@ const redirectInputs: RedirectInput[] = [
   { source: "policies/terms-of-service", target: "/terms", hits: 233 },
   { source: "policies/privacy-policy", target: "/privacy", hits: 301 },
   { source: "pages/find-us", target: "/visit-the-roastery", hits: 1_266 },
-  { source: "cart", target: "/shop", code: "302", hits: 2_044, notes: "Old Shopify cart URL; carts didn't migrate so send people to the shop." },
   { source: "account/login", target: "/shop", code: "302", hits: 980, notes: "Customer accounts are being rebuilt. Temporary until the new login ships." },
   {
     source: "?wc-api=wc_gateway_payfast",
@@ -411,7 +410,6 @@ const redirectInputs: RedirectInput[] = [
   { source: "black-friday", target: "/shop?campaign=black-friday-2026", code: "302", hits: 0, notes: "Campaign vanity URL for printed flyers. Switch off in December." },
   { source: "fathers-day", target: "/shop?category=gift-sets&utm_source=vanity&utm_campaign=fathers-day-2026", code: "307", hits: 1_402 },
   { source: "brew-guide", target: "https://cdn.fynbosandfire.co.za/documents/fynbos-and-fire-brew-guide.pdf", code: "302", hits: 3_318, notes: "QR code on every bag. External CDN target." },
-  { source: "careers", target: "https://fynbos-and-fire.bamboohr.com/careers", code: "302", hits: 96, notes: "External job board until /careers is live — remove when the page ships." },
   { source: "wholesale/apply", target: "/wholesale-enquiry", code: "302", hits: 58, notes: "LOOP RISK: /wholesale-enquiry points back here. Keep only one of the pair." },
   { source: "wholesale-enquiry", target: "/wholesale/apply", code: "302", hits: 61, notes: "LOOP RISK: pairs with /wholesale/apply. Delete once the new form URL is confirmed." },
   {
