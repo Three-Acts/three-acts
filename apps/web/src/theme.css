@@ -84,9 +84,9 @@
    * sections and bands run edge to edge; content sits in one centred
    * container with 5% side padding. Sections are 4rem / 6rem / 7rem tall.
    * --------------------------------------------------------------------- */
-  --container-content: 90rem; /* 1280px — Relume "container-large" */
-  --spacing-gutter: 4rem; /* Relume side padding (px-[5%]) */
-  --spacing-gutter-sm: 4rem;
+  --container-content: 98rem; /* 1568px — wider than Relume's 80rem so modules have room */
+  --spacing-gutter: clamp(1rem, -2.75rem + 12vw, 4rem); /* fluid side padding: 1rem on phones up to 4rem on desktop */
+  --spacing-gutter-sm: clamp(1rem, -2.75rem + 12vw, 4rem);
   --spacing-gap: 2rem; /* 32px column gap between cards (Relume gap-x-8); rows use 3rem */
   --spacing-gap-y: 3rem;
   --spacing-header: 4.5rem; /* 72px — nav height */
