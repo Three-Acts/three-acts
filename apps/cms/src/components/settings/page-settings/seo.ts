@@ -47,7 +47,9 @@ export function readSiteDefaults(record: CmsRecord | null): SiteDefaults {
 
   return {
     siteName: text(record.values, "siteName"),
-    titleTemplate: text(record.values, "titleTemplate"),
+    // Title templates are intentionally not exposed in the settings UI; keep
+    // the legacy field ignored so page titles remain the page's own title.
+    titleTemplate: "",
     defaultMetaDescription: text(record.values, "defaultMetaDescription"),
     defaultOgImage: imageSrc(record.values.defaultOgImage),
     favicon: imageSrc(record.values.favicon)

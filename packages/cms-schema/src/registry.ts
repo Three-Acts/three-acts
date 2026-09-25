@@ -498,6 +498,7 @@ export const collectionRegistry: CmsCollection[] = [
         type: "image",
         bucket: "cms-assets",
         accept: "image/*",
+        altText: false,
         helpText: "Shared-link preview used when a page has no open graph image of its own."
       },
       { key: "favicon", label: "Favicon", type: "image", bucket: "cms-assets", accept: "image/png,image/svg+xml,image/x-icon", altText: false },
@@ -572,6 +573,7 @@ export const collectionRegistry: CmsCollection[] = [
         type: "image",
         bucket: "cms-assets",
         accept: "image/*",
+        altText: false,
         helpText: "Empty falls back to the site's default open graph image."
       },
       { key: "searchTitle", label: "Search title", type: "text", helpText: "Title shown in search results. Empty falls back to the meta title." },
@@ -587,6 +589,7 @@ export const collectionRegistry: CmsCollection[] = [
         type: "image",
         bucket: "cms-assets",
         accept: "image/*",
+        altText: false,
         helpText: "Image for search features. Empty falls back to the open graph image."
       },
       {

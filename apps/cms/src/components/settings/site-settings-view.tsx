@@ -4,7 +4,7 @@ import { AlertTriangle, Settings2 } from "lucide-react";
 import { cn } from "@three-acts/utils";
 import { useCmsBackend } from "../../cms/backend-context";
 import type { CmsField } from "../../cms/types";
-import { applyTitleTemplate, parseSchemaMarkup } from "../../cms/types";
+import { parseSchemaMarkup } from "../../cms/types";
 import { formatDateTime } from "../../lib/format";
 import { useSettingsRecord } from "../../hooks/use-settings-record";
 import { Button, FormField, PanelHeader, ScrollArea, StatusPill, Textarea } from "../atoms";
@@ -13,15 +13,14 @@ import type { SettingsViewProps } from "./index";
 
 /** Field keys per section, in display order. Unknown keys are skipped; unlisted fields land in "Other". */
 const SECTIONS: Array<{ title: string; keys: string[] }> = [
-  { title: "General", keys: ["siteName", "titleTemplate", "locale"] },
+  { title: "General", keys: ["siteName", "locale"] },
   { title: "Search engines", keys: ["defaultMetaDescription", "allowIndexing"] },
   { title: "Social", keys: ["defaultOgImage", "twitterHandle"] },
   { title: "Brand", keys: ["favicon"] }
 ];
 
 const SCHEMA_KEY = "schemaMarkup";
-const TITLE_TEMPLATE_KEY = "titleTemplate";
-const PREVIEW_PAGE = "About";
+const HIDDEN_KEYS = new Set(["titleTemplate"]);
 
 export function SiteSettingsView({ collection, onDirtyChange, onSaved }: SettingsViewProps) {
   const { data } = useCmsBackend();
@@ -104,13 +103,11 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved }: Setting
   }
 
   const fieldsByKey = new Map(collection.fields.map((field) => [field.key, field] as const));
-  const sectionedKeys = new Set([...SECTIONS.flatMap((section) => section.keys), SCHEMA_KEY]);
+  const sectionedKeys = new Set([...SECTIONS.flatMap((section) => section.keys), SCHEMA_KEY, ...HIDDEN_KEYS]);
   const otherFields = collection.fields.filter((field) => !sectionedKeys.has(field.key));
   const schemaField = fieldsByKey.get(SCHEMA_KEY);
   const schemaText = String(draft.values[SCHEMA_KEY] ?? "");
   const schemaResult = parseSchemaMarkup(schemaText);
-  const titleTemplate = String(draft.values[TITLE_TEMPLATE_KEY] ?? "");
-  const siteName = String(draft.values.siteName ?? "");
 
   function renderField(field: CmsField) {
     // `draft` is non-null past the early returns above; re-narrow for the closure.
@@ -129,7 +126,6 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved }: Setting
           record={draft}
           uploadingField={uploadingField}
         />
-        {field.key === TITLE_TEMPLATE_KEY ? <TitlePreview siteName={siteName} template={titleTemplate} /> : null}
       </Fragment>
     );
   }
@@ -169,10 +165,6 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved }: Setting
     >
       <ScrollArea className="min-h-0 flex-1" viewportClassName="[overflow-anchor:none]">
         <div className="w-full">
-          {collection.description ? (
-            <p className="m-0 border-b border-cms-line px-3 py-4 text-ui text-cms-subtle">{collection.description}</p>
-          ) : null}
-
           {SECTIONS.map((section) => {
             const fields = section.keys.flatMap((key) => {
               const field = fieldsByKey.get(key);
@@ -253,31 +245,5 @@ function SettingsShell({ actions, children, title }: { actions?: ReactNode; chil
       </PanelHeader>
       {children}
     </section>
-  );
-}
-
-function TitlePreview({ siteName, template }: { siteName: string; template: string }) {
-  const hasPlaceholder = template.includes("%s");
-  const sample = `%s | ${siteName.trim() || "Site name"}`;
-
-  return (
-    <div className="-mt-2 mb-4 grid gap-1 last:mb-0">
-      <div className="flex min-h-6 items-center gap-2 overflow-hidden rounded-cms bg-cms-surface px-2 text-ui">
-        <span className="shrink-0 text-cms-subtle">Preview</span>
-        <span className="shrink-0 text-cms-subtle">“{PREVIEW_PAGE}” →</span>
-        <span className="truncate font-medium text-cms-text">{applyTitleTemplate(template, PREVIEW_PAGE)}</span>
-      </div>
-      {template.trim() && !hasPlaceholder ? (
-        <span className="inline-flex items-center gap-1.5 text-ui text-cms-pending">
-          <AlertTriangle aria-hidden="true" size={12} />
-          No %s, so the template is ignored and pages use their own title.
-        </span>
-      ) : null}
-      {!template.trim() ? (
-        <span className="text-ui text-cms-subtle">
-          No template: pages use their own title. Try <code className="font-mono">{sample}</code>.
-        </span>
-      ) : null}
-    </div>
   );
 }
