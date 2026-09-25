@@ -1,12 +1,10 @@
 import { useState } from "react";
 import type { DragEvent, KeyboardEvent } from "react";
-import { Image as ImageIcon, RefreshCw, Trash2 } from "lucide-react";
-import { cn } from "@three-acts/utils";
+import { Image as ImageIcon } from "lucide-react";
 import type { ImageValue } from "../../cms/types";
-import { Button } from "./button";
-import { fileNameFromImage, formatFileSize, matchesAccept } from "./file-utils";
+import { AssetTile } from "./asset-tile";
+import { fileNameFromImage, formatFileSize } from "./file-utils";
 import { Input } from "./input";
-import { buttonVariants, fileLabelFocusRing } from "./styles";
 
 type ImageCardProps = {
   image: ImageValue;
@@ -36,10 +34,9 @@ type ImageCardProps = {
 };
 
 /**
- * Reusable full-width image card: a wide preview over the filename,
- * resolution/size meta, an alt-text input, and Replace + quiet Delete
- * (hover-danger) actions. Used populated by the single image control and per
- * item by the gallery control.
+ * Single image / gallery item card, composed from `AssetTile` pieces: square
+ * preview left, filename + resolution/size meta + alt caption + Replace and
+ * quiet Delete right. Gallery drag/keyboard ride on `AssetTile.Root`.
  */
 export function ImageCard({
   image,
@@ -72,26 +69,22 @@ export function ImageCard({
   const canDelete = Boolean(onDelete) && !readOnly;
 
   return (
-    <article
-      aria-label={positionLabel ? `${positionLabel}: ${fileName}` : fileName}
-      className={cn(
-        "grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-2 rounded-cms border border-cms-line-strong bg-cms-surface p-2 transition-opacity",
-        isDragging && "opacity-50",
-        isDropTarget && "border-cms-accent"
-      )}
+    <AssetTile.Root
+      label={positionLabel ? `${positionLabel}: ${fileName}` : fileName}
       draggable={draggable}
-      onDragEnd={onDragEnd}
-      onDragOver={onDragOver}
+      isDragging={isDragging}
+      isDropTarget={isDropTarget}
       onDragStart={onDragStart}
+      onDragOver={onDragOver}
       onDrop={onDrop}
-      onKeyDown={onMoveKeyDown}
-      tabIndex={draggable ? 0 : undefined}
+      onDragEnd={onDragEnd}
+      onMoveKeyDown={onMoveKeyDown}
     >
-      <div className="aspect-square h-full min-h-0 w-auto overflow-hidden rounded-cms bg-cms-bg">
+      <AssetTile.Preview>
         {mediaFailed ? (
-          <div className="grid h-full w-full place-items-center">
+          <AssetTile.Icon>
             <ImageIcon aria-hidden="true" className="text-cms-muted" size={22} />
-          </div>
+          </AssetTile.Icon>
         ) : (
           <img
             alt={image.alt ?? ""}
@@ -105,68 +98,44 @@ export function ImageCard({
             src={image.src}
           />
         )}
-      </div>
+      </AssetTile.Preview>
 
-      <div className="grid min-w-0 content-start gap-1.5">
+      <AssetTile.Details>
         <div className="min-w-0 px-0.5">
-          <p className="m-0 truncate text-ui font-medium text-cms-text">{fileName}</p>
-          {detailLabel ? <p className="m-0 truncate text-ui text-cms-subtle">{detailLabel}</p> : null}
+          <AssetTile.Title>{fileName}</AssetTile.Title>
+          {detailLabel ? <AssetTile.Meta>{detailLabel}</AssetTile.Meta> : null}
         </div>
 
-        {readOnly ? (
-          image.alt ? (
-            <p className="m-0 truncate px-0.5 text-ui text-cms-subtle">Alt: {image.alt}</p>
-          ) : null
-        ) : (
-          <Input
-            aria-label={`Alt text for ${fileName}`}
-            onChange={(event) => onAltChange?.(event.target.value)}
-            placeholder="Alt text…"
-            value={image.alt ?? ""}
-          />
-        )}
+        <AssetTile.Caption>
+          {readOnly ? (
+            image.alt ? (
+              <p className="m-0 truncate px-0.5 text-ui text-cms-subtle">Alt: {image.alt}</p>
+            ) : null
+          ) : (
+            <Input
+              aria-label={`Alt text for ${fileName}`}
+              onChange={(event) => onAltChange?.(event.target.value)}
+              placeholder="Alt text…"
+              value={image.alt ?? ""}
+            />
+          )}
+        </AssetTile.Caption>
 
         {canReplace || canDelete ? (
-          <div className="flex gap-1.5">
+          <AssetTile.Actions>
             {canReplace ? (
-              <label
-                className={cn(
-                  buttonVariants({ variant: "normal" }),
-                  isUploading ? "cursor-not-allowed opacity-50" : "cursor-pointer",
-                  fileLabelFocusRing
-                )}
-              >
-                <RefreshCw aria-hidden="true" size={13} />
-                Replace
-                <input
-                  accept={accept}
-                  className="sr-only"
-                  disabled={isUploading}
-                  id={replaceInputId}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) {
-                      if (matchesAccept(file, accept)) {
-                        onReplace?.(file);
-                      } else {
-                        onRejected?.();
-                      }
-                    }
-                    event.target.value = "";
-                  }}
-                  type="file"
-                />
-              </label>
+              <AssetTile.Replace
+                accept={accept}
+                inputId={replaceInputId as string}
+                isUploading={isUploading}
+                onFile={(file) => onReplace?.(file)}
+                onRejected={onRejected}
+              />
             ) : null}
-            {canDelete ? (
-              <Button className="text-cms-muted hover:text-cms-danger" onClick={onDelete} variant="ghost">
-                <Trash2 aria-hidden="true" size={13} />
-                Delete
-              </Button>
-            ) : null}
-          </div>
+            <AssetTile.Delete onClick={canDelete ? onDelete : undefined} />
+          </AssetTile.Actions>
         ) : null}
-      </div>
-    </article>
+      </AssetTile.Details>
+    </AssetTile.Root>
   );
 }

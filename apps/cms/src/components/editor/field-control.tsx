@@ -5,14 +5,17 @@ import type {
   CmsField,
   CmsRecord,
   CmsRecordValue,
+  FileField,
   ImageField,
   ImageGalleryField,
   SelectField,
-  SlugField
+  SlugField,
+  VideoField
 } from "../../cms/types";
 import { moveImageItem, parseImageGallery, parseImageValue, serializeImageGallery, serializeImageValue } from "../../cms/types";
 import {
   AssetControl,
+  FileControl,
   FormField,
   ImageControl,
   ImageGalleryControl,
@@ -21,13 +24,14 @@ import {
   NumberInput,
   Select,
   Textarea,
-  Toggle
+  Toggle,
+  VideoControl
 } from "../atoms";
 import { formatDateTime, fromDateTimeLocal, toDateTimeLocal } from "../../lib/format";
 
 type FieldControlProps = {
   field: CmsField;
-  onAssetUpload: (field: AssetField | ImageField, file: File) => void;
+  onAssetUpload: (field: AssetField | ImageField | VideoField | FileField, file: File) => void;
   onGalleryUpload: (field: ImageGalleryField, files: File[]) => void;
   onGalleryItemUpload: (field: ImageGalleryField, index: number, file: File) => void;
   onUpdateValue: (fieldKey: string, value: CmsRecordValue) => void;
@@ -135,6 +139,45 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
             }}
             onClear={() => onUpdateValue(field.key, "")}
             onFile={(file) => onAssetUpload(imageField, file)}
+            readOnly={readOnly}
+            value={String(value ?? "")}
+          />
+        )}
+      </FormField>
+    );
+  }
+
+  if (field.type === "video" || field.type === "file") {
+    // Video/file controls render their own read-only state (icon tile with
+    // an open link, no inputs), so they branch before the generic read-only
+    // display — a JSON string would be meaningless there.
+    const isVideo = field.type === "video";
+    const videoField = field as VideoField;
+    const fileField = field as FileField;
+
+    return (
+      <FormField
+        description={field.helpText}
+        label={field.label}
+        required={readOnly ? undefined : field.required}
+      >
+        {isVideo ? (
+          <VideoControl
+            field={videoField}
+            inputId={uploadId}
+            isUploading={uploadingField === field.key}
+            onClear={() => onUpdateValue(field.key, "")}
+            onFile={(file) => onAssetUpload(videoField, file)}
+            readOnly={readOnly}
+            value={String(value ?? "")}
+          />
+        ) : (
+          <FileControl
+            field={fileField}
+            inputId={uploadId}
+            isUploading={uploadingField === field.key}
+            onClear={() => onUpdateValue(field.key, "")}
+            onFile={(file) => onAssetUpload(fileField, file)}
             readOnly={readOnly}
             value={String(value ?? "")}
           />

@@ -2,6 +2,7 @@ import type { ImageValue } from "../../cms/types";
 
 const BYTE_UNITS = ["B", "kB", "MB", "GB", "TB"];
 const IMAGE_FILE_PATTERN = /\.(avif|gif|jpe?g|png|webp)$/i;
+const VIDEO_FILE_PATTERN = /\.(mp4|webm|mov|m4v)$/i;
 
 export function matchesAccept(file: File, accept?: string): boolean {
   const patterns = accept
@@ -25,7 +26,13 @@ export function matchesAccept(file: File, accept?: string): boolean {
       if (file.type) {
         return file.type.startsWith(typePrefix);
       }
-      return pattern === "image/*" && IMAGE_FILE_PATTERN.test(file.name);
+      if (pattern === "image/*") {
+        return IMAGE_FILE_PATTERN.test(file.name);
+      }
+      if (pattern === "video/*") {
+        return VIDEO_FILE_PATTERN.test(file.name);
+      }
+      return false;
     }
 
     return file.type === pattern;
@@ -49,16 +56,21 @@ export function formatFileSize(bytes: number): string {
 }
 
 export function fileNameFromImage(image: ImageValue): string {
-  if (image.fileName?.trim()) {
-    return image.fileName;
+  return fileNameFromMedia(image);
+}
+
+/** Display name for a typed media value: the stored `fileName` first, then the URL's last segment. */
+export function fileNameFromMedia(value: { src: string; fileName?: string }): string {
+  if (value.fileName?.trim()) {
+    return value.fileName;
   }
 
-  const path = image.src.split(/[?#]/)[0];
+  const path = value.src.split(/[?#]/)[0];
   const segment = path.slice(path.lastIndexOf("/") + 1);
 
   try {
-    return decodeURIComponent(segment) || image.src;
+    return decodeURIComponent(segment) || value.src;
   } catch {
-    return segment || image.src;
+    return segment || value.src;
   }
 }

@@ -6,12 +6,14 @@ import type {
   CmsCollectionSummary,
   CmsRecord,
   CmsRecordValue,
+  FileField,
   ImageField,
   ImageGalleryField,
   ImageValue,
-  PublishStatus
+  PublishStatus,
+  VideoField
 } from "../cms/types";
-import { parseImageGallery, parseImageValue, serializeImageGallery, serializeImageValue } from "../cms/types";
+import { parseImageGallery, parseImageValue, serializeFileValue, serializeImageGallery, serializeImageValue, serializeVideoValue } from "../cms/types";
 import { rememberAssetMeta } from "../components/atoms";
 import type { CollectionGroup } from "../components/workspace";
 import { getRecordTitle } from "../lib/records";
@@ -580,7 +582,7 @@ export function useCmsWorkspace() {
     });
   }
 
-  async function handleAssetUpload(field: AssetField | ImageField, file: File) {
+  async function handleAssetUpload(field: AssetField | ImageField | VideoField | FileField, file: File) {
     if (!activeCollection || !draftRecord) {
       return;
     }
@@ -607,17 +609,33 @@ export function useCmsWorkspace() {
           return current;
         }
 
-        const nextValue =
-          field.type === "image"
-            ? serializeImageValue({
-                src: result.url,
-                fileName: result.fileName,
-                size: result.size,
-                ...(dimensions ? { width: dimensions.width, height: dimensions.height } : {}),
-                // Replacing the file keeps the editor's alt text.
-                alt: parseImageValue(current.values[field.key])?.alt
-              })
-            : result.url;
+        let nextValue: CmsRecordValue;
+        if (field.type === "image") {
+          nextValue = serializeImageValue({
+            src: result.url,
+            fileName: result.fileName,
+            size: result.size,
+            ...(dimensions ? { width: dimensions.width, height: dimensions.height } : {}),
+            // Replacing the file keeps the editor's alt text.
+            alt: parseImageValue(current.values[field.key])?.alt
+          });
+        } else if (field.type === "video") {
+          nextValue = serializeVideoValue({
+            src: result.url,
+            fileName: result.fileName,
+            size: result.size,
+            ...(file.type ? { contentType: file.type } : {})
+          });
+        } else if (field.type === "file") {
+          nextValue = serializeFileValue({
+            src: result.url,
+            fileName: result.fileName,
+            size: result.size,
+            ...(file.type ? { contentType: file.type } : {})
+          });
+        } else {
+          nextValue = result.url;
+        }
 
         return {
           ...current,
