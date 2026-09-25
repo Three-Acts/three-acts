@@ -3,7 +3,7 @@ import { ExternalLink, FileText } from "lucide-react";
 import type { CmsField, ImageField, PublishStatus } from "../../cms/types";
 import { applyTitleTemplate, parseSchemaMarkup } from "../../cms/types";
 import { hasPublishWorkflow, isEditable } from "../../lib/records";
-import { Button, ConfirmDialog, PanelHeader, ScrollArea, SplitButton, StatusPill, useToast } from "../atoms";
+import { Button, ConfirmDialog, PanelHeader, ScrollArea, StatusPill, useToast } from "../atoms";
 import { EditorSection, FieldControl } from "../editor";
 import { SchemaMarkupField, SeoTextField } from "./page-settings/fields";
 import { PageList } from "./page-settings/page-list";
@@ -127,20 +127,9 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
               {publishable && editable ? (
                 <>
                   <StatusPill status={draft.publishStatus} />
-                  <SplitButton
-                    disabled={isSaving}
-                    label={isSaving ? "Saving…" : "Save & queue to publish"}
-                    onClick={() => void handleSave("queued_to_publish")}
-                    options={[
-                      { label: "Save as draft", onSelect: () => void handleSave("not_published") },
-                      {
-                        disabled: draft.publishStatus !== "published",
-                        label: "Unpublish",
-                        onSelect: () => void handleSave("not_published")
-                      }
-                    ]}
-                    primaryDisabled={draft.publishStatus === "queued_to_publish" && !isDirty}
-                  />
+                  <Button disabled={isSaving} onClick={() => void handleSave("queued_to_publish")}>
+                    {isSaving ? "Saving…" : "Save"}
+                  </Button>
                 </>
               ) : null}
               {editable ? (

@@ -94,6 +94,8 @@ export type ImageField = FieldBase<"image"> & {
   type: "image";
   bucket: string;
   accept?: string;
+  /** Whether the editor should collect alt text for this image. Defaults to true. */
+  altText?: boolean;
 };
 
 /**

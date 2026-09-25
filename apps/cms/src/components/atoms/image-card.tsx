@@ -13,6 +13,8 @@ type ImageCardProps = {
   isUploading?: boolean;
   /** Alt-text edits; omitted in read-only mode, where the alt just displays. */
   onAltChange?: (alt: string) => void;
+  /** Hide the caption input for decorative assets such as favicons. */
+  showAltText?: boolean;
   /** Per-item replace; omitted when the card has no replace action. */
   onReplace?: (file: File) => void;
   onDelete?: () => void;
@@ -44,6 +46,7 @@ export function ImageCard({
   readOnly,
   isUploading,
   onAltChange,
+  showAltText = true,
   onReplace,
   onDelete,
   onRejected,
@@ -106,20 +109,22 @@ export function ImageCard({
           {detailLabel ? <AssetTile.Meta>{detailLabel}</AssetTile.Meta> : null}
         </div>
 
-        <AssetTile.Caption>
-          {readOnly ? (
-            image.alt ? (
-              <p className="m-0 truncate px-0.5 text-ui text-cms-subtle">Alt: {image.alt}</p>
-            ) : null
-          ) : (
-            <Input
-              aria-label={`Alt text for ${fileName}`}
-              onChange={(event) => onAltChange?.(event.target.value)}
-              placeholder="Alt text…"
-              value={image.alt ?? ""}
-            />
-          )}
-        </AssetTile.Caption>
+        {showAltText ? (
+          <AssetTile.Caption>
+            {readOnly ? (
+              image.alt ? (
+                <p className="m-0 truncate px-0.5 text-ui text-cms-subtle">Alt: {image.alt}</p>
+              ) : null
+            ) : (
+              <Input
+                aria-label={`Alt text for ${fileName}`}
+                onChange={(event) => onAltChange?.(event.target.value)}
+                placeholder="Alt text…"
+                value={image.alt ?? ""}
+              />
+            )}
+          </AssetTile.Caption>
+        ) : null}
 
         {canReplace || canDelete ? (
           <AssetTile.Actions>

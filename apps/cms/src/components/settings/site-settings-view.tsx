@@ -7,7 +7,7 @@ import type { CmsField } from "../../cms/types";
 import { applyTitleTemplate, parseSchemaMarkup } from "../../cms/types";
 import { formatDateTime } from "../../lib/format";
 import { useSettingsRecord } from "../../hooks/use-settings-record";
-import { Button, FormField, PanelHeader, ScrollArea, SplitButton, StatusPill, Textarea } from "../atoms";
+import { Button, FormField, PanelHeader, ScrollArea, StatusPill, Textarea } from "../atoms";
 import { DetailRow, EditorSection, FieldControl } from "../editor";
 import type { SettingsViewProps } from "./index";
 
@@ -160,17 +160,7 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved }: Setting
             </>
           ) : null}
           <StatusPill status={draft.publishStatus} />
-          <SplitButton
-            disabled={isSaving || saveBlocked}
-            label={isSaving ? "Saving…" : "Queue to publish"}
-            onClick={() => void save("queued_to_publish")}
-            options={[
-              { label: "Save as draft", onSelect: () => void save("not_published") },
-              { disabled: draft.publishStatus !== "published", label: "Unpublish", onSelect: () => void save("not_published") }
-            ]}
-            primaryDisabled={draft.publishStatus === "queued_to_publish"}
-          />
-          <Button disabled={isSaving || saveBlocked} onClick={() => void save()}>
+          <Button disabled={isSaving || saveBlocked} onClick={() => void save("queued_to_publish")}>
             {isSaving ? "Saving…" : "Save"}
           </Button>
         </>
@@ -178,7 +168,7 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved }: Setting
       title={collection.label}
     >
       <ScrollArea className="min-h-0 flex-1" viewportClassName="[overflow-anchor:none]">
-        <div className="mx-auto w-full max-w-2xl">
+        <div className="w-full">
           {collection.description ? (
             <p className="m-0 border-b border-cms-line px-3 py-4 text-ui text-cms-subtle">{collection.description}</p>
           ) : null}

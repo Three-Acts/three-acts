@@ -500,7 +500,7 @@ export const collectionRegistry: CmsCollection[] = [
         accept: "image/*",
         helpText: "Shared-link preview used when a page has no open graph image of its own."
       },
-      { key: "favicon", label: "Favicon", type: "image", bucket: "cms-assets", accept: "image/png,image/svg+xml,image/x-icon" },
+      { key: "favicon", label: "Favicon", type: "image", bucket: "cms-assets", accept: "image/png,image/svg+xml,image/x-icon", altText: false },
       { key: "twitterHandle", label: "Twitter handle", type: "text", helpText: "e.g. @threeacts" },
       { key: "locale", label: "Locale", type: "text", helpText: "e.g. en_US" },
       {

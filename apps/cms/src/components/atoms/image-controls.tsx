@@ -63,6 +63,7 @@ export function ImageControl({ field, value, inputId, isUploading, onFile, onCle
       <ImageCard
         accept={field.accept}
         image={image}
+        showAltText={field.altText !== false}
         isUploading={isUploading}
         onAltChange={onAltChange}
         onDelete={onClear}
