@@ -58,5 +58,8 @@ export function PageList({ isLoading, onSelect, pages, selectedId, showStatus, t
 }
 
 function statusLabel(status: CmsRecord["publishStatus"]): string {
-  return status === "published" ? "Published" : status === "queued_to_publish" ? "Queued to publish" : "Not published";
+  if (status === "published") return "Published";
+  if (status === "queued_to_publish") return "Queued to publish";
+  if (status === "draft") return "Draft";
+  return "Not published";
 }

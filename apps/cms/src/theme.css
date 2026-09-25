@@ -35,6 +35,7 @@
 
   /* Status hues stay clear of the accent so state is never confused with action. */
   --color-cms-success: #7fd3a0;
+  --color-cms-draft: #e7a15a;
   --color-cms-pending: #9cc2e8;
   --color-cms-danger: #e4715c;
   --color-cms-danger-surface: #2e1d19;

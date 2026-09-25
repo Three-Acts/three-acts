@@ -106,13 +106,13 @@ export const inputVariants = cv({
   defaultVariants: { tone: "editable" }
 });
 
-/** Publish Status. Shape carries the state as well as hue, so it survives at 8px. */
+/** Compact publish-status marker shared by tables, lists, and editor headers. */
 export const statusDotVariants = cv({
   base: ["inline-block size-2 shrink-0 rounded-full border"],
   variants: {
     status: {
       published: ["border-cms-success bg-cms-success"],
-      draft: ["border-dashed border-cms-success"],
+      draft: ["border-solid border-cms-draft"],
       not_published: ["border-cms-track"],
       queued_to_publish: ["border-cms-pending"]
     }
@@ -124,7 +124,7 @@ export const statusTextVariants = cv({
   variants: {
     status: {
       published: ["text-cms-success"],
-      draft: ["text-cms-muted"],
+      draft: ["text-cms-draft"],
       not_published: ["text-cms-muted"],
       queued_to_publish: ["text-cms-pending"]
     }
