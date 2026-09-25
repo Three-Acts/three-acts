@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { Globe, Image as ImageIcon } from "lucide-react";
+import { Globe } from "lucide-react";
 import { eyebrowClass } from "../../atoms";
 import { breadcrumbUrl, clip, DESCRIPTION_LIMIT, hostOf, TITLE_LIMIT } from "./seo";
 
@@ -10,7 +10,7 @@ import { breadcrumbUrl, clip, DESCRIPTION_LIMIT, hostOf, TITLE_LIMIT } from "./s
 
 function PreviewFrame({ children, label }: { children: ReactNode; label: string }) {
   return (
-    <figure className="m-0 grid gap-2">
+    <figure className="m-0 grid max-w-2xl gap-2">
       <figcaption className={eyebrowClass}>{label}</figcaption>
       {children}
     </figure>
@@ -58,21 +58,17 @@ type SocialCardPreviewProps = {
 };
 
 export function SocialCardPreview({ description, imageSrc, title, url }: SocialCardPreviewProps) {
-  // Mock-storage and not-yet-deployed URLs may not resolve; show the empty frame rather than a broken image.
+  // Mock-storage and not-yet-deployed URLs may not resolve; omit the image frame rather than showing a broken image.
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const hasImage = Boolean(imageSrc && failedSrc !== imageSrc);
   return (
     <PreviewFrame label="Social share">
       <div className="overflow-hidden rounded-cms-lg border border-cms-line-strong bg-cms-surface">
-        <div className="grid aspect-[1200/630] place-items-center overflow-hidden border-b border-cms-line bg-cms-raised">
-          {imageSrc && failedSrc !== imageSrc ? (
+        {hasImage ? (
+          <div className="grid aspect-[1200/630] place-items-center overflow-hidden border-b border-cms-line bg-cms-raised">
             <img alt="" className="size-full object-cover" onError={() => setFailedSrc(imageSrc)} src={imageSrc} />
-          ) : (
-            <span className="grid justify-items-center gap-1.5 text-ui text-cms-subtle">
-              <ImageIcon aria-hidden="true" size={18} />
-              {imageSrc ? "Share image unavailable" : "No share image"}
-            </span>
-          )}
-        </div>
+          </div>
+        ) : null}
         <div className="grid gap-0.5 px-3 py-2.5">
           <span className="truncate text-micro uppercase tracking-label text-cms-subtle">{hostOf(url)}</span>
           <p className="m-0 line-clamp-2 text-ui-lg font-semibold text-cms-text">{title || "Untitled page"}</p>
