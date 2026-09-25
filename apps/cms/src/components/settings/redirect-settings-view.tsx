@@ -131,7 +131,6 @@ export function RedirectSettingsView({ collection, onDirtyChange, onSaved }: Pro
       <PanelHeader className="gap-1.5">
         <div className="min-w-0">
           <h2 className="m-0 truncate text-ui-lg font-semibold text-cms-text">Redirects</h2>
-          <p className="m-0 truncate text-ui text-cms-subtle">Manage URL redirects and their status codes.</p>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <Input aria-label="Search redirects" onChange={(event) => setSearch(event.target.value)} placeholder="Search redirects…" value={search} />
