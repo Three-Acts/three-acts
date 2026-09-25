@@ -8,8 +8,8 @@ export type WorkspaceTab = "cms" | "site-settings" | "page-settings";
 
 const tabs: Array<{ id: WorkspaceTab; label: string; icon: LucideIcon }> = [
   { id: "cms", label: "CMS", icon: Database },
-  { id: "site-settings", label: "Site settings", icon: Settings2 },
-  { id: "page-settings", label: "Page settings", icon: FileText }
+  { id: "site-settings", label: "Site", icon: Settings2 },
+  { id: "page-settings", label: "Page", icon: FileText }
 ];
 
 type WorkspaceTabsProps = {

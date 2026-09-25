@@ -98,9 +98,7 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
       <PageList
-        canCreate={editable}
         isLoading={settings.isLoading}
-        onCreate={() => guard(() => void settings.createPage())}
         onSelect={selectPage}
         pages={pages}
         selectedId={selectedId}
@@ -215,11 +213,6 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
             <p className="m-0 text-ui text-cms-subtle">
               {settings.isLoading ? "Loading pages…" : pages.length === 0 ? "Add a page to edit its SEO settings." : "Select a page to edit its settings."}
             </p>
-            {!settings.isLoading && pages.length === 0 && editable ? (
-              <Button onClick={() => void settings.createPage()} variant="primary">
-                Add page
-              </Button>
-            ) : null}
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@three-acts/utils";
 import type { AuthUser } from "../auth/auth-context";
+import { collectionRegistry } from "../cms/registry";
 import { singularize } from "../lib/format";
 import { hasPublishWorkflow, isEditable } from "../lib/records";
 import { BareIconButton, ConfirmDialog, PanelHeader, Tooltip, useToast } from "../components/atoms";
@@ -12,9 +13,13 @@ import { RecordEditor } from "../components/editor";
 import { ImportDialog } from "../components/import";
 import { PageSettingsView, SiteSettingsView } from "../components/settings";
 
-// Keep the top bar focused on the CMS workspace. Settings screens remain
-// implemented for future navigation, but are intentionally not exposed here.
-const availableTabs: WorkspaceTab[] = ["cms"];
+// Tabs come from the static registry so they don't pop in once the
+// collection summaries finish loading.
+const availableTabs: WorkspaceTab[] = [
+  "cms",
+  ...(collectionRegistry.some((collection) => collection.settingsView === "site") ? (["site-settings"] as const) : []),
+  ...(collectionRegistry.some((collection) => collection.settingsView === "pages") ? (["page-settings"] as const) : [])
+];
 
 export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<void>; user: AuthUser }) {
   const {
