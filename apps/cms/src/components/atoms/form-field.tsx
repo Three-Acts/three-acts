@@ -31,9 +31,9 @@ export function FormField({ children, className, description, htmlFor, label, re
           </span>
         ) : null}
       </Field.Label>
+      {description ? <Field.Description className="m-0 text-ui text-cms-subtle">{description}</Field.Description> : null}
       {children}
       <Field.Error className="m-0 text-ui text-cms-danger" />
-      {description ? <Field.Description className="m-0 text-ui text-cms-subtle">{description}</Field.Description> : null}
     </Field.Root>
   );
 }
