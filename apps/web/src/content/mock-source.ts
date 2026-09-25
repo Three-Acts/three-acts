@@ -1,58 +1,73 @@
+import type { CmsRecord, CmsRecordValue } from "@three-acts/cms-schema";
+import { seedCollections } from "@three-acts/cms-schema/seed";
 import type { ContentEntry, ContentSource } from "./content-source";
 
 /**
- * Default content source. Ships seed data so `npm run build:web` produces a
- * complete static site with zero credentials. Swap in the API-backed source
- * by setting `CONTENT_SOURCE=api` (see `./index.ts`).
+ * Default content source. Builds the blog from the shared "Fynbos & Fire"
+ * seed (`@three-acts/cms-schema/seed`) — the same records the CMS mock and the
+ * dev API serve — so `npm run build:web` produces a complete static site with
+ * zero credentials. Swap in the API-backed source by setting
+ * `CONTENT_SOURCE=api` (see `./index.ts`).
+ *
+ * Like the live site, it renders each article's `liveValues` snapshot and
+ * skips articles that have none (never published), so draft edits don't show.
  */
 
-const posts: ContentEntry[] = [
-  {
-    slug: "static-first-launch-playbook",
-    title: "The static-first launch playbook",
-    excerpt:
-      "How Three Acts prerenders marketing pages to fast, indexable HTML while keeping editorial data in its own API.",
-    body: "Static-first means the browser receives finished HTML, not a loading spinner. We fetch content from the project's own API at build time, prerender every marketing route, and ship zero JavaScript on pages that do not need it. Interactive pieces become islands that hydrate on their own.",
-    coverImage: "/content/launch-playbook.png",
-    publishedAt: "2026-06-20T09:00:00.000Z",
-    updatedAt: "2026-06-28T12:00:00.000Z",
-    author: "Three Acts",
-    tags: ["performance", "seo", "workflow"]
-  },
-  {
-    slug: "islands-without-a-framework",
-    title: "Islands, the Astro way",
-    excerpt:
-      "Astro renders every route to static HTML by default and hydrates only the components that ask for it, with no bespoke runtime to maintain.",
-    body: "An island is a self-contained React component that server-renders into the page's HTML and hydrates independently, once a `client:*` directive tells Astro it needs to run in the browser. Astro's own tiny hydration runtime finds each island marker and loads only that component's chunk, so a page with one interactive form ships one small script instead of a full app bundle. Everything else on the page stays static HTML.",
-    coverImage: "/content/islands.png",
-    publishedAt: "2026-06-25T09:00:00.000Z",
-    author: "Three Acts",
-    tags: ["astro", "react", "architecture"]
-  },
-  {
-    slug: "publishing-from-the-cms",
-    title: "Publishing from the CMS to Vercel",
-    excerpt:
-      "Editors change data, hit Publish, and watch a real Vercel deploy move from queued to ready.",
-    body: "The CMS talks to a small server-side API that triggers a Vercel deploy hook and polls deployment status. The editor sees live progress: queued, building, and finally deployed. The static site rebuilds with the latest published content.",
-    publishedAt: "2026-06-30T09:00:00.000Z",
-    author: "Three Acts",
-    tags: ["cms", "vercel", "workflow"]
-  }
-];
+/**
+ * Cover images: seed covers are remote picsum.photos URLs. The shared
+ * <Image> would render those as a plain <img> (no build-time fetch), but the
+ * default build should also be viewable offline and keep going through the
+ * local AVIF pipeline (`scripts/optimize-images.mjs`), so mock covers are
+ * mapped onto the site's own images in `public/content/`, rotated
+ * deterministically by position. The API source keeps real (remote) URLs.
+ */
+const LOCAL_COVERS = ["/content/launch-playbook.png", "/content/islands.png"];
 
-const sorted = [...posts].sort(
-  (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+function text(value: CmsRecordValue): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+const authorNames = new Map(
+  (seedCollections.authors ?? []).map((author) => {
+    const values = author.liveValues ?? author.values;
+    return [text(values.slug), text(values.name)] as const;
+  })
 );
+
+function toEntry(record: CmsRecord & { liveValues: Record<string, CmsRecordValue> }, index: number): ContentEntry {
+  const values = record.liveValues;
+  const authorSlug = text(values.author);
+  const tags = text(values.tags)
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
+  return {
+    slug: text(values.slug),
+    title: text(values.title),
+    excerpt: text(values.excerpt),
+    body: text(values.body),
+    coverImage: text(values.coverImage) ? LOCAL_COVERS[index % LOCAL_COVERS.length] : undefined,
+    publishedAt: text(values.publishedAt) || record.createdAt,
+    updatedAt: record.modifiedAt,
+    author: authorNames.get(authorSlug) || authorSlug || undefined,
+    tags: tags.length > 0 ? tags : undefined
+  };
+}
+
+const sorted: ContentEntry[] = (seedCollections.articles ?? [])
+  .filter((record): record is CmsRecord & { liveValues: Record<string, CmsRecordValue> } => Boolean(record.liveValues))
+  .map(toEntry)
+  .filter((post) => post.slug.length > 0)
+  .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
 export const mockContentSource: ContentSource = {
   name: "mock",
   async listPosts() {
-    return sorted.map((post) => ({ ...post }));
+    return sorted.map((post) => ({ ...post, tags: post.tags ? [...post.tags] : undefined }));
   },
   async getPost(slug) {
     const match = sorted.find((post) => post.slug === slug);
-    return match ? { ...match } : null;
+    return match ? { ...match, tags: match.tags ? [...match.tags] : undefined } : null;
   }
 };

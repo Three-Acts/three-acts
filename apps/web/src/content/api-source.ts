@@ -6,10 +6,13 @@ import type { ContentEntry, ContentSource } from "./content-source";
  * by the shared `@three-acts/cms-schema` registry instead of a bespoke,
  * disconnected table shape. Reads the unauthenticated
  * `/api/content/collections/articles/records` endpoint, which only ever returns
- * `published` records — see `apps/api/api/content/collections/[collectionId]/records.ts`.
+ * the live snapshot of published records — see `apps/api/api/content/collections/[collectionId]/records.ts`.
+ * Bylines resolve each article's `author` slug against the public `authors`
+ * collection.
  */
 
 const COLLECTION_ID = "articles";
+const AUTHORS_COLLECTION_ID = "authors";
 const PAGE_SIZE = 200;
 
 type ArticleFieldKey = "title" | "slug" | "excerpt" | "body" | "coverImage" | "author" | "tags" | "publishedAt";
@@ -52,7 +55,7 @@ function readString(value: CmsRecord["values"][string]): string {
 }
 
 /** Maps one `CmsRecord` to the blog's `ContentEntry` shape, or `null` to skip an unroutable record. */
-function mapRecord(record: CmsRecord): ContentEntry | null {
+function mapRecord(record: CmsRecord, authorNames: Map<string, string>): ContentEntry | null {
   const slug = readString(record.values[FIELD.slug]).trim();
   if (!slug) {
     console.warn(`[content:api] skipping record "${record.id}" — its slug is empty.`);
@@ -66,8 +69,8 @@ function mapRecord(record: CmsRecord): ContentEntry | null {
 
   // Cover images are typed `image` fields (ImageValue JSON) with legacy
   // plain-URL rows still in the wild — `imageSrc` reads both forms.
-  // `author` is an authors.slug reference (no relation field type yet), so the
-  // byline shows the slug until the site resolves it against `authors`.
+  // `author` is an authors.slug reference (no relation field type yet):
+  // resolve it to the author's name, falling back to the slug.
   const coverImage = imageSrc(record.values[FIELD.coverImage]).trim();
   const author = readString(record.values[FIELD.author]).trim();
   const publishedAt = readString(record.values[FIELD.publishedAt]).trim();
@@ -78,22 +81,22 @@ function mapRecord(record: CmsRecord): ContentEntry | null {
     excerpt: readString(record.values[FIELD.excerpt]),
     body: readString(record.values[FIELD.body]),
     coverImage: coverImage.length > 0 ? coverImage : undefined,
-    author: author.length > 0 ? author : undefined,
+    author: author.length > 0 ? (authorNames.get(author) ?? author) : undefined,
     tags: tags.length > 0 ? tags : undefined,
     publishedAt: publishedAt.length > 0 ? publishedAt : record.createdAt,
     updatedAt: record.modifiedAt
   };
 }
 
-/** Fetches every published `articles` record, paginating until `total` is reached. */
-async function fetchAllRecords(apiOrigin: string): Promise<CmsRecord[]> {
+/** Fetches every public record of a collection, paginating until `total` is reached. */
+async function fetchAllRecords(apiOrigin: string, collectionId: string, sortKey: string): Promise<CmsRecord[]> {
   const records: CmsRecord[] = [];
   let offset = 0;
   let total = Number.POSITIVE_INFINITY;
 
   while (records.length < total) {
-    const url = new URL(`${apiOrigin}/api${contentApiPaths.records(COLLECTION_ID)}`);
-    url.searchParams.set("sortKey", "publishedAt");
+    const url = new URL(`${apiOrigin}/api${contentApiPaths.records(collectionId)}`);
+    url.searchParams.set("sortKey", sortKey);
     url.searchParams.set("sortDirection", "desc");
     url.searchParams.set("limit", String(PAGE_SIZE));
     url.searchParams.set("offset", String(offset));
@@ -130,6 +133,21 @@ async function fetchAllRecords(apiOrigin: string): Promise<CmsRecord[]> {
   return records;
 }
 
+/** authors.slug → name. Bylines are cosmetic, so a failed fetch falls back to slugs instead of failing the build. */
+async function fetchAuthorNames(apiOrigin: string): Promise<Map<string, string>> {
+  try {
+    const authors = await fetchAllRecords(apiOrigin, AUTHORS_COLLECTION_ID, "name");
+    return new Map(
+      authors
+        .map((author) => [readString(author.values.slug).trim(), readString(author.values.name).trim()] as const)
+        .filter(([slug, name]) => slug.length > 0 && name.length > 0)
+    );
+  } catch (error) {
+    console.warn(`[content:api] could not load authors; bylines will show author slugs. ${String(error)}`);
+    return new Map();
+  }
+}
+
 // Module-level cache: the full post list is fetched once and reused for the
 // lifetime of the build, so `listPosts`, every route's `getStaticPaths`, and
 // the sitemap all share one fetch instead of re-requesting the API.
@@ -137,8 +155,9 @@ let cachedPosts: Promise<ContentEntry[]> | null = null;
 
 function loadPosts(apiOrigin: string): Promise<ContentEntry[]> {
   if (!cachedPosts) {
-    cachedPosts = fetchAllRecords(apiOrigin).then((records) =>
-      records.map(mapRecord).filter((entry): entry is ContentEntry => entry !== null)
+    cachedPosts = Promise.all([fetchAllRecords(apiOrigin, COLLECTION_ID, "publishedAt"), fetchAuthorNames(apiOrigin)]).then(
+      ([records, authorNames]) =>
+        records.map((record) => mapRecord(record, authorNames)).filter((entry): entry is ContentEntry => entry !== null)
     );
   }
   return cachedPosts;
