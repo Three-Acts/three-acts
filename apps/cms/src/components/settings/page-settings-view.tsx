@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ExternalLink, FileText, Trash2 } from "lucide-react";
+import { ExternalLink, FileText } from "lucide-react";
 import type { CmsField, ImageField, PublishStatus } from "../../cms/types";
 import { applyTitleTemplate, parseSchemaMarkup } from "../../cms/types";
 import { hasPublishWorkflow, isEditable } from "../../lib/records";
@@ -36,7 +36,6 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
   const { draft, isDirty, isSaving, pages, selectedId } = settings;
   const toast = useToast();
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   // Required-but-empty errors only appear once a save has been attempted;
   // format errors (bad path, bad JSON) show as they're typed.
   const [showRequired, setShowRequired] = useState(false);
@@ -177,33 +176,7 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
                 uploadingField={settings.uploadingField}
               />
 
-              {/* Below xl the preview rail has no room beside the form, so it folds in at the end. */}
-              <div className="xl:hidden">
-                <EditorSection title="Preview">
-                  <PagePreviews site={settings.site} values={values} />
-                </EditorSection>
-              </div>
-
-              <footer className="flex gap-1.5 border-t border-cms-line px-3 py-2.5">
-                {editable ? (
-                  <Button className="text-cms-muted hover:text-cms-danger" onClick={() => setIsConfirmingDelete(true)}>
-                    <Trash2 size={13} />
-                    Delete page
-                  </Button>
-                ) : null}
-              </footer>
             </ScrollArea>
-
-            <aside aria-label="Previews" className="hidden w-88 shrink-0 flex-col border-l border-cms-line xl:flex">
-              <ScrollArea className="min-h-0 flex-1" viewportClassName="px-3 py-4">
-                <PagePreviews site={settings.site} values={values} />
-                {!settings.hasSiteSettings ? (
-                  <p className="m-0 mt-4 text-ui leading-5 text-cms-subtle">
-                    No site settings found, so previews show this page’s own values without a title template or default image.
-                  </p>
-                ) : null}
-              </ScrollArea>
-            </aside>
           </div>
         </section>
       ) : (
@@ -216,17 +189,6 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
           </div>
         </div>
       )}
-
-      <ConfirmDialog
-        description="Its SEO settings will be removed and the page will fall back to the sitewide defaults. This cannot be undone."
-        onConfirm={() => {
-          setShowRequired(false);
-          void settings.deletePage();
-        }}
-        onOpenChange={setIsConfirmingDelete}
-        open={isConfirmingDelete}
-        title={`Delete ${pageName || "this page"}?`}
-      />
 
       <ConfirmDialog
         confirmLabel="Discard"
@@ -277,6 +239,12 @@ function PageSettingsForm({
   const titleFallback = metaTitle || pageName;
   const descriptionFallback = metaDescription || site.defaultMetaDescription;
   const renderedTitle = applyTitleTemplate(site.titleTemplate, titleFallback);
+  const pageUrl = absoluteUrl(text(values, "canonicalUrl") || pagePath || "/");
+  const searchTitle = text(values, "searchTitle") || renderedTitle;
+  const searchDescription = text(values, "searchDescription") || descriptionFallback;
+  const socialTitle = text(values, "ogTitle") || titleFallback;
+  const socialDescription = text(values, "ogDescription") || descriptionFallback;
+  const socialImage = imageSrc(text(values, "ogImage")) || site.defaultOgImage;
 
   // Labels and help come from the registry when it defines the field; the
   // fallbacks keep the form usable against an older registry.
@@ -380,6 +348,7 @@ function PageSettingsForm({
           placeholder={descriptionFallback}
         />
         {renderImage(imageField("ogImage", "Open Graph image", siteImageHint))}
+        <SocialCardPreview description={socialDescription} imageSrc={socialImage} title={socialTitle} url={pageUrl} />
       </EditorSection>
 
       <EditorSection title="Search">
@@ -398,42 +367,18 @@ function PageSettingsForm({
           placeholder={descriptionFallback}
         />
         {renderImage(imageField("searchImage", "Search image", "Leave empty to use the Open Graph image."))}
+        <SearchResultPreview
+          description={searchDescription}
+          faviconSrc={site.favicon}
+          siteName={site.siteName}
+          title={searchTitle}
+          url={pageUrl}
+        />
       </EditorSection>
 
       <EditorSection title="Schema markup">
         <SchemaMarkupField {...bind("schemaMarkup")} />
       </EditorSection>
     </fieldset>
-  );
-}
-
-/** Both previews, resolved through the same fallbacks the live site applies. */
-function PagePreviews({ site, values }: { site: SiteDefaults; values: Record<string, unknown> }) {
-  const read = (key: string) => (typeof values[key] === "string" ? (values[key] as string) : "");
-  const pageName = read("pageName");
-  const pagePath = read("pagePath") || "/";
-  const metaTitle = read("metaTitle") || pageName;
-  const metaDescription = read("metaDescription") || site.defaultMetaDescription;
-  const url = absoluteUrl(read("canonicalUrl") || pagePath);
-  const ogImage = imageSrc(read("ogImage")) || site.defaultOgImage;
-  // An explicit search title replaces the templated title tag outright.
-  const searchTitle = read("searchTitle") || applyTitleTemplate(site.titleTemplate, metaTitle);
-
-  return (
-    <div className="grid gap-5">
-      <SearchResultPreview
-        description={read("searchDescription") || metaDescription}
-        faviconSrc={site.favicon}
-        siteName={site.siteName}
-        title={searchTitle}
-        url={url}
-      />
-      <SocialCardPreview
-        description={read("ogDescription") || metaDescription}
-        imageSrc={ogImage}
-        title={read("ogTitle") || metaTitle}
-        url={url}
-      />
-    </div>
   );
 }

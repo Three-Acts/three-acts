@@ -32,7 +32,7 @@ export function PageList({ isLoading, onSelect, pages, selectedId, showStatus, t
             <button
               aria-current={selected ? "true" : undefined}
               className={cn(
-                "grid h-12 w-full grid-cols-fill-auto items-center gap-2 border-b border-cms-line px-3 text-left transition-colors",
+                "grid h-8 w-full grid-cols-fill-auto items-center gap-2 border-b border-cms-line px-3 text-left transition-colors",
                 selected ? "bg-cms-raised" : "hover:bg-cms-surface",
                 focusRing
               )}
