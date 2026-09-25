@@ -2,7 +2,7 @@ import { ChevronRight, Plus } from "lucide-react";
 import { cn } from "@three-acts/utils";
 import type { CmsCollectionSummary, CmsRecord } from "../../cms/types";
 import { singularize } from "../../lib/format";
-import { getRecordTitle, isEditable } from "../../lib/records";
+import { canCreate, getRecordTitle } from "../../lib/records";
 import { BareIconButton, columnHeaderClass, focusRing, PanelHeader, ScrollArea, Tooltip } from "../atoms";
 
 type RecordListPaneProps = {
@@ -25,7 +25,7 @@ export function RecordListPane({ collection, onCreate, onSelectRecord, records, 
     <div className="flex min-h-0 flex-1 flex-col">
       <PanelHeader className="justify-between">
         <h1 className="min-w-0 flex-1 truncate text-ui-lg font-semibold text-cms-text">{collection.label}</h1>
-        {isEditable(collection) ? (
+        {canCreate(collection) ? (
           <Tooltip content={newLabel}>
             <BareIconButton aria-label={newLabel} onClick={onCreate}>
               <Plus size={15} />

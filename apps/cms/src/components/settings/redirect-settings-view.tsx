@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AssetField, CmsCollectionSummary, CmsRecord, CmsRecordValue, FileField, ImageField, VideoField } from "../../cms/types";
 import { useCmsBackend } from "../../cms/backend-context";
+import { canCreate as canCreateRecords } from "../../lib/records";
 import { RecordEditor } from "../editor/record-editor";
 import { ImportDialog } from "../import";
 import { RecordsToolbar } from "../workspace/records-toolbar";
@@ -181,6 +182,7 @@ export function CollectionSettingsView({ collection, downloadName, newLabel, onD
     <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
       <RecordsToolbar
         canQueueSelected={false}
+        canCreate={canCreateRecords(collection)}
         canUnpublishSelected={false}
         hasPublishWorkflow={false}
         newLabel={newLabel}

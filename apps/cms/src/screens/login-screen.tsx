@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import type { SignInCredentials } from "../auth/auth-context";
+import type { SignInCredentials } from "@three-acts/auth";
 import { Button, FormField, Input, Logo } from "../components/atoms";
 
 export function LoginScreen({
@@ -33,7 +33,10 @@ export function LoginScreen({
       <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-10 px-6 pb-12 lg:grid-cols-2 lg:gap-16 lg:px-16">
         <section className="order-2 mx-auto w-full max-w-95 lg:order-2 lg:ml-auto lg:mr-0">
           <h2 className="m-0 text-ui-lg font-semibold">Welcome back</h2>
-          <p className="mb-6 mt-1.5 text-ui text-cms-muted">Sign in with your workspace email and password.</p>
+          <p className="mb-6 mt-1.5 text-ui text-cms-muted">
+            Sign in with your editor account.
+            {import.meta.env.DEV ? " In local development the API accepts any email and password." : null}
+          </p>
           <form className="grid" onSubmit={handleSubmit} noValidate>
             <FormField label="Email" required>
               <Input
@@ -62,9 +65,6 @@ export function LoginScreen({
               {error}
             </p>
           ) : null}
-          <p className="mb-0 mt-3 text-ui text-cms-subtle">
-            The local editor accepts any email and password until a real auth provider is connected.
-          </p>
         </section>
         <section className="order-1 lg:order-1">
           {/* The display face gets room here and nowhere else in the workspace. */}

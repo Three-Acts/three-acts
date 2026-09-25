@@ -1,35 +1,19 @@
 import { createApiClient } from "@three-acts/utils";
 import type { ApiEnvelope } from "@three-acts/utils";
+import { sessionStore } from "../auth/session-store";
 
 export type { ApiEnvelope };
-
-type ApiClientConfig = {
-  getAuthToken: () => Promise<string | null>;
-};
-
-let getAuthToken: ApiClientConfig["getAuthToken"] = async () => null;
-
-/**
- * Wires apiFetch up to the active auth client's token getter so every
- * request carries the current session's bearer token without every call
- * site having to thread it through. AuthProvider calls this once it knows
- * which AuthClient is active.
- *
- * This indirection (a module-level variable read lazily by the client below)
- * exists because `createApiClient` captures `getAuthToken` once, at
- * construction time, but AuthProvider only learns the real token getter after
- * mount.
- */
-export function configureApiClient(config: ApiClientConfig) {
-  getAuthToken = config.getAuthToken;
-}
 
 // An empty string is what an unset Vite env var resolves to at build time;
 // `createApiClient` already treats that the same as "unset" and falls back
 // to "/api".
 const client = createApiClient({
   baseUrl: import.meta.env.VITE_API_URL,
-  getAuthToken: () => getAuthToken()
+  // The signed-in editor's session token first (set by the `rest` AuthClient
+  // on sign-in — see `cms/resolve-backend.ts`); `VITE_PUBLISH_TOKEN` as a
+  // legacy fallback for when no session exists yet (or `VITE_CMS_BACKEND=mock`,
+  // whose local-only auth client never writes a real session here).
+  getAuthToken: async () => (await sessionStore.getToken()) ?? import.meta.env.VITE_PUBLISH_TOKEN ?? null
 });
 
 export const apiBaseUrl = client.apiBaseUrl;

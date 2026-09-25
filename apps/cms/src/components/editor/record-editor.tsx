@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowLeft, Copy, Lock, Trash2 } from "lucide-react";
 import type { AssetField, CmsCollectionSummary, CmsRecord, CmsRecordValue, FileField, ImageField, ImageGalleryField, PublishStatus, VideoField } from "../../cms/types";
 import { formatDateTime } from "../../lib/format";
-import { getRecordTitle, hasPublishWorkflow, isEditable } from "../../lib/records";
+import { canCreate, getRecordTitle, hasPublishWorkflow, isEditable } from "../../lib/records";
 import { BareIconButton, Button, ConfirmDialog, PanelHeader, ScrollArea, SplitButton, StatusPill, Tooltip } from "../atoms";
 import { EditorSection } from "./editor-section";
 import { DetailRow } from "./detail-row";
@@ -157,7 +157,7 @@ export function RecordEditor({
       </ScrollArea>
 
       <footer className="flex shrink-0 gap-1.5 border-t border-cms-line px-3 py-2.5">
-        {editable ? (
+        {editable && canCreate(collection) ? (
           <Button onClick={onDuplicate}>
             <Copy size={13} />
             Duplicate

@@ -1,5 +1,5 @@
 import { Loader2, Rocket, UserCircle } from "lucide-react";
-import type { AuthUser } from "../../auth/auth-context";
+import type { AuthUser } from "@three-acts/auth";
 import { Button, Logo, PanelHeader, Tooltip } from "../atoms";
 import { usePublish } from "../../hooks/use-publish";
 import { WorkspaceTabs } from "./workspace-tabs";

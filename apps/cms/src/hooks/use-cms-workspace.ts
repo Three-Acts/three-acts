@@ -16,7 +16,7 @@ import type {
 import { parseImageGallery, parseImageValue, serializeFileValue, serializeImageGallery, serializeImageValue, serializeVideoValue } from "../cms/types";
 import { rememberAssetMeta } from "../components/atoms";
 import type { CollectionGroup } from "../components/workspace";
-import { getRecordTitle } from "../lib/records";
+import { canCreate, createDefaultsFor, getRecordTitle } from "../lib/records";
 import { exportRecords } from "../lib/export-records";
 import { getImageDimensions } from "../lib/image-dimensions";
 
@@ -399,7 +399,7 @@ export function useCmsWorkspace() {
     setError(null);
 
     try {
-      const record = await data.createRecord(activeCollection.id);
+      const record = await data.createRecord(activeCollection.id, createDefaultsFor(activeCollection));
       const { records: nextRecords } = await data.listRecords(activeCollection.id);
       setRecords(nextRecords);
       await refreshCollections();
@@ -412,7 +412,7 @@ export function useCmsWorkspace() {
   }
 
   async function handleDuplicateRecord() {
-    if (!activeCollection || !draftRecord) {
+    if (!activeCollection || !draftRecord || !canCreate(activeCollection)) {
       return;
     }
 

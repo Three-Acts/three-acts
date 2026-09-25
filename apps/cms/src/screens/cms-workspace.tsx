@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@three-acts/utils";
-import type { AuthUser } from "../auth/auth-context";
+import type { AuthUser } from "@three-acts/auth";
 import { collectionRegistry } from "../cms/registry";
 import { singularize } from "../lib/format";
-import { hasPublishWorkflow, isEditable } from "../lib/records";
+import { canCreate, hasPublishWorkflow } from "../lib/records";
 import { BareIconButton, ConfirmDialog, PanelHeader, Tooltip, useToast } from "../components/atoms";
 import { useCmsWorkspace } from "../hooks/use-cms-workspace";
 import { CollectionSidebar, RecordListPane, RecordsToolbar, RecordTable, TopBar } from "../components/workspace";
@@ -241,6 +241,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
                 <>
                   <RecordsToolbar
                     canQueueSelected={canQueueSelected}
+                    canCreate={canCreate(activeCollection)}
                     canUnpublishSelected={canUnpublishSelected}
                     hasPublishWorkflow={showUpdateItems}
                     newLabel={singularize(activeCollection.label)}
@@ -251,7 +252,6 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
                     onSearchChange={setSearch}
                     onToggleSelectionMode={toggleSelectionMode}
                     onUpdateSelectedStatus={handleUpdateSelectedStatus}
-                    readOnly={!isEditable(activeCollection)}
                     search={search}
                     selectedCount={selectedRecords.length}
                     selectionMode={selectionMode}

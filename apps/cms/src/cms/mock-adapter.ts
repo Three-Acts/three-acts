@@ -1,6 +1,6 @@
 import { collectionRegistry } from "./registry";
 import { cloneSeedCollections } from "@three-acts/cms-schema/seed";
-import { CmsError, hasPublishWorkflow } from "./types";
+import { CmsError, canCreateRecords, hasPublishWorkflow, isReadOnlyField } from "./types";
 import type {
   AssetUploadResult,
   CmsBackend,
@@ -107,6 +107,19 @@ export const mockCmsBackend: CmsBackend = {
       }
 
       const values = { ...record.values };
+      // `format: "json"` fields must be "" or valid JSON on every save — check
+      // the incoming values before a read-only field's are overwritten below,
+      // so a malformed submission is rejected rather than silently discarded.
+      assertValidFormats(collection, values);
+
+      // The site's system write path is the only one allowed to set a
+      // read-only field's value; an editor save keeps whatever is already stored.
+      for (const field of collection.fields) {
+        if (isReadOnlyField(field)) {
+          values[field.key] = stored.values[field.key];
+        }
+      }
+
       const nextRecord: CmsRecord = {
         ...cloneRecord(stored),
         ...resolveSavedStatus(collection, stored, record.publishStatus, values),
@@ -120,13 +133,15 @@ export const mockCmsBackend: CmsBackend = {
     },
 
     async createRecord(collectionId: string, values?: Partial<Record<string, CmsRecordValue>>) {
-      const collection = assertWritable(getCollection(collectionId));
+      const collection = assertCreatable(getCollection(collectionId));
       assertSingletonCapacity(collection, 1);
       const record = createEmptyRecord(collection);
 
       if (values) {
         record.values = { ...record.values, ...values };
       }
+
+      assertValidFormats(collection, record.values);
 
       records[collectionId] = [record, ...(records[collectionId] ?? [])];
       return delay(cloneRecord(record), 160);
@@ -141,7 +156,7 @@ export const mockCmsBackend: CmsBackend = {
     },
 
     async importRecords(collectionId: string, rows: Array<Record<string, CmsRecordValue>>) {
-      const collection = assertWritable(getCollection(collectionId));
+      const collection = assertCreatable(getCollection(collectionId));
       assertSingletonCapacity(collection, rows.length);
       const imported = rows.map((row) => {
         const base = createEmptyRecord(collection, generateId(collection.id));
@@ -158,6 +173,8 @@ export const mockCmsBackend: CmsBackend = {
             values[field.key] = coerceValue(field, row[field.key]);
           }
         }
+
+        assertValidFormats(collection, values);
 
         return { ...base, values };
       });
@@ -334,6 +351,41 @@ function assertWritable(collection: CmsCollection) {
   }
 
   return collection;
+}
+
+/** Enforce record-source gating: only collections editors can create into accept a create or import. */
+function assertCreatable(collection: CmsCollection): CmsCollection {
+  if (!canCreateRecords(collection)) {
+    throw new CmsError("forbidden", `${collection.label} records are created by the site, not the CMS.`);
+  }
+
+  return collection;
+}
+
+/** `format: "json"` fields must be "" or hold a valid JSON value (any shape) — same rule as `json-ld`, minus the object-shape requirement. */
+function assertValidJsonFormat(field: CmsField, value: CmsRecordValue) {
+  if ((field.type !== "text" && field.type !== "textarea") || (field as { format?: string }).format !== "json") {
+    return;
+  }
+
+  const text = value === null || value === undefined ? "" : String(value);
+
+  if (!text.trim()) {
+    return;
+  }
+
+  try {
+    JSON.parse(text);
+  } catch (error) {
+    const detail = error instanceof Error && error.message ? ` (${error.message})` : "";
+    throw new CmsError("validation", `${field.label} is not valid JSON${detail}.`, { details: { field: field.key } });
+  }
+}
+
+function assertValidFormats(collection: CmsCollection, values: Record<string, CmsRecordValue>) {
+  for (const field of collection.fields) {
+    assertValidJsonFormat(field, values[field.key]);
+  }
 }
 
 /** Mirrors the API: singleton collections (site settings) hold at most one record. */

@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 import { cn } from "@three-acts/utils";
 import type { CmsCollectionSummary, CmsRecord } from "../../cms/types";
 import { formatDateTime } from "../../lib/format";
-import { getRecordTitle } from "../../lib/records";
+import { getRecordTitle, sourceDescription } from "../../lib/records";
 import { Checkbox, columnHeaderClass, focusRing, ScrollArea, StatusPill } from "../atoms";
 
 type RecordTableProps = {
@@ -47,7 +47,7 @@ export function RecordTable({
         ) : (
           <div className="grid gap-1">
             <p className="m-0 text-ui text-cms-subtle">No records yet.</p>
-            <p className="m-0 text-micro text-cms-subtle">Create one or import a CSV.</p>
+            <p className="m-0 text-micro text-cms-subtle">{sourceDescription(collection) ?? "Create one or import a CSV."}</p>
           </div>
         )}
       </div>

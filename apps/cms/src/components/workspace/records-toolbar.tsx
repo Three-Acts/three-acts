@@ -6,6 +6,8 @@ import { Button, MenuButton, PanelHeader, SearchInput } from "../atoms";
 type RecordsToolbarProps = {
   /** At least one selected record isn't already queued — enables "Queue to publish". */
   canQueueSelected: boolean;
+  /** Editors may create or import records in this collection — false hides New/Import (e.g. records come from the site). */
+  canCreate: boolean;
   /** At least one selected record is published — enables "Unpublish". */
   canUnpublishSelected: boolean;
   /** Only editorial collections offer the bulk "Update items" status menu. */
@@ -18,8 +20,6 @@ type RecordsToolbarProps = {
   onSearchChange: (value: string) => void;
   onToggleSelectionMode: () => void;
   onUpdateSelectedStatus: (status: Exclude<PublishStatus, "published">) => void;
-  /** Read-only collections: records come from the site, so hide New/Import. */
-  readOnly?: boolean;
   search: string;
   selectedCount: number;
   selectionMode: boolean;
@@ -30,6 +30,7 @@ type RecordsToolbarProps = {
 // between the search field and the record actions.
 export function RecordsToolbar({
   canQueueSelected,
+  canCreate,
   canUnpublishSelected,
   hasPublishWorkflow,
   newLabel,
@@ -40,7 +41,6 @@ export function RecordsToolbar({
   onSearchChange,
   onToggleSelectionMode,
   onUpdateSelectedStatus,
-  readOnly,
   search,
   selectedCount,
   selectionMode,
@@ -107,7 +107,7 @@ export function RecordsToolbar({
               <CheckSquare size={13} />
               Select
             </Button>
-            {readOnly ? null : (
+            {canCreate ? (
               <>
                 <Button onClick={onImport} render={<Toolbar.Button />}>
                   <Upload size={13} />
@@ -118,7 +118,7 @@ export function RecordsToolbar({
                   New {newLabel}
                 </Button>
               </>
-            )}
+            ) : null}
           </Toolbar.Group>
         </>
       )}

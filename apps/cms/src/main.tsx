@@ -1,18 +1,17 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { AuthProvider } from "@three-acts/auth/react";
 import { App } from "./app";
-import { AuthProvider } from "./auth/auth-provider";
-import { mockAuthClient } from "./auth/mock-auth-client";
 import { CmsBackendProvider } from "./cms/backend-context";
 import { resolveCmsBackend } from "./cms/resolve-backend";
 import "./styles.css";
 
-const cmsBackend = resolveCmsBackend();
+const { authClient, backend } = resolveCmsBackend();
 
 createRoot(document.getElementById("root") as HTMLElement).render(
   <StrictMode>
-    <AuthProvider client={mockAuthClient}>
-      <CmsBackendProvider backend={cmsBackend}>
+    <AuthProvider client={authClient}>
+      <CmsBackendProvider backend={backend}>
         <App />
       </CmsBackendProvider>
     </AuthProvider>
