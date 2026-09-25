@@ -15,7 +15,7 @@ function Root({ icon, title, description, action, className, ...props }: RootPro
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-3 border border-dashed border-line-strong bg-block p-10 text-center",
+        "flex flex-col items-center gap-3 border border-dashed border-line-strong bg-surface p-10 text-center",
         className
       )}
       {...props}

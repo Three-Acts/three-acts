@@ -13,7 +13,7 @@ import { footerNav, navLinks, site } from "../site";
 
 type Props = {
   seo: SeoMetadata;
-  /** A thin promo/notice bar shown above the header. Defaults to the shop's free-shipping threshold (`@three-acts/ecommerce`'s `shopConfig`). Pass `""` to hide it. */
+  /** A thin promo/notice bar shown above the header. Defaults to the free-delivery threshold from `shopConfig`, or the updates promise for a digital shop. Pass `""` to hide it. */
   announcement?: string;
 };
 
@@ -22,8 +22,13 @@ const siteSettings = await loadSiteSettings();
 const resolved = resolveSeo(seo, siteSettings);
 const year = new Date().getFullYear();
 const footerDescription = siteSettings.defaultMetaDescription || site.description;
+// Physical-goods forks advertise the free-delivery threshold; a digital shop
+// (threshold 0) leads with what every purchase includes instead.
 const resolvedAnnouncement =
-  announcement ?? `Free delivery on orders over ${formatMoney(shopConfig.shipping.freeOverInclVat, shopConfig.currency)}`;
+  announcement ??
+  (shopConfig.shipping.freeOverInclVat > 0
+    ? `Free delivery on orders over ${formatMoney(shopConfig.shipping.freeOverInclVat, shopConfig.currency)}`
+    : "Every purchase includes 12 months of updates and access to the private repo");
 ---
 
 <!doctype html>

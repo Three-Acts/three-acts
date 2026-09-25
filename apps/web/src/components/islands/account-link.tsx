@@ -7,10 +7,9 @@ function AccountLinkInner() {
   const { user, status } = useAuth();
 
   if (status === "authenticated" && user) {
-    const firstName = user.name.trim().split(/\s+/)[0] || user.name;
     return (
-      <a href="/account" className={LINK_CLASS}>
-        {firstName}
+      <a href="/account" className={LINK_CLASS} aria-label={`Account (${user.name})`}>
+        Account
       </a>
     );
   }
@@ -23,8 +22,8 @@ function AccountLinkInner() {
 }
 
 /**
- * Header account link: the signed-in customer's first name (linking to
- * `/account`) or "Sign in". Wrapped in `AppProviders` (see
+ * Header account link: "Account" (linking to `/account`) when signed in,
+ * otherwise "Sign in". Wrapped in `AppProviders` (see
  * `src/lib/providers.tsx`) so it shares `authClient`/`sessionStore` with
  * every other island. `status` starts `"initializing"` during SSR and before
  * the client-side session restore resolves, which this treats the same as

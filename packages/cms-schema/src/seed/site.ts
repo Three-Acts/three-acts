@@ -189,7 +189,7 @@ const pages: Record<(typeof staticPagePaths)[number], PageInput> = {
   "/": {
     path: "/",
     name: "Home",
-    metaTitle: "Three Acts — the Astro + CMS template that sells itself",
+    metaTitle: "The Astro + CMS template that sells itself",
     metaDescription:
       "A static-first Astro site, a private React CMS and a typed API bridge — the foundation we use to ship client sites, now yours to fork or buy piece by piece.",
     ogTitle: "Three Acts · The Astro + CMS template that sells itself",
@@ -329,7 +329,7 @@ const pageSettings: CmsRecord[] = staticPagePaths.map((path, index) => {
         values,
         liveValues: {
           ...values,
-          metaTitle: "Wholesale for agencies",
+          metaTitle: "For agencies",
           metaDescription: "Bring Three Acts to your studio. Get in touch for our agency licensing terms.",
           ogTitle: "",
           ogImage: ""
