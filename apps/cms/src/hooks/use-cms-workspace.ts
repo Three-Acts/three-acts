@@ -67,7 +67,10 @@ export function useCmsWorkspace() {
         }
 
         setCollections(nextCollections);
-        setActiveCollectionId((current) => current || nextCollections[0]?.id || "");
+        // Land on a regular collection; settings collections have their own workspace tabs.
+        setActiveCollectionId(
+          (current) => current || (nextCollections.find((collection) => !collection.settingsView) ?? nextCollections[0])?.id || ""
+        );
 
         // Only flip on the records spinner when a collection is actually about
         // to be fetched — otherwise it never gets cleared when the registry is empty.
@@ -258,8 +261,16 @@ export function useCmsWorkspace() {
   // records are only a slice of what's queued across the whole registry.
   const queuedCount = useMemo(() => collections.reduce((sum, collection) => sum + collection.queuedCount, 0), [collections]);
 
+  // Settings collections get their own workspace tab and screen, so they
+  // stay out of the regular Collections groups.
+  const settingsCollections = useMemo(() => collections.filter((collection) => collection.settingsView), [collections]);
+
   const groups = useMemo<CollectionGroup[]>(() => {
     return collections.reduce<CollectionGroup[]>((acc, collection) => {
+      if (collection.settingsView) {
+        return acc;
+      }
+
       const groupName = collection.group ?? "Collections";
       const group = acc.find((item) => item.group === groupName);
 
@@ -807,6 +818,7 @@ export function useCmsWorkspace() {
     setIsImportOpen,
     setSearch,
     setSelectedRecordId,
+    settingsCollections,
     toggleRecordSelected,
     toggleSelectAll,
     toggleSelectionMode,

@@ -51,7 +51,10 @@ const counts: Record<string, number> = {
   "feature-flags": 52,
   "media-library": 96,
   "redirect-rules": 128,
-  "localization-strings": 150
+  "localization-strings": 150,
+  // Settings hold hand-written records only (see settingsRecords): no generated padding.
+  "site-settings": 0,
+  "page-settings": 0
 };
 
 const edgeCases: Record<string, CmsRecord[]> = {
@@ -133,8 +136,88 @@ const edgeCases: Record<string, CmsRecord[]> = {
   ]
 };
 
+/**
+ * Site and page settings mirror the public site's current SEO copy
+ * (apps/web/src/site.ts + page-meta.ts). Empty og/search fields exercise the
+ * fallback chain (og/search -> meta -> site defaults). Images point at files
+ * that really exist in apps/web/public so mock-backed builds resolve them.
+ */
+const settingsRecords: Record<string, CmsRecord[]> = {
+  "site-settings": [
+    settingsRecord("site-settings-main", 3, "published", {
+      siteName: "Three Acts",
+      titleTemplate: "%s | Three Acts",
+      defaultMetaDescription:
+        "A static-first marketing website starter built on Astro and React, backed by its own API and deployed on Vercel.",
+      defaultOgImage: serializeImageValue({
+        src: "/og-default.png",
+        fileName: "og-default.png",
+        size: 28606,
+        width: 1200,
+        height: 630,
+        alt: "Three Acts"
+      }),
+      favicon: serializeImageValue({ src: "/favicon.svg", fileName: "favicon.svg", size: 261, alt: "" }),
+      twitterHandle: "@threeacts",
+      locale: "en_US",
+      allowIndexing: true,
+      schemaMarkup: JSON.stringify(
+        { "@context": "https://schema.org", "@type": "Organization", name: "Three Acts", sameAs: ["https://twitter.com/threeacts"] },
+        null,
+        2
+      )
+    })
+  ],
+  "page-settings": [
+    settingsRecord("page-settings-home", 2, "published", {
+      pageName: "Home",
+      pagePath: "/",
+      metaTitle: "Static marketing website starter",
+      metaDescription:
+        "Three Acts is a marketing website starter for story-led launches, conversion pages, and static SEO performance.",
+      canonicalUrl: "/",
+      ogTitle: "Three Acts | Static marketing website starter",
+      ogDescription: "",
+      ogImage: "",
+      searchTitle: "",
+      searchDescription: "",
+      searchImage: "",
+      schemaMarkup: JSON.stringify({ "@context": "https://schema.org", "@type": "WebSite", name: "Three Acts" }, null, 2)
+    }),
+    settingsRecord("page-settings-about", 5, "published", {
+      pageName: "About",
+      pagePath: "/about",
+      metaTitle: "About",
+      metaDescription:
+        "Meet the marketing strategy behind Three Acts: sharp positioning, static performance, and CMS-backed launch operations.",
+      canonicalUrl: "/about",
+      ogTitle: "About Three Acts",
+      ogDescription: "",
+      ogImage: "",
+      searchTitle: "",
+      searchDescription: "",
+      searchImage: "",
+      schemaMarkup: ""
+    }),
+    settingsRecord("page-settings-blog", 8, "queued_to_publish", {
+      pageName: "Blog",
+      pagePath: "/blog",
+      metaTitle: "Blog",
+      metaDescription: "Notes on static-first delivery, islands architecture, and CMS-driven publishing.",
+      canonicalUrl: "/blog",
+      ogTitle: "",
+      ogDescription: "",
+      ogImage: "",
+      searchTitle: "",
+      searchDescription: "",
+      searchImage: "",
+      schemaMarkup: ""
+    })
+  ]
+};
+
 const initialRecords = collectionRegistry.reduce<Record<string, CmsRecord[]>>((nextRecords, collection) => {
-  nextRecords[collection.id] = [...(edgeCases[collection.id] ?? []), ...Array.from({ length: counts[collection.id] ?? 24 }, (_, index) => generateRecord(collection, index))];
+  nextRecords[collection.id] = [...(settingsRecords[collection.id] ?? []), ...(edgeCases[collection.id] ?? []), ...Array.from({ length: counts[collection.id] ?? 24 }, (_, index) => generateRecord(collection, index))];
   return nextRecords;
 }, {});
 
@@ -222,6 +305,7 @@ export const mockCmsBackend: CmsBackend = {
 
     async createRecord(collectionId: string, values?: Partial<Record<string, CmsRecordValue>>) {
       const collection = assertWritable(getCollection(collectionId));
+      assertSingletonCapacity(collection, 1);
       const record = createEmptyRecord(collection);
 
       if (values) {
@@ -242,6 +326,7 @@ export const mockCmsBackend: CmsBackend = {
 
     async importRecords(collectionId: string, rows: Array<Record<string, CmsRecordValue>>) {
       const collection = assertWritable(getCollection(collectionId));
+      assertSingletonCapacity(collection, rows.length);
       const imported = rows.map((row) => {
         const base = createEmptyRecord(collection, generateId(collection.id));
         const values = { ...base.values };
@@ -373,6 +458,25 @@ function assertWritable(collection: CmsCollection) {
   return collection;
 }
 
+/** Mirrors the API: singleton collections (site settings) hold at most one record. */
+function assertSingletonCapacity(collection: CmsCollection, incoming: number) {
+  if (!collection.singleton || incoming === 0) {
+    return;
+  }
+
+  const existing = (records[collection.id] ?? []).length;
+
+  if (existing + incoming > 1) {
+    throw new CmsError(
+      "validation",
+      existing > 0
+        ? `${collection.label} already has a record. Edit the existing record instead of creating another.`
+        : `${collection.label} holds a single record; import at most one row.`,
+      { details: { singleton: true } }
+    );
+  }
+}
+
 /** Case-insensitive match over the record's display title and its string values. */
 function matchesSearch(collection: CmsCollection, record: CmsRecord, query: string): boolean {
   const titleKey = collection.titleField ?? "name";
@@ -447,6 +551,10 @@ function buildRecord(id: string, offset: number, values: Record<string, CmsRecor
     modifiedAt: isoFromSeed(-Math.floor(offset / 2), offset * 2),
     values
   };
+}
+
+function settingsRecord(id: string, offset: number, publishStatus: PublishStatus, values: Record<string, CmsRecordValue>): CmsRecord {
+  return { ...buildRecord(id, offset, values), publishStatus };
 }
 
 function valuesForCollection(collection: CmsCollection, index: number, id: string): Record<string, CmsRecordValue> {
