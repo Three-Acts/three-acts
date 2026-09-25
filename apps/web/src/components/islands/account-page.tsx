@@ -19,8 +19,10 @@ function describeError(error: unknown): string {
 
 function tabClass(active: boolean) {
   return cn(
-    "focus-ring -mb-px border-b-2 px-4 py-3 text-sm font-semibold transition-colors duration-150",
-    active ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
+    "focus-ring -mb-px border-b px-4 py-3 text-body transition-colors duration-150",
+    active
+      ? "border-ink font-medium text-ink"
+      : "border-transparent text-ink underline decoration-1 underline-offset-4 hover:no-underline"
   );
 }
 
@@ -28,7 +30,7 @@ function tabClass(active: boolean) {
 function AccountSkeleton() {
   return (
     <div aria-hidden="true" className="flex animate-pulse flex-col gap-8">
-      <div className="flex items-center justify-between gap-4 border-b-2 border-line pb-6">
+      <div className="flex items-center justify-between gap-4 border-b border-line pb-6">
         <div className="flex flex-col gap-2">
           <div className="h-3 w-24 bg-ink/10" />
           <div className="h-5 w-40 bg-ink/10" />
@@ -107,10 +109,10 @@ function AccountPageInner() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 border-line pb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-6">
         <div>
-          <p className="text-sm text-muted">Signed in as</p>
-          <p className="text-lg font-semibold text-ink">{user.name}</p>
+          <p className="text-small text-ink">Signed in as</p>
+          <p className="text-h3 font-medium text-ink">{user.name}</p>
         </div>
         <Button.Root variant="secondary" size="sm" onClick={handleSignOut} loading={signingOut}>
           Sign out

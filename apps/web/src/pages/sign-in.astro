@@ -2,19 +2,19 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import SignInForm from "../components/islands/sign-in-form";
 import { Section } from "../components/layout/section";
+import { Typography } from "../components/ui/typography";
 import { signInMeta } from "../page-meta/builders";
 ---
 
 <BaseLayout seo={signInMeta.seo}>
   <Section.Root>
-    <Section.Container className="mx-auto max-w-md">
-      <Section.Header
-        align="center"
-        eyebrow="Account"
-        title="Sign in"
-        lede="Sign in to check out faster and see your order history."
-      />
-      <SignInForm client:load />
+    <Section.Container>
+      <div class="mx-auto flex w-full max-w-md flex-col gap-6 border border-line-strong bg-surface p-8">
+        <Typography.Title as="h1" className="text-center">
+          Sign in to your Three Acts account
+        </Typography.Title>
+        <SignInForm client:load />
+      </div>
     </Section.Container>
   </Section.Root>
 </BaseLayout>

@@ -90,7 +90,7 @@ function SignUpFormInner() {
         />
       </Field.Root>
       <Field.Checkbox
-        label="Send me occasional emails about new coffee, roastery events and offers."
+        label="Send me occasional emails about new releases and product updates."
         checked={marketingOptIn}
         onChange={(event) => setMarketingOptIn(event.target.checked)}
       />
@@ -101,7 +101,7 @@ function SignUpFormInner() {
           {emailTaken && (
             <>
               {" "}
-              <a href="/sign-in" className="font-semibold underline underline-offset-2">
+              <a href="/sign-in" className="focus-ring text-ink underline decoration-1 underline-offset-2 hover:no-underline">
                 Sign in instead
               </a>
               .
@@ -114,9 +114,9 @@ function SignUpFormInner() {
         Create account
       </Button.Root>
 
-      <p className="text-center text-sm text-muted">
+      <p className="text-center text-small text-ink">
         Already have an account?{" "}
-        <a href="/sign-in" className="focus-ring font-medium text-ink underline underline-offset-2 hover:text-accent">
+        <a href="/sign-in" className="focus-ring text-ink underline decoration-1 underline-offset-2 hover:no-underline">
           Sign in
         </a>
       </p>

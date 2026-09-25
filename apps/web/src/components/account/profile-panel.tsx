@@ -52,7 +52,7 @@ type ProfilePanelProps = {
   onSaved: (customer: Customer) => void;
 };
 
-/** Account page "Profile" tab: editable shipping/contact details, saved via `PUT /api/auth/account`. */
+/** Account page "Profile" tab: editable contact details plus a billing address group, saved via `PUT /api/auth/account`. Bordered module — one hairline black box around the whole form. */
 /**
  * Relies on the caller keying this component by `customer?.id` (see
  * `AccountPageInner` in `../islands/account-page`) so a fresh `customer`
@@ -90,81 +90,90 @@ export function ProfilePanel({ email, customer, onSaved }: ProfilePanelProps) {
     }
   }
 
-  if (!customer) {
-    return <p className="text-sm text-muted">Loading your profile…</p>;
-  }
-
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex max-w-xl flex-col gap-5">
-      <Field.Root label="Email" hint="Contact us to change the email on your account.">
-        <Field.Input type="email" value={email} readOnly aria-readonly="true" className="cursor-not-allowed bg-ink/[0.04] text-muted" />
-      </Field.Root>
-      <Field.Root label="Full name" required>
-        <Field.Input
-          name="name"
-          autoComplete="name"
-          required
-          value={form.name}
-          onChange={(event) => update("name", event.target.value)}
-        />
-      </Field.Root>
-      <Field.Root label="Phone">
-        <Field.Input
-          type="tel"
-          name="phone"
-          autoComplete="tel"
-          value={form.phone}
-          onChange={(event) => update("phone", event.target.value)}
-        />
-      </Field.Root>
-      <Field.Root label="Address">
-        <Field.Textarea
-          name="address"
-          autoComplete="street-address"
-          rows={2}
-          value={form.address}
-          onChange={(event) => update("address", event.target.value)}
-        />
-      </Field.Root>
-      <div className="grid gap-5 portrait:grid-cols-1 landscape:grid-cols-2">
-        <Field.Root label="City">
-          <Field.Input
-            name="city"
-            autoComplete="address-level2"
-            value={form.city}
-            onChange={(event) => update("city", event.target.value)}
-          />
-        </Field.Root>
-        <Field.Root label="Postal code">
-          <Field.Input
-            name="postal-code"
-            autoComplete="postal-code"
-            value={form.postalCode}
-            onChange={(event) => update("postalCode", event.target.value)}
-          />
-        </Field.Root>
-      </div>
-      <Field.Root label="Country">
-        <Field.Input
-          name="country"
-          autoComplete="country-name"
-          value={form.country}
-          onChange={(event) => update("country", event.target.value)}
-        />
-      </Field.Root>
-      <Field.Checkbox
-        label="Send me occasional emails about new coffee, roastery events and offers."
-        checked={form.marketingOptIn}
-        onChange={(event) => update("marketingOptIn", event.target.checked)}
-      />
+    <div className="border border-line-strong bg-surface p-6 desktop:p-8">
+      {!customer ? (
+        <p className="text-body text-ink">Loading your profile…</p>
+      ) : (
+        <form onSubmit={handleSubmit} noValidate className="flex max-w-xl flex-col gap-6">
+          <div className="flex flex-col gap-5">
+            <Field.Root label="Email" hint="Contact us to change the email on your account.">
+              <Field.Input type="email" value={email} readOnly aria-readonly="true" className="cursor-not-allowed" />
+            </Field.Root>
+            <Field.Root label="Full name" required>
+              <Field.Input
+                name="name"
+                autoComplete="name"
+                required
+                value={form.name}
+                onChange={(event) => update("name", event.target.value)}
+              />
+            </Field.Root>
+            <Field.Root label="Phone">
+              <Field.Input
+                type="tel"
+                name="phone"
+                autoComplete="tel"
+                value={form.phone}
+                onChange={(event) => update("phone", event.target.value)}
+              />
+            </Field.Root>
+          </div>
 
-      {saveState === "error" && error && <Notice.Root tone="error">{error}</Notice.Root>}
-      {saveState === "saved" && <Notice.Root tone="success">Your profile has been updated.</Notice.Root>}
+          <div className="flex flex-col gap-5 border-t border-line pt-6">
+            <h2 className="text-h3 font-medium text-ink">Billing address</h2>
+            <Field.Root label="Address">
+              <Field.Textarea
+                name="address"
+                autoComplete="street-address"
+                rows={2}
+                value={form.address}
+                onChange={(event) => update("address", event.target.value)}
+              />
+            </Field.Root>
+            <div className="grid gap-5 portrait:grid-cols-1 landscape:grid-cols-2">
+              <Field.Root label="City">
+                <Field.Input
+                  name="city"
+                  autoComplete="address-level2"
+                  value={form.city}
+                  onChange={(event) => update("city", event.target.value)}
+                />
+              </Field.Root>
+              <Field.Root label="Postal code">
+                <Field.Input
+                  name="postal-code"
+                  autoComplete="postal-code"
+                  value={form.postalCode}
+                  onChange={(event) => update("postalCode", event.target.value)}
+                />
+              </Field.Root>
+            </div>
+            <Field.Root label="Country">
+              <Field.Input
+                name="country"
+                autoComplete="country-name"
+                value={form.country}
+                onChange={(event) => update("country", event.target.value)}
+              />
+            </Field.Root>
+          </div>
 
-      <Button.Root type="submit" loading={saveState === "saving"} className="w-fit">
-        Save changes
-      </Button.Root>
-    </form>
+          <Field.Checkbox
+            label="Send me occasional emails about new releases and product updates."
+            checked={form.marketingOptIn}
+            onChange={(event) => update("marketingOptIn", event.target.checked)}
+          />
+
+          {saveState === "error" && error && <Notice.Root tone="error">{error}</Notice.Root>}
+          {saveState === "saved" && <Notice.Root tone="success">Your profile has been updated.</Notice.Root>}
+
+          <Button.Root type="submit" loading={saveState === "saving"} className="w-fit">
+            Save changes
+          </Button.Root>
+        </form>
+      )}
+    </div>
   );
 }
 

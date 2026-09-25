@@ -2,19 +2,20 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import SignUpForm from "../components/islands/sign-up-form";
 import { Section } from "../components/layout/section";
+import { Typography } from "../components/ui/typography";
 import { signUpMeta } from "../page-meta/builders";
 ---
 
 <BaseLayout seo={signUpMeta.seo}>
   <Section.Root>
-    <Section.Container className="mx-auto max-w-md">
-      <Section.Header
-        align="center"
-        eyebrow="Account"
-        title="Create an account"
-        lede="Save your details for faster checkout and keep track of every order."
-      />
-      <SignUpForm client:load />
+    <Section.Container>
+      <div class="mx-auto flex w-full max-w-md flex-col gap-6 border border-line-strong bg-surface p-8">
+        <div class="flex flex-col gap-3 text-center">
+          <Typography.Title as="h1">Create your Three Acts account</Typography.Title>
+          <Typography.Lede className="mx-auto">Your licences and downloads live here.</Typography.Lede>
+        </div>
+        <SignUpForm client:load />
+      </div>
     </Section.Container>
   </Section.Root>
 </BaseLayout>

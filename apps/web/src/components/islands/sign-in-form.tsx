@@ -81,9 +81,9 @@ function SignInFormInner() {
         Sign in
       </Button.Root>
 
-      <p className="text-center text-sm text-muted">
-        New to Fynbos &amp; Fire?{" "}
-        <a href="/sign-up" className="focus-ring font-medium text-ink underline underline-offset-2 hover:text-accent">
+      <p className="text-center text-small text-ink">
+        New to Three Acts?{" "}
+        <a href="/sign-up" className="focus-ring text-ink underline decoration-1 underline-offset-2 hover:no-underline">
           Create an account
         </a>
       </p>
