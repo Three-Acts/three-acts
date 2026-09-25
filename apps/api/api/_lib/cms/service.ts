@@ -3,10 +3,14 @@ import {
   MAX_ASSET_UPLOAD_BYTES,
   collectionRegistry,
   hasPublishWorkflow,
+  parseFileValue,
   parseImageGallery,
   parseImageValue,
+  parseVideoValue,
+  serializeFileValue,
   serializeImageGallery,
   serializeImageValue,
+  serializeVideoValue,
   type AssetUploadResult,
   type CmsCollection,
   type CmsCollectionSummary,
@@ -82,6 +86,25 @@ function validateFieldValue(field: CmsField, raw: CmsRecordValue, enforceRequire
         throw validationError(field, `${field.label} is required.`);
       }
       return serializeImageValue(parsed);
+    }
+    case "video": {
+      // Single typed video: stored as a VideoValue JSON string, read back
+      // leniently so legacy plain-URL rows keep validating. Uploads only —
+      // there is no external-URL input, so a value without a src is empty.
+      const parsed = parseVideoValue(raw);
+      if (enforceRequired && field.required && !parsed) {
+        throw validationError(field, `${field.label} is required.`);
+      }
+      return serializeVideoValue(parsed);
+    }
+    case "file": {
+      // Single typed file: stored as a FileValue JSON string, read back
+      // leniently so legacy plain-URL rows keep validating.
+      const parsed = parseFileValue(raw);
+      if (enforceRequired && field.required && !parsed) {
+        throw validationError(field, `${field.label} is required.`);
+      }
+      return serializeFileValue(parsed);
     }
     case "image-gallery": {
       // Ordered gallery: stored as an ImageValue[] JSON string. Like
@@ -201,6 +224,22 @@ function isPublishStatus(value: unknown): value is PublishStatus {
 function sanitizeFileName(fileName: string): string {
   const cleaned = fileName.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
   return cleaned || "file";
+}
+
+function matchesAcceptMetadata(fileName: string, contentType: string, accept?: string): boolean {
+  const patterns = (accept ?? "")
+    .split(",")
+    .map((pattern) => pattern.trim().toLowerCase())
+    .filter(Boolean);
+  if (patterns.length === 0) return true;
+
+  const lowerName = fileName.toLowerCase();
+  const lowerType = contentType.toLowerCase();
+  return patterns.some((pattern) => {
+    if (pattern.startsWith(".")) return lowerName.endsWith(pattern);
+    if (pattern.endsWith("/*")) return lowerType.startsWith(pattern.slice(0, -1));
+    return lowerType === pattern;
+  });
 }
 
 export async function listCollections(): Promise<CmsCollectionSummary[]> {
@@ -325,11 +364,11 @@ export async function uploadAsset(collectionId: string, fieldKey: string, body: 
   const collection = assertWritable(getCollectionOrThrow(collectionId));
   const field = collection.fields.find((item) => item.key === fieldKey);
 
-  // Uploads serve generic files (`asset`) as well as typed images: single
-  // (`image`) and per-item gallery uploads (`image-gallery`). The stored
-  // record value stays a URL/JSON string the caller composes — no blob
-  // deletes happen here.
-  if (!field || (field.type !== "asset" && field.type !== "image" && field.type !== "image-gallery")) {
+  // Uploads serve generic files (`asset`) as well as typed singles:
+  // `image`, `video`, `file`, and per-item gallery uploads
+  // (`image-gallery`). The stored record value stays a URL/JSON string the
+  // caller composes — no blob deletes happen here.
+  if (!field || (field.type !== "asset" && field.type !== "image" && field.type !== "image-gallery" && field.type !== "video" && field.type !== "file")) {
     throw new CmsError("not_found", `Unknown asset field: ${fieldKey}`);
   }
   const bucket = (field as { bucket: string }).bucket;
@@ -345,6 +384,15 @@ export async function uploadAsset(collectionId: string, fieldKey: string, body: 
     (typeof body.contentType !== "string" || !body.contentType.startsWith("image/"))
   ) {
     throw new CmsError("validation", `${field.label} only accepts images.`);
+  }
+  if (field.type === "video" && (typeof body.contentType !== "string" || !body.contentType.startsWith("video/"))) {
+    throw new CmsError("validation", `${field.label} only accepts videos.`);
+  }
+  if (
+    (field.type === "video" || field.type === "file") &&
+    !matchesAcceptMetadata(body.fileName, body.contentType, field.accept)
+  ) {
+    throw new CmsError("validation", `${field.label} does not accept this file type.`);
   }
   if (body.size > MAX_ASSET_UPLOAD_BYTES) {
     throw new CmsError("validation", `File exceeds the ${MAX_ASSET_UPLOAD_BYTES} byte upload limit.`);

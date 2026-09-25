@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-25T05:38:41.669Z",
+  "generatedAt": "2026-09-25T06:37:03.376Z",
   "tables": {
     "posts": {
       "collectionId": "posts",
@@ -307,7 +307,12 @@
         "spec_sheet": {
           "type": "text",
           "kind": "field",
-          "fieldType": "asset"
+          "fieldType": "file"
+        },
+        "demo_video": {
+          "type": "text",
+          "kind": "field",
+          "fieldType": "video"
         },
         "updated_by": {
           "type": "text",

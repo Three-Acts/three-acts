@@ -20,6 +20,8 @@ export type FieldType =
   | "asset"
   | "image"
   | "image-gallery"
+  | "video"
+  | "file"
   | "readonly";
 
 export type CmsRecordValue = string | number | boolean | null | undefined;
@@ -56,7 +58,7 @@ type FieldBase<TType extends FieldType> = {
   column?: string;
 };
 
-export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "asset" | "image" | "image-gallery">>;
+export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "asset" | "image" | "image-gallery" | "video" | "file">>;
 
 export type SelectField = FieldBase<"select"> & {
   type: "select";
@@ -98,13 +100,36 @@ export type ImageGalleryField = FieldBase<"image-gallery"> & {
   maxItems?: number;
 };
 
-export type CmsField = PrimitiveField | SelectField | SlugField | AssetField | ImageField | ImageGalleryField;
+/**
+ * Single typed video: uploads to the Blob Store like an Asset Field but the
+ * record stores a `VideoValue` JSON string (see `./files`) instead of a
+ * bare URL, so filename, size, and content type survive the round trip.
+ * Uploads only — there is no external-URL input.
+ */
+export type VideoField = FieldBase<"video"> & {
+  type: "video";
+  bucket: string;
+  accept?: string;
+};
+
+/**
+ * Single typed file: uploads to the Blob Store like an Asset Field but the
+ * record stores a `FileValue` JSON string (see `./files`) instead of a
+ * bare URL, so filename, size, and content type survive the round trip.
+ */
+export type FileField = FieldBase<"file"> & {
+  type: "file";
+  bucket: string;
+  accept?: string;
+};
+
+export type CmsField = PrimitiveField | SelectField | SlugField | AssetField | ImageField | ImageGalleryField | VideoField | FileField;
 
 export type ListColumn = {
   key: string;
   label: string;
   width?: string;
-  valueType?: "text" | "status" | "datetime" | "boolean" | "asset" | "image";
+  valueType?: "text" | "status" | "datetime" | "boolean" | "asset" | "image" | "video" | "file";
 };
 
 export type CmsCollection = {

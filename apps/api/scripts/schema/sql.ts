@@ -18,7 +18,7 @@ export function sqlColumnType(field: CmsField): string {
       return "boolean";
     case "datetime":
       return "timestamptz";
-    // text/textarea/slug/select/asset/image/image-gallery/readonly all store plain text.
+    // text/textarea/slug/select/asset/image/image-gallery/video/file/readonly all store plain text.
     default:
       return "text";
   }

@@ -137,7 +137,8 @@ export const collectionRegistry: CmsCollection[] = [
         ]
       },
       { key: "inStock", label: "In stock", type: "boolean" },
-      { key: "specSheet", label: "Spec sheet", type: "asset", bucket: "cms-documents", accept: ".pdf,.doc,.docx" },
+      { key: "specSheet", label: "Spec sheet", type: "file", bucket: "cms-documents", accept: ".pdf,.doc,.docx" },
+      { key: "demoVideo", label: "Demo video", type: "video", bucket: "cms-assets", accept: "video/*" },
       { key: "updatedBy", label: "Updated by", type: "readonly" }
     ],
     listColumns: [

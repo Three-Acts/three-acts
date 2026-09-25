@@ -75,6 +75,14 @@ _Avoid_: Bare image URL, asset field for photos
 A Collection Field for an ordered set of images, stored as an `ImageValue[]` JSON string with optional `minItems`/`maxItems` publish-time rules.
 _Avoid_: Comma-separated URLs, asset library
 
+**Video Field**:
+A Collection Field for a single uploaded video. It uploads through the Blob Store like an Asset Field, but the record stores a typed `VideoValue` JSON string (`src`, `fileName`, `size`, `contentType`) instead of a bare URL. Uploads only — no external video URL. Legacy plain-URL rows still read.
+_Avoid_: External video URL, bare video URL
+
+**File Field**:
+A Collection Field for a single uploaded file. It uploads through the Blob Store like an Asset Field, but the record stores a typed `FileValue` JSON string (`src`, `fileName`, `size`, `contentType`) instead of a bare URL. Legacy plain-URL rows still read.
+_Avoid_: Bare file URL, asset library
+
 **CMS Data Adapter**:
 The interface the CMS uses to list, read, create, save, delete, and import collection records, and to run the Publish Transition. Asset uploads go through the CMS Backend's storage side instead.
 _Avoid_: REST client, direct database access, mock data
@@ -146,6 +154,7 @@ _Avoid_: Production content, screenshot copy
 - A **CMS Collection** has one or more **Collection Fields**.
 - An **Asset Field** belongs to exactly one **CMS Collection** field configuration.
 - An **Image Field** and an **Image Gallery Field** are typed variants of an **Asset Field**: same Blob Store upload, but the record stores `ImageValue` JSON so filename, dimensions, and alt text survive.
+- A **Video Field** and a **File Field** are typed variants of an **Asset Field**: same Blob Store upload, but the record stores `VideoValue`/`FileValue` JSON so filename, size, and content type survive. Uploads only — no external URL input.
 - The **CMS Backend**'s data adapter provides records, and its storage adapter provides asset uploads through the **Blob Store**, for each **CMS Collection**.
 - The **REST Bridge** exposes a **Data Store** and a **Blob Store** to the `rest` **CMS Backend** over HTTP, validated against the **Collection Schema Package**.
 - The **Collection Schema Package** defines the **Collection Registry** and field types once, shared by the CMS and the **REST Bridge**.

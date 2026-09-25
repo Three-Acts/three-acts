@@ -1,5 +1,5 @@
 import { collectionRegistry } from "./registry";
-import { CmsError, serializeImageGallery, serializeImageValue } from "./types";
+import { CmsError, serializeFileValue, serializeImageGallery, serializeImageValue, serializeVideoValue } from "./types";
 import type {
   AssetUploadResult,
   CmsBackend,
@@ -7,16 +7,33 @@ import type {
   CmsField,
   CmsRecord,
   CmsRecordValue,
+  FileValue,
   ImageValue,
   ListRecordsOptions,
   PublishStatus,
   SaveRecordOptions,
-  SelectField
+  SelectField,
+  VideoValue
 } from "./types";
 import { normalizeDateTime } from "../lib/format";
 
 const seedNow = new Date("2026-06-25T18:30:00.000Z");
 const statuses: PublishStatus[] = ["published", "queued_to_publish", "not_published"];
+
+function matchesAccept(file: File, accept?: string): boolean {
+  const patterns = (accept ?? "")
+    .split(",")
+    .map((pattern) => pattern.trim().toLowerCase())
+    .filter(Boolean);
+  if (patterns.length === 0) return true;
+  const fileName = file.name.toLowerCase();
+  const contentType = file.type.toLowerCase();
+  return patterns.some((pattern) => {
+    if (pattern.startsWith(".")) return fileName.endsWith(pattern);
+    if (pattern.endsWith("/*")) return contentType.startsWith(pattern.slice(0, -1));
+    return contentType === pattern;
+  });
+}
 
 const words = ["Signal", "Harbour", "Proof", "Atlas", "Northstar", "Foundry", "Pulse", "Beacon", "Orbit", "Vector", "Canvas", "Metric", "Archive", "Bridge", "Summit", "Launch", "Campaign", "Studio", "Field", "Ledger"];
 const people = ["Craig Chihururu", "Amara Stone", "Nadia Jacobs", "Theo Brand", "Mika Chen", "Jonas Mokoena", "Priya Naidoo", "Leah Morgan", "Sipho Dlamini", "Elena Ward", "Max Roux", "Ayesha Khan"];
@@ -305,8 +322,18 @@ export const mockCmsBackend: CmsBackend = {
       const collection = assertWritable(getCollection(collectionId));
       const field = collection.fields.find((item) => item.key === fieldKey);
 
-      if (!field || (field.type !== "asset" && field.type !== "image" && field.type !== "image-gallery")) {
+      if (!field || (field.type !== "asset" && field.type !== "image" && field.type !== "image-gallery" && field.type !== "video" && field.type !== "file")) {
         throw new CmsError("validation", `Field is not an asset field: ${fieldKey}`);
+      }
+
+      if ((field.type === "image" || field.type === "image-gallery") && file.type && !file.type.startsWith("image/")) {
+        throw new CmsError("validation", `${field.label} only accepts images.`);
+      }
+      if (field.type === "video" && file.type && !file.type.startsWith("video/")) {
+        throw new CmsError("validation", `${field.label} only accepts videos.`);
+      }
+      if ((field.type === "video" || field.type === "file") && !matchesAccept(file, field.accept)) {
+        throw new CmsError("validation", `${field.label} does not accept this file type.`);
       }
 
       const bucket = (field as { bucket: string }).bucket;
@@ -470,7 +497,8 @@ function valuesForCollection(collection: CmsCollection, index: number, id: strin
         price: Number(((index % 17) * 19 + 29.99).toFixed(2)),
         category: pickOption(collection, "category", index),
         inStock: index % 7 !== 0,
-        specSheet: assetOrEmpty(index, collection.tableName, "spec-sheet", "pdf"),
+        specSheet: fileOrEmpty(index, collection.tableName, "spec-sheet", "pdf", "application/pdf"),
+        demoVideo: videoOrEmpty(index, collection.tableName),
         updatedBy: people[index % people.length]
       };
     case "form-submissions":
@@ -725,6 +753,40 @@ function galleryOrEmpty(index: number, tableName: string): string {
   }));
 
   return serializeImageGallery(items);
+}
+
+/** Typed single-file JSON for the product-catalog spec sheet (empty every 7th record). */
+function fileOrEmpty(index: number, tableName: string, prefix: string, extension: string, contentType: string): string {
+  const src = assetOrEmpty(index, tableName, prefix, extension);
+  if (!src) {
+    return "";
+  }
+
+  const value: FileValue = {
+    src,
+    fileName: `${prefix}-${String(index + 1).padStart(3, "0")}.${extension}`,
+    size: 64000 + index * 1200,
+    contentType
+  };
+
+  return serializeFileValue(value);
+}
+
+/** Typed single-video JSON for the product-catalog demo video (empty every 4th record). */
+function videoOrEmpty(index: number, tableName: string): string {
+  if (index % 4 === 0) {
+    return "";
+  }
+
+  const fileName = `demo-${String(index + 1).padStart(3, "0")}.mp4`;
+  const value: VideoValue = {
+    src: `/mock-storage/cms-assets/${tableName}/${fileName}`,
+    fileName,
+    size: 2400000 + index * 48000,
+    contentType: "video/mp4"
+  };
+
+  return serializeVideoValue(value);
 }
 
 function isoFromSeed(dayOffset: number, minuteOffset: number) {
