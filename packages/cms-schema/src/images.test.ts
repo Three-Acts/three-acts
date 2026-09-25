@@ -19,8 +19,8 @@ describe("parseImageValue", () => {
   });
 
   it("tolerates a legacy plain URL string", () => {
-    assert.deepEqual(parseImageValue("/mock-storage/cms-assets/posts/cover-001.png"), {
-      src: "/mock-storage/cms-assets/posts/cover-001.png"
+    assert.deepEqual(parseImageValue("/mock-storage/cms-assets/articles/cover-001.png"), {
+      src: "/mock-storage/cms-assets/articles/cover-001.png"
     });
   });
 

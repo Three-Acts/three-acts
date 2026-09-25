@@ -222,7 +222,7 @@ An island is a self-contained React component with JSON-serializable props that 
 Content is read through a source in `src/content/`:
 
 - `mock-source.ts` is the default, so builds work with **zero credentials**.
-- `api-source.ts` activates with `CONTENT_SOURCE=api`. It fetches the `posts` collection from the API's public, published-only route (`/api/content/collections/posts/records`, no auth) and maps records using the field keys from `@three-acts/cms-schema`, so the site and the CMS share one collection definition. A failed fetch fails the build rather than shipping an empty blog.
+- `api-source.ts` activates with `CONTENT_SOURCE=api`. It fetches the `articles` collection from the API's public, published-only route (`/api/content/collections/articles/records`, no auth) and maps records using the field keys from `@three-acts/cms-schema`, so the site and the CMS share one collection definition. A failed fetch fails the build rather than shipping an empty blog.
 
 `src/pages/blog/[slug].astro` expands the collection into concrete static routes via `getStaticPaths`, with per-entry SEO from `blogPostMeta` in `src/page-meta.ts`. The content source is only imported from build-time code, so no data client ships to the browser. Server-side writes belong in `apps/api`, not here.
 

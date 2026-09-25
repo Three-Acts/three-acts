@@ -1,164 +1,494 @@
-import type { CmsCollection } from "./types";
+import type { CmsCollection, SelectOption } from "./types";
+
+/**
+ * The CMS collection registry: the single source of truth for every table the
+ * CMS, API and schema tooling know about (see apps/api/schema/README.md).
+ *
+ * The registry models a realistic small brand site: an editorial blog
+ * (articles, authors, categories), marketing content (FAQs, testimonials), a
+ * storefront (products, categories, reviews, orders, customers, discount
+ * codes), CMS users, inbound form submissions and the site settings screens.
+ *
+ * There is no relation field type yet: cross-collection references are plain
+ * text/slug fields whose helpText names the target (e.g. "matches
+ * authors.slug"). Sidebar groups follow registry order: Content, Shop, People,
+ * Site.
+ */
+
+const currencyOptions: SelectOption[] = [
+  { label: "ZAR (R)", value: "ZAR" },
+  { label: "USD ($)", value: "USD" },
+  { label: "EUR (€)", value: "EUR" },
+  { label: "GBP (£)", value: "GBP" }
+];
+
+const ratingOptions: SelectOption[] = [
+  { label: "5 — Excellent", value: "5" },
+  { label: "4 — Good", value: "4" },
+  { label: "3 — Average", value: "3" },
+  { label: "2 — Poor", value: "2" },
+  { label: "1 — Terrible", value: "1" }
+];
 
 export const collectionRegistry: CmsCollection[] = [
+  // --- Content ---------------------------------------------------------------
   {
-    id: "posts",
-    label: "Posts",
-    tableName: "posts",
-    group: "Editorial",
+    id: "articles",
+    label: "Articles",
+    tableName: "articles",
+    group: "Content",
     titleField: "title",
-    description: "Blog posts rendered on the public site at /blog/:slug. Only published records reach the site.",
+    description: "Blog articles rendered on the public site at /blog/:slug. Only published records reach the site.",
     fields: [
       { key: "title", label: "Title", type: "text", required: true },
       { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/blog/" },
-      { key: "excerpt", label: "Excerpt", type: "textarea", required: true, helpText: "Shown in listings and as the meta description." },
-      { key: "body", label: "Body", type: "textarea", required: true },
+      { key: "excerpt", label: "Excerpt", type: "textarea", required: true, helpText: "One or two sentences shown in listings and as the fallback meta description." },
+      { key: "body", label: "Body", type: "textarea", required: true, helpText: "Article body. Blank lines separate paragraphs." },
       { key: "coverImage", label: "Cover image", type: "image", bucket: "cms-assets", accept: "image/*" },
-      { key: "author", label: "Author", type: "text" },
-      { key: "tags", label: "Tags", type: "text", helpText: "Comma-separated, e.g. performance, seo, workflow." },
-      { key: "publishedAt", label: "Published at", type: "datetime", required: true, helpText: "Drives ordering and the sitemap lastmod." }
+      { key: "author", label: "Author", type: "text", required: true, helpText: "Author slug — matches authors.slug, e.g. amara-stone." },
+      { key: "category", label: "Category", type: "text", helpText: "Category slug — matches article-categories.slug, e.g. guides." },
+      { key: "tags", label: "Tags", type: "text", helpText: "Comma-separated, e.g. styling, care, sustainability." },
+      { key: "publishedAt", label: "Published at", type: "datetime", required: true, helpText: "Shown as the article date; drives ordering and the sitemap lastmod." },
+      { key: "readingTime", label: "Reading time (min)", type: "number", helpText: "Estimated minutes to read, e.g. 6." },
+      { key: "featured", label: "Featured", type: "boolean", helpText: "Pin to the top of the blog index and the homepage." },
+      { key: "seoTitle", label: "SEO title", type: "text", helpText: "Inserted into the site title template. Empty falls back to the title." },
+      { key: "seoDescription", label: "SEO description", type: "textarea", helpText: "Meta description. Empty falls back to the excerpt." }
     ],
     listColumns: [
-      { key: "title", label: "Name", width: "minmax(220px, 1.5fr)" },
+      { key: "title", label: "Name", width: "minmax(240px, 1.6fr)" },
       { key: "publishStatus", label: "Status", valueType: "status", width: "160px" },
       { key: "author", label: "Author", width: "140px" },
+      { key: "category", label: "Category", width: "130px" },
+      { key: "featured", label: "Featured", valueType: "boolean", width: "100px" },
       { key: "publishedAt", label: "Published", valueType: "datetime", width: "170px" },
       { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
     ]
   },
   {
-    id: "launch-pages",
-    label: "Launch Pages",
-    tableName: "launch_pages",
-    group: "Editorial",
-    titleField: "title",
-    description: "Marketing pages with metadata, hero media, and publishing status.",
+    id: "authors",
+    label: "Authors",
+    tableName: "authors",
+    group: "Content",
+    titleField: "name",
+    description: "Article bylines and author profile pages at /authors/:slug. Articles reference authors by slug.",
     fields: [
-      { key: "title", label: "Title", type: "text", required: true },
-      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/pages/" },
-      { key: "summary", label: "Summary", type: "textarea" },
+      { key: "name", label: "Name", type: "text", required: true },
+      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/authors/" },
+      { key: "role", label: "Role", type: "text", helpText: "Job title shown under the byline, e.g. Senior Editor." },
+      { key: "bio", label: "Bio", type: "textarea", required: true, helpText: "Short biography for the author page and article footers." },
+      { key: "avatar", label: "Avatar", type: "image", bucket: "cms-assets", accept: "image/*" },
+      { key: "email", label: "Email", type: "text", unique: true, helpText: "Contact address; not shown on the site." },
+      { key: "websiteUrl", label: "Website", type: "text", helpText: "Absolute URL, e.g. https://amarastone.com." },
+      { key: "xHandle", label: "X (Twitter) handle", type: "text", helpText: "Without the URL, e.g. @amarastone." },
+      { key: "instagramHandle", label: "Instagram handle", type: "text", helpText: "Without the URL, e.g. @amarastone." },
+      { key: "linkedinUrl", label: "LinkedIn URL", type: "text", helpText: "Absolute profile URL." }
+    ],
+    listColumns: [
+      { key: "name", label: "Name", width: "minmax(200px, 1.3fr)" },
+      { key: "role", label: "Role", width: "minmax(160px, 1fr)" },
+      { key: "publishStatus", label: "Status", valueType: "status", width: "160px" },
+      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
+    ]
+  },
+  {
+    id: "article-categories",
+    label: "Article categories",
+    tableName: "article_categories",
+    group: "Content",
+    titleField: "name",
+    description: "Blog categories with listing pages at /blog/category/:slug. Articles reference them by slug.",
+    fields: [
+      { key: "name", label: "Name", type: "text", required: true },
+      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/blog/category/" },
+      { key: "description", label: "Description", type: "textarea", helpText: "Intro copy for the category page and its meta description." },
+      { key: "sortOrder", label: "Sort order", type: "number", helpText: "Lower numbers appear first in the blog navigation." }
+    ],
+    listColumns: [
+      { key: "name", label: "Name", width: "minmax(200px, 1.4fr)" },
+      { key: "slug", label: "Slug", width: "minmax(160px, 1fr)" },
+      { key: "sortOrder", label: "Order", width: "90px" },
+      { key: "publishStatus", label: "Status", valueType: "status", width: "160px" },
+      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
+    ]
+  },
+  {
+    id: "faqs",
+    label: "FAQs",
+    tableName: "faqs",
+    group: "Content",
+    titleField: "question",
+    description: "Frequently asked questions shown on /faq and product pages, grouped by topic.",
+    fields: [
+      { key: "question", label: "Question", type: "text", required: true },
+      { key: "answer", label: "Answer", type: "textarea", required: true },
       {
-        key: "template",
-        label: "Template",
+        key: "topic",
+        label: "Topic",
         type: "select",
         required: true,
         options: [
-          { label: "Campaign", value: "campaign" },
-          { label: "Editorial", value: "editorial" },
-          { label: "Conversion", value: "conversion" },
-          { label: "Long-form", value: "long_form" },
-          { label: "Product", value: "product" }
+          { label: "General", value: "general" },
+          { label: "Orders & payment", value: "orders" },
+          { label: "Shipping & delivery", value: "shipping" },
+          { label: "Returns & exchanges", value: "returns" },
+          { label: "Products & care", value: "products" },
+          { label: "Account", value: "account" }
         ]
       },
-      { key: "priority", label: "Priority", type: "number" },
+      { key: "sortOrder", label: "Sort order", type: "number", helpText: "Order within the topic; lower numbers appear first." }
+    ],
+    listColumns: [
+      { key: "question", label: "Question", width: "minmax(280px, 2fr)" },
+      { key: "topic", label: "Topic", width: "150px" },
+      { key: "sortOrder", label: "Order", width: "90px" },
+      { key: "publishStatus", label: "Status", valueType: "status", width: "160px" },
+      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
+    ]
+  },
+  {
+    id: "testimonials",
+    label: "Testimonials",
+    tableName: "testimonials",
+    group: "Content",
+    titleField: "customerName",
+    description: "Customer quotes for the homepage and landing pages. Featured testimonials rotate in the hero.",
+    fields: [
+      { key: "customerName", label: "Customer name", type: "text", required: true },
+      { key: "quote", label: "Quote", type: "textarea", required: true },
+      { key: "customerTitle", label: "Title / location", type: "text", helpText: "Shown under the name, e.g. Interior designer, Cape Town." },
+      { key: "company", label: "Company", type: "text" },
+      { key: "avatar", label: "Photo", type: "image", bucket: "cms-assets", accept: "image/*" },
+      { key: "rating", label: "Rating", type: "select", options: ratingOptions },
+      { key: "product", label: "Product", type: "text", helpText: "Optional product slug — matches products.slug — to show the quote on that product page." },
       { key: "featured", label: "Featured", type: "boolean" },
-      { key: "heroImage", label: "Hero image", type: "image", bucket: "cms-assets", accept: "image/*" },
+      { key: "sortOrder", label: "Sort order", type: "number" }
+    ],
+    listColumns: [
+      { key: "customerName", label: "Name", width: "minmax(180px, 1.1fr)" },
+      { key: "quote", label: "Quote", width: "minmax(260px, 2fr)" },
+      { key: "rating", label: "Rating", width: "90px" },
+      { key: "featured", label: "Featured", valueType: "boolean", width: "100px" },
+      { key: "publishStatus", label: "Status", valueType: "status", width: "160px" }
+    ]
+  },
+
+  // --- Shop ------------------------------------------------------------------
+  {
+    id: "products",
+    label: "Products",
+    tableName: "products",
+    group: "Shop",
+    titleField: "title",
+    description: "Storefront products at /shop/:slug with pricing, stock and media. Only published products are listed in the shop.",
+    fields: [
+      { key: "title", label: "Title", type: "text", required: true },
+      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/shop/" },
+      { key: "sku", label: "SKU", type: "text", required: true, unique: true, helpText: "Stock-keeping unit, unique across the catalogue, e.g. TA-MUG-001." },
+      { key: "category", label: "Category", type: "text", required: true, helpText: "Category slug — matches product-categories.slug, e.g. ceramics." },
+      { key: "price", label: "Price", type: "number", required: true, helpText: "Selling price in the product currency, tax inclusive, e.g. 349.00." },
+      { key: "compareAtPrice", label: "Compare-at price", type: "number", helpText: "Original price shown struck through when on sale. Leave 0 or empty when not on sale." },
+      { key: "currency", label: "Currency", type: "select", required: true, options: currencyOptions },
+      { key: "inventory", label: "Inventory", type: "number", helpText: "Units on hand." },
       {
-        key: "imageGallery",
-        label: "Image gallery",
+        key: "availability",
+        label: "Availability",
+        type: "select",
+        required: true,
+        options: [
+          { label: "In stock", value: "in_stock" },
+          { label: "Low stock", value: "low_stock" },
+          { label: "Out of stock", value: "out_of_stock" },
+          { label: "Pre-order", value: "preorder" },
+          { label: "Discontinued", value: "discontinued" }
+        ]
+      },
+      { key: "shortDescription", label: "Short description", type: "textarea", required: true, helpText: "One or two sentences for product cards and the meta description." },
+      { key: "description", label: "Description", type: "textarea", helpText: "Full product description: materials, dimensions, care. Blank lines separate paragraphs." },
+      {
+        key: "images",
+        label: "Images",
         type: "image-gallery",
         bucket: "cms-assets",
         accept: "image/*",
         minItems: 1,
-        maxItems: 8
+        maxItems: 8,
+        helpText: "The first image is the product thumbnail."
       },
-      { key: "publishAt", label: "Publish at", type: "datetime" },
-      { key: "recordId", label: "Item ID", type: "readonly" }
+      { key: "productVideo", label: "Product video", type: "video", bucket: "cms-assets", accept: "video/*" },
+      { key: "specSheet", label: "Spec sheet", type: "file", bucket: "cms-documents", accept: ".pdf,.doc,.docx", helpText: "Downloadable care guide or specification (PDF)." },
+      { key: "weightGrams", label: "Weight (g)", type: "number", helpText: "Shipping weight in grams." },
+      { key: "tags", label: "Tags", type: "text", helpText: "Comma-separated, e.g. handmade, gift, bestseller." },
+      { key: "featured", label: "Featured", type: "boolean", helpText: "Show in the homepage and shop highlights." }
     ],
     listColumns: [
-      { key: "title", label: "Name", width: "minmax(220px, 1.4fr)" },
-      { key: "publishStatus", label: "Status", valueType: "status", width: "160px" },
-      { key: "template", label: "Template", width: "140px" },
-      { key: "featured", label: "Featured", valueType: "boolean", width: "110px" },
-      { key: "createdAt", label: "Created", valueType: "datetime", width: "170px" },
-      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
-    ]
-  },
-  {
-    id: "content-blocks",
-    label: "Content Blocks",
-    tableName: "content_blocks",
-    group: "Editorial",
-    titleField: "blockName",
-    description: "Reusable content modules with placement and ownership metadata.",
-    fields: [
-      { key: "blockName", label: "Block name", type: "text", required: true },
-      { key: "slotKey", label: "Slot key", type: "slug", required: true },
-      { key: "body", label: "Body", type: "textarea" },
-      {
-        key: "surface",
-        label: "Surface",
-        type: "select",
-        options: [
-          { label: "Homepage", value: "homepage" },
-          { label: "Pricing", value: "pricing" },
-          { label: "Article", value: "article" },
-          { label: "Checkout", value: "checkout" },
-          { label: "Email", value: "email" }
-        ]
-      },
-      { key: "sortOrder", label: "Sort order", type: "number" },
-      { key: "visible", label: "Visible", type: "boolean" },
-      { key: "referenceImage", label: "Reference image", type: "asset", bucket: "cms-assets", accept: "image/*" },
-      { key: "reviewAt", label: "Review at", type: "datetime" },
-      { key: "blockId", label: "Block ID", type: "readonly" }
-    ],
-    listColumns: [
-      { key: "blockName", label: "Name", width: "minmax(220px, 1.5fr)" },
-      { key: "surface", label: "Surface", width: "120px" },
-      { key: "visible", label: "Visible", valueType: "boolean", width: "100px" },
+      { key: "title", label: "Name", width: "minmax(220px, 1.5fr)" },
+      { key: "sku", label: "SKU", width: "130px" },
+      { key: "price", label: "Price", width: "100px" },
+      { key: "inventory", label: "Stock", width: "90px" },
+      { key: "availability", label: "Availability", width: "130px" },
       { key: "publishStatus", label: "Status", valueType: "status", width: "160px" },
       { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
     ]
   },
   {
-    id: "product-catalog",
-    label: "Product Catalog",
-    tableName: "product_catalog",
-    group: "Commerce",
+    id: "product-categories",
+    label: "Product categories",
+    tableName: "product_categories",
+    group: "Shop",
     titleField: "name",
-    description: "Products with pricing, stock state, and downloadable spec sheets.",
+    description: "Shop categories with listing pages at /shop/category/:slug. Products reference them by slug.",
     fields: [
       { key: "name", label: "Name", type: "text", required: true },
-      { key: "sku", label: "SKU", type: "text", required: true },
-      { key: "description", label: "Description", type: "textarea" },
-      { key: "price", label: "Price", type: "number", required: true },
+      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/shop/category/" },
+      { key: "description", label: "Description", type: "textarea", helpText: "Intro copy for the category page and its meta description." },
+      { key: "image", label: "Image", type: "image", bucket: "cms-assets", accept: "image/*" },
+      { key: "sortOrder", label: "Sort order", type: "number", helpText: "Lower numbers appear first in the shop navigation." }
+    ],
+    listColumns: [
+      { key: "name", label: "Name", width: "minmax(200px, 1.4fr)" },
+      { key: "slug", label: "Slug", width: "minmax(160px, 1fr)" },
+      { key: "sortOrder", label: "Order", width: "90px" },
+      { key: "publishStatus", label: "Status", valueType: "status", width: "160px" }
+    ]
+  },
+  {
+    id: "product-reviews",
+    label: "Product reviews",
+    tableName: "product_reviews",
+    // Customer-submitted; moderated with the "approved" flag rather than a publish workflow.
+    mode: "data",
+    group: "Shop",
+    titleField: "title",
+    description: "Customer reviews of products. Only approved reviews are shown on product pages.",
+    fields: [
+      { key: "title", label: "Title", type: "text", required: true },
+      { key: "product", label: "Product", type: "text", required: true, helpText: "Product slug — matches products.slug." },
+      { key: "customerName", label: "Customer name", type: "text", required: true, helpText: "Display name, e.g. Nadia J." },
+      { key: "customerEmail", label: "Customer email", type: "text", helpText: "Matches customers.email when the reviewer has an order. Not shown on the site." },
+      { key: "rating", label: "Rating", type: "select", required: true, options: ratingOptions },
+      { key: "body", label: "Review", type: "textarea" },
+      { key: "verifiedPurchase", label: "Verified purchase", type: "boolean" },
+      { key: "approved", label: "Approved", type: "boolean", helpText: "Only approved reviews appear on the product page." },
+      { key: "submittedAt", label: "Submitted at", type: "datetime" }
+    ],
+    listColumns: [
+      { key: "title", label: "Title", width: "minmax(200px, 1.4fr)" },
+      { key: "product", label: "Product", width: "minmax(160px, 1fr)" },
+      { key: "customerName", label: "Customer", width: "140px" },
+      { key: "rating", label: "Rating", width: "90px" },
+      { key: "approved", label: "Approved", valueType: "boolean", width: "100px" },
+      { key: "submittedAt", label: "Submitted", valueType: "datetime", width: "170px" }
+    ]
+  },
+  {
+    id: "orders",
+    label: "Orders",
+    tableName: "orders",
+    // Created by checkout; staff update status, tracking and notes — no publish workflow.
+    mode: "data",
+    group: "Shop",
+    titleField: "orderNumber",
+    description: "Storefront orders with fulfilment and payment status, totals and shipping destination.",
+    fields: [
+      { key: "orderNumber", label: "Order number", type: "text", required: true, unique: true, helpText: "e.g. TA-10421." },
+      { key: "customerEmail", label: "Customer email", type: "text", required: true, helpText: "Matches customers.email." },
+      { key: "customerName", label: "Customer name", type: "text" },
       {
-        key: "category",
-        label: "Category",
+        key: "status",
+        label: "Order status",
         type: "select",
         required: true,
         options: [
-          { label: "Books", value: "books" },
-          { label: "Workshops", value: "workshops" },
-          { label: "Templates", value: "templates" },
-          { label: "Services", value: "services" },
-          { label: "Bundles", value: "bundles" }
+          { label: "Pending", value: "pending" },
+          { label: "Paid", value: "paid" },
+          { label: "Fulfilled", value: "fulfilled" },
+          { label: "Shipped", value: "shipped" },
+          { label: "Refunded", value: "refunded" },
+          { label: "Cancelled", value: "cancelled" }
         ]
       },
-      { key: "inStock", label: "In stock", type: "boolean" },
-      { key: "specSheet", label: "Spec sheet", type: "file", bucket: "cms-documents", accept: ".pdf,.doc,.docx" },
-      { key: "demoVideo", label: "Demo video", type: "video", bucket: "cms-assets", accept: "video/*" },
-      { key: "updatedBy", label: "Updated by", type: "readonly" }
+      {
+        key: "paymentStatus",
+        label: "Payment status",
+        type: "select",
+        required: true,
+        options: [
+          { label: "Awaiting payment", value: "awaiting" },
+          { label: "Authorized", value: "authorized" },
+          { label: "Paid", value: "paid" },
+          { label: "Partially refunded", value: "partially_refunded" },
+          { label: "Refunded", value: "refunded" },
+          { label: "Failed", value: "failed" }
+        ]
+      },
+      {
+        key: "paymentMethod",
+        label: "Payment method",
+        type: "select",
+        options: [
+          { label: "Card", value: "card" },
+          { label: "Instant EFT", value: "eft" },
+          { label: "PayPal", value: "paypal" },
+          { label: "Apple Pay", value: "apple_pay" },
+          { label: "Gift card", value: "gift_card" }
+        ]
+      },
+      { key: "itemCount", label: "Items", type: "number", helpText: "Total units across all line items." },
+      { key: "subtotal", label: "Subtotal", type: "number", required: true },
+      { key: "discountTotal", label: "Discount", type: "number" },
+      { key: "discountCode", label: "Discount code", type: "text", helpText: "Matches discount-codes.code when one was applied." },
+      { key: "taxTotal", label: "Tax", type: "number" },
+      { key: "shippingTotal", label: "Shipping", type: "number" },
+      { key: "total", label: "Total", type: "number", required: true, helpText: "subtotal − discount + tax + shipping." },
+      { key: "currency", label: "Currency", type: "select", required: true, options: currencyOptions },
+      { key: "placedAt", label: "Placed at", type: "datetime", required: true },
+      { key: "shippingCity", label: "Shipping city", type: "text" },
+      { key: "shippingCountry", label: "Shipping country", type: "text", helpText: "ISO country code, e.g. ZA." },
+      { key: "trackingNumber", label: "Tracking number", type: "text" },
+      { key: "notes", label: "Internal notes", type: "textarea" }
     ],
     listColumns: [
-      { key: "name", label: "Name", width: "minmax(220px, 1.5fr)" },
-      { key: "sku", label: "SKU", width: "120px" },
-      { key: "price", label: "Price", width: "100px" },
-      { key: "inStock", label: "Stock", valueType: "boolean", width: "90px" },
-      { key: "publishStatus", label: "Status", valueType: "status", width: "160px" },
-      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
+      { key: "orderNumber", label: "Order", width: "120px" },
+      { key: "customerEmail", label: "Customer", width: "minmax(220px, 1.4fr)" },
+      { key: "status", label: "Status", width: "120px" },
+      { key: "paymentStatus", label: "Payment", width: "140px" },
+      { key: "total", label: "Total", width: "100px" },
+      { key: "currency", label: "Cur.", width: "70px" },
+      { key: "placedAt", label: "Placed", valueType: "datetime", width: "170px" }
     ]
   },
+  {
+    id: "customers",
+    label: "Customers",
+    tableName: "customers",
+    // Shopper accounts synced from checkout — editable, no publish workflow.
+    mode: "data",
+    group: "Shop",
+    titleField: "name",
+    description: "Shopper accounts with contact details, marketing consent and order totals.",
+    fields: [
+      { key: "name", label: "Name", type: "text", required: true },
+      { key: "email", label: "Email", type: "text", required: true, unique: true },
+      { key: "phone", label: "Phone", type: "text", helpText: "International format, e.g. +27 82 555 0142." },
+      { key: "city", label: "City", type: "text" },
+      { key: "country", label: "Country", type: "text", helpText: "ISO country code, e.g. ZA." },
+      { key: "marketingOptIn", label: "Marketing opt-in", type: "boolean", helpText: "Consented to marketing email." },
+      { key: "totalOrders", label: "Total orders", type: "number" },
+      { key: "lifetimeValue", label: "Lifetime value", type: "number", helpText: "Sum of paid order totals, in ZAR." },
+      { key: "firstOrderAt", label: "First order at", type: "datetime" },
+      { key: "lastOrderAt", label: "Last order at", type: "datetime" },
+      { key: "notes", label: "Internal notes", type: "textarea" }
+    ],
+    listColumns: [
+      { key: "name", label: "Name", width: "minmax(180px, 1.1fr)" },
+      { key: "email", label: "Email", width: "minmax(220px, 1.4fr)" },
+      { key: "country", label: "Country", width: "90px" },
+      { key: "totalOrders", label: "Orders", width: "90px" },
+      { key: "lifetimeValue", label: "LTV", width: "110px" },
+      { key: "marketingOptIn", label: "Opt-in", valueType: "boolean", width: "90px" },
+      { key: "lastOrderAt", label: "Last order", valueType: "datetime", width: "170px" }
+    ]
+  },
+  {
+    id: "discount-codes",
+    label: "Discount codes",
+    tableName: "discount_codes",
+    // Operational config — editable, but no publish workflow.
+    mode: "data",
+    group: "Shop",
+    titleField: "code",
+    description: "Checkout discount codes with value, limits and an active window.",
+    fields: [
+      { key: "code", label: "Code", type: "text", required: true, unique: true, helpText: "What shoppers type at checkout, e.g. WELCOME10." },
+      { key: "description", label: "Description", type: "text", helpText: "Internal note on the campaign this code belongs to." },
+      {
+        key: "discountType",
+        label: "Discount type",
+        type: "select",
+        required: true,
+        options: [
+          { label: "Percentage", value: "percentage" },
+          { label: "Fixed amount", value: "fixed_amount" },
+          { label: "Free shipping", value: "free_shipping" }
+        ]
+      },
+      { key: "amount", label: "Amount", type: "number", helpText: "Percent off for percentage codes, currency amount for fixed codes, 0 for free shipping." },
+      { key: "minimumSubtotal", label: "Minimum subtotal", type: "number", helpText: "Cart subtotal required before the code applies. 0 for none." },
+      { key: "usageLimit", label: "Usage limit", type: "number", helpText: "Total redemptions allowed. 0 for unlimited." },
+      { key: "timesUsed", label: "Times used", type: "number" },
+      { key: "startsAt", label: "Starts at", type: "datetime" },
+      { key: "endsAt", label: "Ends at", type: "datetime", helpText: "Empty means the code never expires." },
+      { key: "active", label: "Active", type: "boolean" }
+    ],
+    listColumns: [
+      { key: "code", label: "Code", width: "minmax(160px, 1fr)" },
+      { key: "discountType", label: "Type", width: "130px" },
+      { key: "amount", label: "Amount", width: "90px" },
+      { key: "timesUsed", label: "Used", width: "80px" },
+      { key: "active", label: "Active", valueType: "boolean", width: "90px" },
+      { key: "endsAt", label: "Ends", valueType: "datetime", width: "170px" }
+    ]
+  },
+
+  // --- People ----------------------------------------------------------------
+  {
+    id: "cms-users",
+    label: "CMS users",
+    tableName: "cms_users",
+    // Team accounts for this CMS — editable, no publish workflow.
+    mode: "data",
+    group: "People",
+    titleField: "name",
+    description: "People who can sign in to this CMS, with their role and account status.",
+    fields: [
+      { key: "name", label: "Name", type: "text", required: true },
+      { key: "email", label: "Email", type: "text", required: true, unique: true },
+      {
+        key: "role",
+        label: "Role",
+        type: "select",
+        required: true,
+        options: [
+          { label: "Admin", value: "admin" },
+          { label: "Editor", value: "editor" },
+          { label: "Author", value: "author" },
+          { label: "Viewer", value: "viewer" }
+        ]
+      },
+      {
+        key: "status",
+        label: "Status",
+        type: "select",
+        required: true,
+        options: [
+          { label: "Active", value: "active" },
+          { label: "Invited", value: "invited" },
+          { label: "Suspended", value: "suspended" }
+        ]
+      },
+      { key: "authorSlug", label: "Author profile", type: "text", helpText: "Optional author slug — matches authors.slug — for users who write articles." },
+      { key: "avatar", label: "Avatar", type: "image", bucket: "cms-assets", accept: "image/*", altText: false },
+      { key: "lastActiveAt", label: "Last active at", type: "datetime" }
+    ],
+    listColumns: [
+      { key: "name", label: "Name", width: "minmax(180px, 1.1fr)" },
+      { key: "email", label: "Email", width: "minmax(220px, 1.4fr)" },
+      { key: "role", label: "Role", width: "110px" },
+      { key: "status", label: "Status", width: "110px" },
+      { key: "lastActiveAt", label: "Last active", valueType: "datetime", width: "170px" }
+    ]
+  },
+
+  // --- Site ------------------------------------------------------------------
   {
     id: "form-submissions",
     label: "Form Submissions",
     tableName: "form_submissions",
     // Submissions are created by the site, not editors — view, export, delete only.
     mode: "readonly",
-    group: "Growth",
+    group: "Site",
     titleField: "submittedBy",
-    description: "High-volume inbound submissions with scoring, consent, and attachments.",
+    description: "Inbound contact, newsletter, wholesale and support form submissions from the site, with lead score, consent and attachments.",
     fields: [
       { key: "submittedBy", label: "Submitted by", type: "text", required: true },
       { key: "email", label: "Email", type: "text", required: true },
@@ -168,11 +498,11 @@ export const collectionRegistry: CmsCollection[] = [
         label: "Source",
         type: "select",
         options: [
-          { label: "Homepage", value: "homepage" },
-          { label: "Pricing", value: "pricing" },
-          { label: "Webinar", value: "webinar" },
-          { label: "Partner", value: "partner" },
-          { label: "Referral", value: "referral" }
+          { label: "Contact page", value: "contact" },
+          { label: "Newsletter", value: "newsletter" },
+          { label: "Product enquiry", value: "product_enquiry" },
+          { label: "Wholesale", value: "wholesale" },
+          { label: "Support", value: "support" }
         ]
       },
       { key: "score", label: "Score", type: "number" },
@@ -191,165 +521,12 @@ export const collectionRegistry: CmsCollection[] = [
     ]
   },
   {
-    id: "experiments",
-    label: "Experiments",
-    tableName: "experiments",
-    // Operational config — editable, but no publish workflow.
-    mode: "data",
-    group: "Growth",
-    titleField: "experimentName",
-    description: "A/B tests with traffic split, owner, and launch scheduling.",
-    fields: [
-      { key: "experimentName", label: "Experiment name", type: "text", required: true },
-      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/experiments/" },
-      { key: "hypothesis", label: "Hypothesis", type: "textarea" },
-      {
-        key: "channel",
-        label: "Channel",
-        type: "select",
-        options: [
-          { label: "Organic", value: "organic" },
-          { label: "Paid search", value: "paid_search" },
-          { label: "Email", value: "email" },
-          { label: "Partner", value: "partner" },
-          { label: "Direct", value: "direct" }
-        ]
-      },
-      { key: "trafficSplit", label: "Traffic split", type: "number" },
-      { key: "active", label: "Active", type: "boolean" },
-      { key: "variantPreview", label: "Variant preview", type: "asset", bucket: "cms-assets", accept: "image/*" },
-      { key: "launchAt", label: "Launch at", type: "datetime" },
-      { key: "experimentId", label: "Experiment ID", type: "readonly" }
-    ],
-    listColumns: [
-      { key: "experimentName", label: "Name", width: "minmax(220px, 1.5fr)" },
-      { key: "channel", label: "Channel", width: "130px" },
-      { key: "trafficSplit", label: "Split", width: "90px" },
-      { key: "active", label: "Active", valueType: "boolean", width: "90px" },
-      { key: "launchAt", label: "Launch at", valueType: "datetime", width: "170px" },
-      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
-    ]
-  },
-  {
-    id: "locations",
-    label: "Locations",
-    tableName: "locations",
-    group: "Operations",
-    titleField: "locationName",
-    description: "Physical locations with region data and search visibility.",
-    fields: [
-      { key: "locationName", label: "Location name", type: "text", required: true },
-      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/locations/" },
-      {
-        key: "region",
-        label: "Region",
-        type: "select",
-        options: [
-          { label: "Northern", value: "northern" },
-          { label: "Eastern", value: "eastern" },
-          { label: "Western", value: "western" },
-          { label: "Central", value: "central" }
-        ]
-      },
-      { key: "capacity", label: "Capacity", type: "number" },
-      { key: "acceptsBookings", label: "Accepts bookings", type: "boolean" },
-      { key: "openingDate", label: "Opening date", type: "datetime" },
-      { key: "mapPreview", label: "Map preview", type: "asset", bucket: "cms-assets", accept: "image/*" },
-      { key: "notes", label: "Internal notes", type: "textarea" }
-    ],
-    listColumns: [
-      { key: "locationName", label: "Name", width: "minmax(220px, 1.4fr)" },
-      { key: "region", label: "Region", width: "140px" },
-      { key: "capacity", label: "Capacity", width: "110px" },
-      { key: "acceptsBookings", label: "Bookings", valueType: "boolean", width: "110px" },
-      { key: "publishStatus", label: "Status", valueType: "status", width: "160px" },
-      { key: "createdAt", label: "Created", valueType: "datetime", width: "170px" }
-    ]
-  },
-  {
-    id: "people-directory",
-    label: "People Directory",
-    tableName: "people_directory",
-    group: "Operations",
-    titleField: "fullName",
-    description: "Team profiles with avatars, availability, and directory metadata.",
-    fields: [
-      { key: "fullName", label: "Full name", type: "text", required: true },
-      { key: "email", label: "Email", type: "text", required: true },
-      { key: "bio", label: "Bio", type: "textarea" },
-      {
-        key: "role",
-        label: "Role",
-        type: "select",
-        options: [
-          { label: "Editor", value: "editor" },
-          { label: "Designer", value: "designer" },
-          { label: "Developer", value: "developer" },
-          { label: "Strategist", value: "strategist" },
-          { label: "Producer", value: "producer" }
-        ]
-      },
-      { key: "weeklyCapacity", label: "Weekly capacity", type: "number" },
-      { key: "contractor", label: "Contractor", type: "boolean" },
-      { key: "avatar", label: "Avatar", type: "asset", bucket: "cms-assets", accept: "image/*" },
-      { key: "startDate", label: "Start date", type: "datetime" },
-      { key: "personId", label: "Person ID", type: "readonly" }
-    ],
-    listColumns: [
-      { key: "fullName", label: "Name", width: "minmax(190px, 1.2fr)" },
-      { key: "role", label: "Role", width: "130px" },
-      { key: "email", label: "Email", width: "minmax(220px, 1.3fr)" },
-      { key: "weeklyCapacity", label: "Capacity", width: "100px" },
-      { key: "contractor", label: "Contractor", valueType: "boolean", width: "110px" },
-      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
-    ]
-  },
-  {
-    id: "feature-flags",
-    label: "Feature Flags",
-    tableName: "feature_flags",
-    // Operational config — editable, but no publish workflow.
-    mode: "data",
-    group: "Platform",
-    titleField: "flagName",
-    description: "Operational feature flags with rollout percentages and expiry dates.",
-    fields: [
-      { key: "flagName", label: "Flag name", type: "text", required: true },
-      { key: "key", label: "Key", type: "slug", required: true },
-      { key: "description", label: "Description", type: "textarea" },
-      {
-        key: "environment",
-        label: "Environment",
-        type: "select",
-        options: [
-          { label: "Development", value: "development" },
-          { label: "Staging", value: "staging" },
-          { label: "Production", value: "production" },
-          { label: "Preview", value: "preview" }
-        ]
-      },
-      { key: "rollout", label: "Rollout", type: "number" },
-      { key: "enabled", label: "Enabled", type: "boolean" },
-      { key: "evidence", label: "Evidence", type: "asset", bucket: "cms-documents", accept: ".png,.jpg,.pdf" },
-      { key: "expiresAt", label: "Expires at", type: "datetime" },
-      { key: "flagId", label: "Flag ID", type: "readonly" }
-    ],
-    listColumns: [
-      { key: "flagName", label: "Name", width: "minmax(220px, 1.5fr)" },
-      { key: "environment", label: "Environment", width: "130px" },
-      { key: "rollout", label: "Rollout", width: "100px" },
-      { key: "enabled", label: "Enabled", valueType: "boolean", width: "100px" },
-      { key: "expiresAt", label: "Expires", valueType: "datetime", width: "170px" },
-      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
-    ]
-  },
-  {
     id: "media-library",
     label: "Media Library",
     tableName: "media_library",
     // Asset metadata — editable, but assets themselves have no publish workflow.
     mode: "data",
-    group: "Media",
+    group: "Site",
     settingsView: "media",
     titleField: "assetName",
     description: "Asset metadata for images, documents, licenses, and sensitive media.",
@@ -389,7 +566,7 @@ export const collectionRegistry: CmsCollection[] = [
     tableName: "redirect_rules",
     // Operational config — editable, but no publish workflow.
     mode: "data",
-    group: "Settings",
+    group: "Site",
     titleField: "sourcePath",
     settingsView: "redirects",
     description: "Redirects with status codes, hit counts, and review notes.",
@@ -424,62 +601,10 @@ export const collectionRegistry: CmsCollection[] = [
     ]
   },
   {
-    id: "localization-strings",
-    label: "Localization Strings",
-    tableName: "localization_strings",
-    // Approval is tracked on the record itself ("approved"), not via publish status.
-    mode: "data",
-    group: "SEO",
-    titleField: "stringKey",
-    description: "Localized UI and SEO copy with approvals and length constraints.",
-    fields: [
-      { key: "stringKey", label: "String key", type: "text", required: true },
-      { key: "localizedText", label: "Localized text", type: "textarea", required: true },
-      {
-        key: "locale",
-        label: "Locale",
-        type: "select",
-        options: [
-          { label: "English", value: "en" },
-          { label: "Afrikaans", value: "af" },
-          { label: "isiXhosa", value: "xh" },
-          { label: "French", value: "fr" },
-          { label: "German", value: "de" }
-        ]
-      },
-      {
-        key: "namespace",
-        label: "Namespace",
-        type: "select",
-        options: [
-          { label: "Navigation", value: "navigation" },
-          { label: "Forms", value: "forms" },
-          { label: "Checkout", value: "checkout" },
-          { label: "SEO", value: "seo" },
-          { label: "Errors", value: "errors" }
-        ]
-      },
-      { key: "characterLimit", label: "Character limit", type: "number" },
-      { key: "approved", label: "Approved", type: "boolean" },
-      { key: "screenshot", label: "Screenshot", type: "asset", bucket: "cms-assets", accept: "image/*" },
-      // Explicit column: the default snake_case ("updated_at") would collide with the system modified-at column.
-      { key: "updatedAt", label: "Updated at", type: "datetime", column: "source_updated_at" },
-      { key: "stringId", label: "String ID", type: "readonly" }
-    ],
-    listColumns: [
-      { key: "stringKey", label: "Key", width: "minmax(220px, 1.4fr)" },
-      { key: "locale", label: "Locale", width: "90px" },
-      { key: "namespace", label: "Namespace", width: "130px" },
-      { key: "approved", label: "Approved", valueType: "boolean", width: "100px" },
-      { key: "characterLimit", label: "Limit", width: "90px" },
-      { key: "modifiedAt", label: "Modified", valueType: "datetime", width: "170px" }
-    ]
-  },
-  {
     id: "site-settings",
     label: "Site settings",
     tableName: "site_settings",
-    group: "Settings",
+    group: "Site",
     titleField: "siteName",
     // Exactly one record: sitewide defaults every page falls back to.
     singleton: true,
@@ -530,7 +655,7 @@ export const collectionRegistry: CmsCollection[] = [
     id: "page-settings",
     label: "Page settings",
     tableName: "page_settings",
-    group: "Settings",
+    group: "Site",
     titleField: "pageName",
     settingsView: "pages",
     description: "Per-page SEO for static routes. Empty fields fall back: open graph/search → meta → site defaults.",

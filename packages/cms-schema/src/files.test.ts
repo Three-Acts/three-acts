@@ -20,8 +20,8 @@ describe("parseVideoValue", () => {
   });
 
   it("tolerates a legacy plain URL string", () => {
-    assert.deepEqual(parseVideoValue("/mock-storage/cms-assets/product_catalog/demo-001.mp4"), {
-      src: "/mock-storage/cms-assets/product_catalog/demo-001.mp4"
+    assert.deepEqual(parseVideoValue("/mock-storage/cms-assets/products/demo-001.mp4"), {
+      src: "/mock-storage/cms-assets/products/demo-001.mp4"
     });
   });
 
@@ -75,8 +75,8 @@ describe("parseFileValue", () => {
   });
 
   it("tolerates a legacy plain URL string", () => {
-    assert.deepEqual(parseFileValue("/mock-storage/cms-documents/product_catalog/spec-sheet-001.pdf"), {
-      src: "/mock-storage/cms-documents/product_catalog/spec-sheet-001.pdf"
+    assert.deepEqual(parseFileValue("/mock-storage/cms-documents/products/spec-sheet-001.pdf"), {
+      src: "/mock-storage/cms-documents/products/spec-sheet-001.pdf"
     });
   });
 

@@ -213,8 +213,8 @@ const rlsExample = [
   "-- matters if these tables are also queried directly with the anon/public",
   "-- key (e.g. from apps/web). Adjust the role/condition to your auth model:",
   "--",
-  "-- alter table launch_pages enable row level security;",
-  "-- create policy \"public can read published rows\" on launch_pages",
+  "-- alter table articles enable row level security;",
+  "-- create policy \"public can read published rows\" on articles",
   "--   for select",
   "--   using (publish_status = 'published');",
   ""

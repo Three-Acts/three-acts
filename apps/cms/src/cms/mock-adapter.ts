@@ -38,37 +38,47 @@ function matchesAccept(file: File, accept?: string): boolean {
 const words = ["Signal", "Harbour", "Proof", "Atlas", "Northstar", "Foundry", "Pulse", "Beacon", "Orbit", "Vector", "Canvas", "Metric", "Archive", "Bridge", "Summit", "Launch", "Campaign", "Studio", "Field", "Ledger"];
 const people = ["Craig Chihururu", "Amara Stone", "Nadia Jacobs", "Theo Brand", "Mika Chen", "Jonas Mokoena", "Priya Naidoo", "Leah Morgan", "Sipho Dlamini", "Elena Ward", "Max Roux", "Ayesha Khan"];
 const cities = ["Cape Town", "Johannesburg", "Durban", "Gqeberha", "East London", "Mthatha", "Kariega", "Centane", "Qumbu", "Butterworth"];
-const regions = ["northern", "eastern", "western", "central"];
 const counts: Record<string, number> = {
-  posts: 18,
-  "launch-pages": 44,
-  "content-blocks": 72,
-  "product-catalog": 58,
+  articles: 18,
+  authors: 8,
+  "article-categories": 6,
+  faqs: 24,
+  testimonials: 12,
+  products: 58,
+  "product-categories": 8,
+  "product-reviews": 140,
+  orders: 220,
+  customers: 160,
+  "discount-codes": 14,
+  "cms-users": 10,
   "form-submissions": 180,
-  experiments: 38,
-  locations: 64,
-  "people-directory": 42,
-  "feature-flags": 52,
   "media-library": 96,
   "redirect-rules": 128,
-  "localization-strings": 150,
   // Settings hold hand-written records only (see settingsRecords): no generated padding.
   "site-settings": 0,
   "page-settings": 0
 };
 
 const edgeCases: Record<string, CmsRecord[]> = {
-  "launch-pages": [
-    buildRecord("lp-edge-long", 901, {
-      title: "A Very Long Launch Page Title That Should Stress Every Truncation Boundary In The Table And Editor Header",
-      slug: "very-long-launch-page-title-that-keeps-going-and-going",
-      summary: "This record deliberately contains a long textarea value. It should make the editor feel realistic, test scroll behavior, and confirm that dense form controls still remain usable when content is verbose.",
-      template: "long_form",
-      priority: 999,
-      featured: true,
-      heroImage: "/mock-storage/cms-assets/launch_pages/extreme-long-title.png",
-      publishAt: isoFromSeed(-1, 47),
-      recordId: "lp-edge-long"
+  products: [
+    buildRecord("prd-edge-long", 901, {
+      title: "A Very Long Product Title That Should Stress Every Truncation Boundary In The Table And Editor Header",
+      slug: "very-long-product-title-that-keeps-going-and-going",
+      sku: "TA-EDGE-LONG-0001",
+      category: "ceramics",
+      price: 99999.99,
+      compareAtPrice: 0,
+      currency: "ZAR",
+      inventory: 0,
+      availability: "out_of_stock",
+      shortDescription: "This record deliberately contains long values to test scroll behavior and dense form controls.",
+      description: "",
+      images: "[]",
+      productVideo: "",
+      specSheet: "",
+      weightGrams: 0,
+      tags: "",
+      featured: true
     })
   ],
   "form-submissions": [
@@ -119,19 +129,6 @@ const edgeCases: Record<string, CmsRecord[]> = {
       file: "/mock-storage/cms-assets/media_library/huge-transparent-product-render.png",
       uploadedAt: isoFromSeed(-30, 70),
       assetId: "ml-edge-missing-alt"
-    })
-  ],
-  "localization-strings": [
-    buildRecord("ls-edge-over-limit", 941, {
-      stringKey: "checkout.error.payment_provider_timeout.secondary_action.tooltip",
-      localizedText: "This translated string intentionally runs far longer than the configured character limit so editors can see overflow pressure in the table and textarea.",
-      locale: "de",
-      namespace: "errors",
-      characterLimit: 48,
-      approved: false,
-      screenshot: "/mock-storage/cms-assets/localization_strings/checkout-error.png",
-      updatedAt: isoFromSeed(-4, 9),
-      stringId: "ls-edge-over-limit"
     })
   ]
 };
@@ -561,53 +558,41 @@ function valuesForCollection(collection: CmsCollection, index: number, id: strin
   const name = makeName(index);
 
   switch (collection.id) {
-    case "posts":
+    case "articles":
       return {
         title: `${name}: notes from the field`,
         slug: slugify(`${name} notes from the field`),
-        excerpt: makeParagraph(index, "post"),
-        body: `${makeParagraph(index, "post")}\n\n${makeParagraph(index + 1, "follow-up")}`,
+        excerpt: makeParagraph(index, "article"),
+        body: `${makeParagraph(index, "article")}\n\n${makeParagraph(index + 1, "follow-up")}`,
         coverImage: imageOrEmpty(index, collection.tableName, "cover", "png"),
-        author: people[index % people.length],
+        author: slugify(people[index % people.length]),
+        category: ["guides", "news", "behind-the-scenes"][index % 3],
         tags: ["performance", "seo", "workflow", "cms", "astro"].filter((_, tagIndex) => (index + tagIndex) % 3 !== 0).join(", "),
-        publishedAt: isoFromSeed(-index * 2, index * 7)
+        publishedAt: isoFromSeed(-index * 2, index * 7),
+        readingTime: 3 + (index % 9),
+        featured: index % 6 === 0,
+        seoTitle: "",
+        seoDescription: ""
       };
-    case "launch-pages":
+    case "products":
       return {
-        title: `${name} Launch Page`,
-        slug: slugify(`${name} Launch Page`),
-        summary: makeParagraph(index, "launch page"),
-        template: pickOption(collection, "template", index),
-        priority: (index % 12) + 1,
-        featured: index % 5 === 0,
-        heroImage: imageOrEmpty(index, collection.tableName, "hero", "jpg"),
-        imageGallery: galleryOrEmpty(index, collection.tableName),
-        publishAt: index % 4 === 0 ? "" : isoFromSeed(index % 10, index * 3),
-        recordId: id
-      };
-    case "content-blocks":
-      return {
-        blockName: `${name} Content Block`,
-        slotKey: slugify(`${name} slot ${index}`),
-        body: makeParagraph(index, "content block"),
-        surface: pickOption(collection, "surface", index),
-        sortOrder: index + 1,
-        visible: index % 6 !== 0,
-        referenceImage: assetOrEmpty(index, collection.tableName, "reference", "png"),
-        reviewAt: isoFromSeed(index % 18, index * 5),
-        blockId: id
-      };
-    case "product-catalog":
-      return {
-        name: `${name} Product ${index + 1}`,
+        title: `${name} ${["Mug", "Vase", "Throw", "Candle", "Print"][index % 5]}`,
+        slug: slugify(`${name} ${index + 1}`),
         sku: `${words[index % words.length].slice(0, 3).toUpperCase()}-${1000 + index}`,
-        description: makeParagraph(index, "product"),
+        category: ["ceramics", "textiles", "candles", "prints"][index % 4],
         price: Number(((index % 17) * 19 + 29.99).toFixed(2)),
-        category: pickOption(collection, "category", index),
-        inStock: index % 7 !== 0,
+        compareAtPrice: index % 5 === 0 ? Number(((index % 17) * 19 + 49.99).toFixed(2)) : 0,
+        currency: pickOption(collection, "currency", index % 2 === 0 ? 0 : index),
+        inventory: index % 7 === 0 ? 0 : (index * 13) % 120,
+        availability: index % 7 === 0 ? "out_of_stock" : pickOption(collection, "availability", index % 2),
+        shortDescription: makeParagraph(index, "product"),
+        description: `${makeParagraph(index, "product")}\n\n${makeParagraph(index + 2, "care")}`,
+        images: galleryOrEmpty(index, collection.tableName),
+        productVideo: videoOrEmpty(index, collection.tableName),
         specSheet: fileOrEmpty(index, collection.tableName, "spec-sheet", "pdf", "application/pdf"),
-        demoVideo: videoOrEmpty(index, collection.tableName),
-        updatedBy: people[index % people.length]
+        weightGrams: 150 + ((index * 37) % 2400),
+        tags: ["handmade", "gift", "bestseller", "new"].filter((_, tagIndex) => (index + tagIndex) % 2 === 0).join(", "),
+        featured: index % 8 === 0
       };
     case "form-submissions":
       return {
@@ -620,53 +605,6 @@ function valuesForCollection(collection: CmsCollection, index: number, id: strin
         attachment: assetOrEmpty(index, collection.tableName, "attachment", "pdf"),
         submittedAt: isoFromSeed(-index, index),
         submissionId: id
-      };
-    case "experiments":
-      return {
-        experimentName: `${name} Experiment`,
-        slug: slugify(`${name} Experiment`),
-        hypothesis: makeParagraph(index, "experiment hypothesis"),
-        channel: pickOption(collection, "channel", index),
-        trafficSplit: (index * 13) % 101,
-        active: index % 4 !== 0,
-        variantPreview: assetOrEmpty(index, collection.tableName, "variant", "png"),
-        launchAt: isoFromSeed(index % 20, index * 2),
-        experimentId: id
-      };
-    case "locations":
-      return {
-        locationName: `${cities[index % cities.length]} ${words[index % words.length]} Office`,
-        slug: slugify(`${cities[index % cities.length]} ${words[index % words.length]} Office`),
-        region: regions[index % regions.length],
-        capacity: 8 + ((index * 7) % 180),
-        acceptsBookings: index % 5 !== 1,
-        openingDate: index % 8 === 0 ? "" : isoFromSeed(index % 60, index),
-        mapPreview: assetOrEmpty(index, collection.tableName, "map", "jpg"),
-        notes: makeParagraph(index, "location note")
-      };
-    case "people-directory":
-      return {
-        fullName: people[index % people.length],
-        email: `${slugify(people[index % people.length])}@threeacts.test`,
-        bio: makeParagraph(index, "team profile"),
-        role: pickOption(collection, "role", index),
-        weeklyCapacity: 8 + ((index * 5) % 33),
-        contractor: index % 4 === 0,
-        avatar: assetOrEmpty(index, collection.tableName, "avatar", "jpg"),
-        startDate: isoFromSeed(-index * 9, index),
-        personId: id
-      };
-    case "feature-flags":
-      return {
-        flagName: `${name} Feature Flag`,
-        key: slugify(`${name} Feature Flag`),
-        description: makeParagraph(index, "feature flag"),
-        environment: pickOption(collection, "environment", index),
-        rollout: (index * 17) % 101,
-        enabled: index % 3 !== 1,
-        evidence: assetOrEmpty(index, collection.tableName, "evidence", "pdf"),
-        expiresAt: index % 6 === 0 ? "" : isoFromSeed(index % 90, index * 4),
-        flagId: id
       };
     case "media-library":
       return {
@@ -692,21 +630,71 @@ function valuesForCollection(collection: CmsCollection, index: number, id: strin
         lastHitAt: isoFromSeed(-index, index * 2),
         ruleId: id
       };
-    case "localization-strings":
-      return {
-        stringKey: `${pickOption(collection, "namespace", index)}.${slugify(name)}.${index + 1}`,
-        localizedText: makeParagraph(index, "localized string"),
-        locale: pickOption(collection, "locale", index),
-        namespace: pickOption(collection, "namespace", index),
-        characterLimit: 40 + ((index * 11) % 180),
-        approved: index % 5 !== 2,
-        screenshot: assetOrEmpty(index, collection.tableName, "screenshot", "png"),
-        updatedAt: isoFromSeed(-index, index * 3),
-        stringId: id
-      };
     default:
-      return {};
+      return genericValues(collection, index, id);
   }
+}
+
+/**
+ * Type-driven placeholder values for collections without hand-written
+ * fixtures, so every registry collection renders populated records.
+ */
+function genericValues(collection: CmsCollection, index: number, id: string): Record<string, CmsRecordValue> {
+  const name = makeName(index);
+  const person = people[index % people.length];
+
+  return collection.fields.reduce<Record<string, CmsRecordValue>>((values, field) => {
+    const key = field.key.toLowerCase();
+    switch (field.type) {
+      case "slug":
+        values[field.key] = slugify(`${name} ${index + 1}`);
+        break;
+      case "select":
+        values[field.key] = pickOption(collection, field.key, index);
+        break;
+      case "number":
+        values[field.key] = (index * 17) % 500;
+        break;
+      case "boolean":
+        values[field.key] = index % 3 !== 0;
+        break;
+      case "datetime":
+        values[field.key] = isoFromSeed(-index, index * 5);
+        break;
+      case "textarea":
+        values[field.key] = makeParagraph(index, collection.label.toLowerCase());
+        break;
+      case "image":
+        values[field.key] = imageOrEmpty(index, collection.tableName, field.key, "jpg");
+        break;
+      case "image-gallery":
+        values[field.key] = galleryOrEmpty(index, collection.tableName);
+        break;
+      case "video":
+        values[field.key] = videoOrEmpty(index, collection.tableName);
+        break;
+      case "file":
+        values[field.key] = fileOrEmpty(index, collection.tableName, field.key, "pdf", "application/pdf");
+        break;
+      case "asset":
+        values[field.key] = assetOrEmpty(index, collection.tableName, field.key, "jpg");
+        break;
+      case "readonly":
+        values[field.key] = id;
+        break;
+      default:
+        values[field.key] = key.includes("email")
+          ? `${slugify(person)}.${index}@example.test`
+          : key.includes("city")
+            ? cities[index % cities.length]
+            : key === collection.titleField?.toLowerCase() || key.endsWith("name")
+            ? key.includes("customer") || key === "name"
+              ? person
+              : name
+            : `${name} ${field.label.toLowerCase()}`;
+    }
+    return values;
+  }, {});
 }
 
 let idCounter = 0;
@@ -845,7 +833,7 @@ function imageOrEmpty(index: number, tableName: string, prefix: string, extensio
   });
 }
 
-/** Typed gallery JSON for the launch-pages Test Collection Set (empty every 5th record). */
+/** Typed gallery JSON for image-gallery fields such as product images (empty every 5th record). */
 function galleryOrEmpty(index: number, tableName: string): string {
   if (index % 5 === 0) {
     return "[]";
@@ -863,7 +851,7 @@ function galleryOrEmpty(index: number, tableName: string): string {
   return serializeImageGallery(items);
 }
 
-/** Typed single-file JSON for the product-catalog spec sheet (empty every 7th record). */
+/** Typed single-file JSON for file fields such as the product spec sheet (empty every 7th record). */
 function fileOrEmpty(index: number, tableName: string, prefix: string, extension: string, contentType: string): string {
   const src = assetOrEmpty(index, tableName, prefix, extension);
   if (!src) {
@@ -880,7 +868,7 @@ function fileOrEmpty(index: number, tableName: string, prefix: string, extension
   return serializeFileValue(value);
 }
 
-/** Typed single-video JSON for the product-catalog demo video (empty every 4th record). */
+/** Typed single-video JSON for video fields such as the product video (empty every 4th record). */
 function videoOrEmpty(index: number, tableName: string): string {
   if (index % 4 === 0) {
     return "";

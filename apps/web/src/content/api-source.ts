@@ -5,27 +5,27 @@ import type { ContentEntry, ContentSource } from "./content-source";
  * Content source backed by the project's own public API (`apps/api`), driven
  * by the shared `@three-acts/cms-schema` registry instead of a bespoke,
  * disconnected table shape. Reads the unauthenticated
- * `/api/content/collections/posts/records` endpoint, which only ever returns
+ * `/api/content/collections/articles/records` endpoint, which only ever returns
  * `published` records — see `apps/api/api/content/collections/[collectionId]/records.ts`.
  */
 
-const COLLECTION_ID = "posts";
+const COLLECTION_ID = "articles";
 const PAGE_SIZE = 200;
 
-type PostsFieldKey = "title" | "slug" | "excerpt" | "body" | "coverImage" | "author" | "tags" | "publishedAt";
+type ArticleFieldKey = "title" | "slug" | "excerpt" | "body" | "coverImage" | "author" | "tags" | "publishedAt";
 
-const postsCollection = collectionRegistry.find((collection) => collection.id === COLLECTION_ID);
+const articlesCollection = collectionRegistry.find((collection) => collection.id === COLLECTION_ID);
 
-if (!postsCollection) {
+if (!articlesCollection) {
   throw new Error(
     `api-source: the "${COLLECTION_ID}" collection is missing from @three-acts/cms-schema's collectionRegistry.`
   );
 }
 
-const collectionFieldKeys = new Set(postsCollection.fields.map((field) => field.key));
+const collectionFieldKeys = new Set(articlesCollection.fields.map((field) => field.key));
 
 /** Fails fast at module init (not per-request) if the registry's shape drifts from what this mapper expects. */
-function requireFieldKey(key: PostsFieldKey): PostsFieldKey {
+function requireFieldKey(key: ArticleFieldKey): ArticleFieldKey {
   if (!collectionFieldKeys.has(key)) {
     throw new Error(
       `api-source: expected field "${key}" on the "${COLLECTION_ID}" collection, but it is not in the registry.`
@@ -34,7 +34,7 @@ function requireFieldKey(key: PostsFieldKey): PostsFieldKey {
   return key;
 }
 
-const FIELD: Record<PostsFieldKey, PostsFieldKey> = {
+const FIELD: Record<ArticleFieldKey, ArticleFieldKey> = {
   title: requireFieldKey("title"),
   slug: requireFieldKey("slug"),
   excerpt: requireFieldKey("excerpt"),
@@ -66,6 +66,8 @@ function mapRecord(record: CmsRecord): ContentEntry | null {
 
   // Cover images are typed `image` fields (ImageValue JSON) with legacy
   // plain-URL rows still in the wild — `imageSrc` reads both forms.
+  // `author` is an authors.slug reference (no relation field type yet), so the
+  // byline shows the slug until the site resolves it against `authors`.
   const coverImage = imageSrc(record.values[FIELD.coverImage]).trim();
   const author = readString(record.values[FIELD.author]).trim();
   const publishedAt = readString(record.values[FIELD.publishedAt]).trim();
@@ -83,7 +85,7 @@ function mapRecord(record: CmsRecord): ContentEntry | null {
   };
 }
 
-/** Fetches every published `posts` record, paginating until `total` is reached. */
+/** Fetches every published `articles` record, paginating until `total` is reached. */
 async function fetchAllRecords(apiOrigin: string): Promise<CmsRecord[]> {
   const records: CmsRecord[] = [];
   let offset = 0;

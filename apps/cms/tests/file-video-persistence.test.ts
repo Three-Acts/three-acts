@@ -15,50 +15,50 @@ function makeFile(name: string, type: string, size = 12): File {
 
 describe("file/video field persistence", () => {
   it("saves and reloads typed file and video metadata", async () => {
-    const original = await mockCmsBackend.data.getRecord("product-catalog", "pro-0001");
+    const original = await mockCmsBackend.data.getRecord("products", "pro-0001");
     const specSheet = {
-      src: "/mock-storage/cms-documents/product_catalog/spec-sheet-001.pdf",
+      src: "/mock-storage/cms-documents/products/spec-sheet-001.pdf",
       fileName: "spec-sheet-001.pdf",
       size: 64200,
       contentType: "application/pdf"
     };
-    const demoVideo = {
-      src: "/mock-storage/cms-assets/product_catalog/demo-001.mp4",
+    const productVideo = {
+      src: "/mock-storage/cms-assets/products/demo-001.mp4",
       fileName: "demo-001.mp4",
       size: 2450000,
       contentType: "video/mp4"
     };
 
     const saved = await mockCmsBackend.data.saveRecord(
-      "product-catalog",
+      "products",
       {
         ...original,
         values: {
           ...original.values,
           specSheet: serializeFileValue(specSheet),
-          demoVideo: serializeVideoValue(demoVideo)
+          productVideo: serializeVideoValue(productVideo)
         }
       },
       { expectedModifiedAt: original.modifiedAt }
     );
-    const reloaded = await mockCmsBackend.data.getRecord("product-catalog", saved.id);
+    const reloaded = await mockCmsBackend.data.getRecord("products", saved.id);
 
     assert.deepEqual(parseFileValue(reloaded.values.specSheet), specSheet);
-    assert.deepEqual(parseVideoValue(reloaded.values.demoVideo), demoVideo);
+    assert.deepEqual(parseVideoValue(reloaded.values.productVideo), productVideo);
   });
 
   it("clears file/video values and keeps them empty across reload", async () => {
-    const original = await mockCmsBackend.data.getRecord("product-catalog", "pro-0002");
+    const original = await mockCmsBackend.data.getRecord("products", "pro-0002");
 
     const saved = await mockCmsBackend.data.saveRecord(
-      "product-catalog",
-      { ...original, values: { ...original.values, specSheet: "", demoVideo: "" } },
+      "products",
+      { ...original, values: { ...original.values, specSheet: "", productVideo: "" } },
       { expectedModifiedAt: original.modifiedAt }
     );
-    const reloaded = await mockCmsBackend.data.getRecord("product-catalog", saved.id);
+    const reloaded = await mockCmsBackend.data.getRecord("products", saved.id);
 
     assert.equal(parseFileValue(reloaded.values.specSheet), null);
-    assert.equal(parseVideoValue(reloaded.values.demoVideo), null);
+    assert.equal(parseVideoValue(reloaded.values.productVideo), null);
   });
 
   it("rejects values without a usable src as empty", () => {
@@ -69,22 +69,22 @@ describe("file/video field persistence", () => {
   });
 
   it("rejects invalid upload types on typed fields", async () => {
-    await assert.rejects(() => mockCmsBackend.storage.uploadAsset("product-catalog", "demoVideo", makeFile("photo.png", "image/png")), /only accepts videos/);
+    await assert.rejects(() => mockCmsBackend.storage.uploadAsset("products", "productVideo", makeFile("photo.png", "image/png")), /only accepts videos/);
     await assert.rejects(
-      () => mockCmsBackend.storage.uploadAsset("product-catalog", "demoVideo", makeFile("notes.txt", "text/plain")),
+      () => mockCmsBackend.storage.uploadAsset("products", "productVideo", makeFile("notes.txt", "text/plain")),
       /only accepts videos/
     );
   });
 
   it("accepts uploads on the typed file field and preserves name/size", async () => {
-    const result = await mockCmsBackend.storage.uploadAsset("product-catalog", "specSheet", makeFile("spec-sheet.pdf", "application/pdf", 24));
+    const result = await mockCmsBackend.storage.uploadAsset("products", "specSheet", makeFile("spec-sheet.pdf", "application/pdf", 24));
     assert.equal(result.fileName, "spec-sheet.pdf");
     assert.equal(result.size, 24);
   });
 
   it("rejects file extensions outside the field accept contract", async () => {
     await assert.rejects(
-      () => mockCmsBackend.storage.uploadAsset("product-catalog", "specSheet", makeFile("notes.txt", "text/plain")),
+      () => mockCmsBackend.storage.uploadAsset("products", "specSheet", makeFile("notes.txt", "text/plain")),
       /does not accept this file type/
     );
   });

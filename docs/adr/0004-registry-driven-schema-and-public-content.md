@@ -20,6 +20,8 @@ ADR 0003 made `@three-acts/cms-schema`'s collection registry the shared definiti
 
 4. **A real `posts` collection lives in the registry.** It replaces the site's ad-hoc table definition. Tags are a comma-separated text field for now; a list field type is future work.
 
+   _Update 2026-09-25:_ the demo registry was replaced by a realistic site model (articles, authors, categories, FAQs, testimonials, a shop with products/orders/customers, and CMS users). `posts` became `articles`; the site's `api` source now reads `articles`. Cross-collection references (e.g. `articles.author` → `authors.slug`) are slug text fields until a relation field type exists.
+
 ## Alternatives considered
 
 - **Introspect the live database to diff.** Rejected for now. It needs a Postgres driver and credentials in the tooling path, and Supabase's REST layer cannot query `information_schema`. A snapshot is dependency-free and reviewable in git.
@@ -32,4 +34,4 @@ ADR 0003 made `@three-acts/cms-schema`'s collection registry the shared definiti
 - Changing a field now has a defined path: edit the registry, run `schema:diff`, review, apply, run `schema:migrate` to advance the snapshot. Skipping the last step makes the next diff repeat the same statements, which is harmless because they are idempotent.
 - The generated SQL remains Postgres-flavoured (`uuid`, `timestamptz`, `gen_random_uuid`, plpgsql trigger). A SQLite target needs a dialect switch in `apps/api/scripts/schema/sql.ts`.
 - Site builds now depend on the API being reachable when `CONTENT_SOURCE=api`. That is intentional: a failed fetch should stop a deploy, not publish an empty blog.
-- Field types are still limited (no relation, rich text, or list). The `posts.tags` field carries that limitation visibly.
+- Field types are still limited (no relation, rich text, or list). The `articles.tags` field and slug-based references such as `articles.author` carry that limitation visibly.
