@@ -97,7 +97,7 @@ describe("shop seed — schema conformance", () => {
         checkValues(c, record, record.values, mustBeComplete(c, record));
 
         if (!hasPublishWorkflow(c)) {
-          assert.equal(record.publishStatus, "published", `${id}/${record.id}: data records use the published status`);
+          assert.equal(record.publishStatus, "not_published", `${id}/${record.id}: data records use the not_published status (what the API assigns on create)`);
           assert.equal(record.liveValues, null, `${id}/${record.id}: data records have no live snapshot`);
         } else if (record.publishStatus === "published") {
           assert.deepEqual(record.liveValues, record.values, `${id}/${record.id}: published live snapshot equals values`);

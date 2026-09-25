@@ -1786,7 +1786,7 @@ const orders: Order[] = (() => {
 })();
 
 const orderRecords: CmsRecord[] = orders.map((o) =>
-  seedRecord({ id: `order-${o.number}`, createdAt: iso(o.placedMs), modifiedAt: iso(o.modifiedMs), values: o.values, liveValues: null })
+  seedRecord({ id: `order-${o.number}`, publishStatus: "not_published", createdAt: iso(o.placedMs), modifiedAt: iso(o.modifiedMs), values: o.values, liveValues: null })
 );
 
 const discountRecords: CmsRecord[] = discountDefs.map((c) => {
@@ -1796,6 +1796,7 @@ const discountRecords: CmsRecord[] = discountDefs.map((c) => {
     id: `discount-${c.code.toLowerCase()}`,
     createdAt: daysAgo(created),
     modifiedAt: daysAgo(c.code === "WHOLESALE15" ? 88 : c.endsDaysAgo !== null && c.endsDaysAgo > 0 ? c.endsDaysAgo : Math.min(created, 3)),
+    publishStatus: "not_published",
     liveValues: null,
     values: complete("discount-codes", {
       code: c.code,
@@ -1824,6 +1825,7 @@ const customerRecords: CmsRecord[] = customers.map((c, index) => {
     id: c.id,
     createdAt: iso(createdMs),
     modifiedAt: iso(Math.min(modifiedMs, nowMs)),
+    publishStatus: "not_published",
     liveValues: null,
     values: complete("customers", {
       name: c.name,
@@ -1971,6 +1973,7 @@ const reviewRecords: CmsRecord[] = (() => {
         id: `review-${String(index).padStart(4, "0")}`,
         createdAt: iso(input.submittedMs),
         modifiedAt: iso(Math.min(input.submittedMs + (approved ? int(2, 48) * 3_600_000 : 0), nowMs)),
+        publishStatus: "not_published",
         liveValues: null,
         values: complete("product-reviews", {
           title: pick(copy.titles),
