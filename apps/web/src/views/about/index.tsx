@@ -4,9 +4,8 @@ import { Section } from "../../components/layout/section";
 import { Avatar } from "../../components/ui/avatar";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { Prose } from "../../components/ui/prose";
+import { Tile } from "../../components/ui/tile";
 import { Typography } from "../../components/ui/typography";
-import { site } from "../../site";
 
 type AboutPageProps = {
   authors: Author[];
@@ -14,93 +13,116 @@ type AboutPageProps = {
 };
 
 const STORY = [
-  "Fynbos & Fire started in 2019 on a single 5 kg Toper drum roaster in a Woodstock garage. Cape Town had no shortage of coffee, but we wanted slower coffee: small batches, tasted and adjusted roast by roast, from farms we could name.",
-  "That meant sourcing trips instead of broker catalogues. We buy direct from washing stations and cooperatives in Ethiopia, Colombia, Rwanda and beyond, pay above commodity price, and keep a Q-grader on staff so every lot is cupped before it's bought and again before it ships. As the orders grew past what the garage could roast, we moved the drums into a proper roastery in Observatory — bigger, but built around the same one-batch-at-a-time habits.",
-  "Every coffee still gets tasted the morning it's roasted. Blends are built to a cup profile, not a price point, and our brewing gear is chosen the same way: the drippers, grinders and filters we'd actually recommend to a friend, not just what's easiest to stock.",
-  "The roastery bar is open to the public through the week, we train home baristas and café staff through our education program, and we supply wholesale to independent cafés across the country. Coffee this good only works as a small, direct, slightly obsessive supply chain — so that's what we've built."
-].join("\n\n");
+  "We built Three Acts after the same brief showed up for the fourth time: a marketing site, somewhere non-technical for an editor to make changes, and no budget to rebuild the plumbing from scratch each time. Three Acts is that shape, built once and left open to configure rather than rewrite.",
+  "The public site renders to static HTML by default. React only ships where a page actually needs it — cart, checkout, sign-in, a form — as an isolated island, not a framework wrapped around every route.",
+  "Every collection, field and constraint is declared once in the collection registry. The editor, the API's validation and the generated Postgres schema all read the same file, so the three never drift apart.",
+  "Neither the public site nor the editorial app ever holds a database credential or a payment key. Every write and every auth call goes through the API app — the one place secrets live, and the one place to audit.",
+  "A client fork edits the registry, the seed data, the shop config and the theme tokens — not the plumbing underneath. Swap the backend, keep the site."
+];
 
-const VALUES = [
-  {
-    title: "Sourcing",
-    description:
-      "Direct-trade relationships with growers and washing stations, paid above commodity price, revisited every season rather than locked into a single contract."
-  },
-  {
-    title: "Roasting",
-    description:
-      "Small batches on the drum, cupped the morning they're roasted. A profile is only \"done\" once it tastes right in the cup — not when the timer says so."
-  },
-  {
-    title: "Sustainability",
-    description:
-      "Compostable bags, returnable 1 kg roastery tins for local customers, and a standing commitment to fair, transparent pricing back to the farms we buy from."
-  }
+const VALUE_TILES = [
+  { mark: "01", title: "Static-first", description: "Every route pre-renders to HTML; islands hydrate only what needs to be interactive." },
+  { mark: "02", title: "One registry", description: "Collections, fields and constraints declared once, shared by the editor, the API and the schema." },
+  { mark: "03", title: "Swap the backend", description: "File-backed storage today, Postgres or Supabase tomorrow — the same interface either way." },
+  { mark: "04", title: "Everything through the API", description: "Every browser write and every auth call goes through one app. No app holds a provider credential." },
+  { mark: "05", title: "Fork in an afternoon", description: "Rename the brand, edit the registry, swap the seed data — the plumbing stays put." },
+  { mark: "06", title: "Wireframe design system", description: "Black, white and one gray. Hierarchy comes from size and space, not colour." }
+];
+
+const PROCESS_STEPS = [
+  { number: "01", title: "Fork", description: "Clone the repo, then rename the brand in site.ts and the design tokens in theme.css." },
+  { number: "02", title: "Configure the registry", description: "Add, remove or retype collections and fields in the collection registry for the client's real content and product model." },
+  { number: "03", title: "Seed and design", description: "Replace the example seed data, swap in the client's real copy and imagery, and adjust the theme tokens to the client's brand." },
+  { number: "04", title: "Connect a store", description: "Point the data and storage backends at Postgres or Supabase — or keep the zero-configuration file-backed store for a lightweight site with no shop." },
+  { number: "05", title: "Deploy", description: "Set the client's own secrets, deploy the web, CMS and API apps, and run the first publish." }
 ];
 
 /**
- * The `/about` route: founding story, values, "the team" (published authors
- * as profile cards), a testimonials strip and the visit-us block.
+ * The `/about` route: a two-column story + value-tile intro, the "how a
+ * client site ships" process steps, a black "the team" band built from every
+ * published author, a testimonials strip and a closing CTA row into
+ * `/agencies`.
  */
 export function AboutPage({ authors, testimonials }: AboutPageProps) {
   return (
     <>
-      <Section.Root className="pb-10">
-        <Section.Container className="max-w-3xl">
-          <Typography.Eyebrow className="mb-5">Since 2019 · Observatory, Cape Town</Typography.Eyebrow>
-          <Typography.Display as="h1">Small batches, direct sourcing, no shortcuts.</Typography.Display>
-          <Typography.Lede className="mt-6">
-            Fynbos & Fire is a specialty coffee roaster built around one habit: taste everything, roast in small
-            batches, and buy direct from the farms whose names go on the bag.
-          </Typography.Lede>
-        </Section.Container>
-      </Section.Root>
-
-      <Section.Root className="pt-0">
-        <Section.Container className="max-w-3xl">
-          <Prose.Root body={STORY} />
-        </Section.Container>
-      </Section.Root>
-
-      <Section.Root className="bg-surface-raised">
+      <Section.Root>
         <Section.Container>
-          <Section.Header eyebrow="What we stand for" title="How we work" />
-          <Grid.Root cols={3}>
-            {VALUES.map((value) => (
-              <article key={value.title} className="flex flex-col gap-3 border border-line bg-surface p-6">
-                <h3 className="font-serif text-xl font-semibold tracking-tight text-ink">{value.title}</h3>
-                <p className="text-sm leading-6 text-muted">{value.description}</p>
-              </article>
+          <Section.Header
+            eyebrow="About"
+            title="One template, three apps, no re-plumbing"
+            lede="Three Acts is a static-first Astro site, a private CMS and a typed API bridge, versioned together in one repo. Here's why we built it that way, and what forking it actually looks like."
+          />
+          <div className="grid gap-x-gap gap-y-gap-y landscape:grid-cols-split">
+            <div className="flex flex-col justify-between gap-8">
+              <Typography.Eyebrow>The short version</Typography.Eyebrow>
+              <div className="flex max-w-[640px] flex-col gap-6">
+                {STORY.map((paragraph, index) => (
+                  <p key={index} className="text-body text-ink">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <Grid.Root cols={3}>
+              {VALUE_TILES.map((tile) => (
+                <Tile.Root key={tile.mark} mark={tile.mark} title={tile.title} description={tile.description} />
+              ))}
+            </Grid.Root>
+          </div>
+        </Section.Container>
+      </Section.Root>
+
+      <Section.Root>
+        <Section.Container>
+          <Section.Header eyebrow="Process" title="How a client site ships" />
+          <div>
+            {PROCESS_STEPS.map((step) => (
+              <div key={step.number} className="grid gap-x-4 gap-y-2 border-t border-line-strong py-8 landscape:grid-cols-[120px_1fr]">
+                <span className="text-h2 font-normal text-ink">{step.number}</span>
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-h3 font-medium text-ink">{step.title}</h3>
+                  <p className="max-w-2xl text-body text-ink">{step.description}</p>
+                </div>
+              </div>
             ))}
-          </Grid.Root>
+          </div>
         </Section.Container>
       </Section.Root>
 
       {authors.length > 0 && (
-        <Section.Root>
+        <Section.Root className="bg-ink text-surface">
           <Section.Container>
-            <Section.Header eyebrow="Who we are" title="The team" />
-            <Grid.Root cols={4}>
-              {authors.map((author) => (
-                <a
-                  key={author.slug}
-                  href={`/authors/${author.slug}`}
-                  className="focus-ring group flex flex-col items-center gap-3 border border-line bg-surface-raised p-6 text-center transition-transform duration-150 hover:-translate-y-0.5 hover:shadow-soft"
-                >
-                  <Avatar.Root name={author.name} src={author.avatar?.src} size="lg" />
-                  <span className="font-serif text-lg font-semibold tracking-tight text-ink">{author.name}</span>
-                  <span className="text-sm text-muted">{author.role}</span>
-                </a>
-              ))}
-            </Grid.Root>
+            <Typography.Title className="mb-10 text-surface">The team</Typography.Title>
+            <div className="grid gap-x-gap gap-y-gap-y landscape:grid-cols-label-grid">
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-h3 font-medium text-surface">Team</h3>
+                <span className="text-small text-surface">({authors.length})</span>
+              </div>
+              <div className="grid grid-cols-1 gap-x-gap gap-y-gap-y landscape:grid-cols-2 tablet:grid-cols-3">
+                {authors.map((author) => (
+                  <a
+                    key={author.slug}
+                    href={`/authors/${author.slug}`}
+                    className="focus-ring group flex flex-col items-center gap-3 border border-surface bg-surface p-6 text-center"
+                  >
+                    <Avatar.Root name={author.name} src={author.avatar?.src} size="lg" />
+                    <span className="flex flex-col gap-1">
+                      <span className="text-body font-medium text-ink group-hover:underline">{author.name}</span>
+                      <span className="text-small text-ink">{author.role}</span>
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
           </Section.Container>
         </Section.Root>
       )}
 
       {testimonials.length > 0 && (
-        <Section.Root className="bg-surface-raised">
+        <Section.Root>
           <Section.Container>
-            <Section.Header align="center" eyebrow="Word on the street" title="What people are saying" />
+            <Section.Header align="center" eyebrow="Agencies" title="What agencies say" />
             <Grid.Root cols={testimonials.length >= 4 ? 4 : 3}>
               {testimonials.map((testimonial) => (
                 <Card.Testimonial
@@ -118,35 +140,13 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
         </Section.Root>
       )}
 
-      <Section.Root>
+      <Section.Root className="pt-0">
         <Section.Container>
-          <div className="grid gap-10 border border-line bg-surface-raised p-8 tablet:grid-cols-2 tablet:p-10">
-            <div>
-              <Typography.Eyebrow>Visit the roastery</Typography.Eyebrow>
-              <Typography.Title as="h2" className="mt-4">
-                {site.address.street}
-              </Typography.Title>
-              <p className="mt-1 text-muted">
-                {site.address.locality}, {site.address.postalCode}
-              </p>
-              <p className="text-muted">{site.address.country}</p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button.Link href="/visit-the-roastery" size="sm">
-                  Plan a visit
-                </Button.Link>
-                <Button.Link href="/contact" variant="secondary" size="sm">
-                  Get in touch
-                </Button.Link>
-              </div>
-            </div>
-            <dl className="flex flex-col gap-1.5 self-start text-sm text-muted">
-              {site.hours.map((entry) => (
-                <div key={entry.days} className="flex justify-between gap-4 border-b border-line py-2 first:pt-0">
-                  <dt className="font-medium text-ink">{entry.days}</dt>
-                  <dd>{entry.hours}</dd>
-                </div>
-              ))}
-            </dl>
+          <div className="flex flex-col gap-6 border border-line p-[30px] landscape:flex-row landscape:items-center landscape:justify-between">
+            <Typography.Title as="h2">Talk to us about an agency licence</Typography.Title>
+            <Button.Link href="/agencies" icon="arrow">
+              See agency licensing
+            </Button.Link>
           </div>
         </Section.Container>
       </Section.Root>
