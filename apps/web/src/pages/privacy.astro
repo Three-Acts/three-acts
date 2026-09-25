@@ -1,0 +1,42 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { infoPageMeta } from "../page-meta";
+import { site } from "../site";
+import { InfoPage } from "../views/info/InfoPage";
+
+const meta = await infoPageMeta("/privacy", {
+  title: "Privacy policy",
+  description: "How Fynbos & Fire collects, uses and protects your personal information in line with POPIA."
+});
+
+const sections = [
+  {
+    heading: "What we collect",
+    body: "When you order, sign up, subscribe to our newsletter or contact us, we collect what's needed to act on it — your name, email, phone number, delivery address and order history. We never collect card details ourselves; payment is handled by our payment provider directly."
+  },
+  {
+    heading: "Why we collect it",
+    body: "- To take and deliver an order, and to support you if something goes wrong\n- To run your account, including order history and saved details\n- To send order and delivery updates you can't opt out of while you have an open order\n- To send marketing emails, only if you've opted in, and only until you unsubscribe\n- To respond to a message sent through our contact, wholesale or newsletter forms"
+  },
+  {
+    heading: "How we protect it",
+    body: "Your information is stored with providers that meet current security standards, accessed only by the people who need it to run the roastery and fulfil your order. We don't sell your personal information to anyone."
+  },
+  {
+    heading: "Your rights under POPIA",
+    body: `Under South Africa's Protection of Personal Information Act, you can ask us what we hold about you, ask us to correct or delete it, and withdraw marketing consent at any time. Email ${site.email} and we'll respond within a reasonable time.`
+  },
+  {
+    heading: "Cookies",
+    body: "We use a small number of cookies to keep your cart working across pages and to understand which pages people find useful. None of them are used to build an advertising profile of you."
+  },
+  {
+    heading: "Changes to this policy",
+    body: `We'll update this page if how we handle your information changes materially. Questions in the meantime? Email ${site.email} or write to us at ${site.address.street}, ${site.address.locality}, ${site.address.postalCode}.`
+  }
+];
+---
+
+<BaseLayout seo={meta.seo}>
+  <InfoPage title="Privacy policy" lede="How we collect, use and protect your personal information." sections={sections} />
+</BaseLayout>

@@ -1,0 +1,31 @@
+---
+import type { ArticleCategory } from "@three-acts/content";
+import { loadArticleCategories, loadArticles } from "../../../content/loaders";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { blogCategoryMeta } from "../../../page-meta";
+import { BlogCategoryPage } from "../../../views/blog/BlogCategoryPage";
+
+export async function getStaticPaths() {
+  const categories = await loadArticleCategories();
+  return categories.map((category) => ({
+    params: { slug: category.slug },
+    props: { category }
+  }));
+}
+
+type Props = { category: ArticleCategory };
+
+const { category } = Astro.props;
+const meta = blogCategoryMeta(category);
+
+const [articles, categories] = await Promise.all([loadArticles(), loadArticleCategories()]);
+const categoryArticles = articles.filter((article) => article.categorySlug === category.slug);
+const counts: Record<string, number> = {};
+for (const article of articles) {
+  counts[article.categorySlug] = (counts[article.categorySlug] ?? 0) + 1;
+}
+---
+
+<BaseLayout seo={meta.seo}>
+  <BlogCategoryPage category={category} articles={categoryArticles} categories={categories} counts={counts} totalCount={articles.length} />
+</BaseLayout>

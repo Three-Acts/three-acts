@@ -1,0 +1,14 @@
+---
+import CheckoutComplete from "../../components/islands/checkout-complete";
+import { Section } from "../../components/layout/section";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { checkoutCompleteMeta } from "../../page-meta";
+---
+
+<BaseLayout seo={checkoutCompleteMeta.seo}>
+  <Section.Root>
+    <Section.Container>
+      <CheckoutComplete client:load />
+    </Section.Container>
+  </Section.Root>
+</BaseLayout>

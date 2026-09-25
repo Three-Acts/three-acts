@@ -1,0 +1,24 @@
+---
+import type { Product, ProductCategory } from "@three-acts/ecommerce";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { loadProductCategories, loadProducts } from "../../../content/loaders";
+import { productCategoryMeta } from "../../../page-meta";
+import { ShopCategoryPage } from "../../../views/shop/ShopCategoryPage";
+
+export async function getStaticPaths() {
+  const [categories, products] = await Promise.all([loadProductCategories(), loadProducts()]);
+  return categories.map((category) => ({
+    params: { slug: category.slug },
+    props: { category, products: products.filter((product) => product.categorySlug === category.slug) }
+  }));
+}
+
+type Props = { category: ProductCategory; products: Product[] };
+
+const { category, products } = Astro.props;
+const meta = productCategoryMeta(category);
+---
+
+<BaseLayout seo={meta.seo}>
+  <ShopCategoryPage category={category} products={products} />
+</BaseLayout>

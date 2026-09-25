@@ -1,0 +1,27 @@
+---
+import type { Author } from "@three-acts/content";
+import { loadArticleCategories, loadArticles, loadAuthors } from "../../content/loaders";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { authorMeta } from "../../page-meta";
+import { AuthorPage } from "../../views/blog/AuthorPage";
+
+export async function getStaticPaths() {
+  const authors = await loadAuthors();
+  return authors.map((author) => ({
+    params: { slug: author.slug },
+    props: { author }
+  }));
+}
+
+type Props = { author: Author };
+
+const { author } = Astro.props;
+const meta = authorMeta(author);
+
+const [articles, categories] = await Promise.all([loadArticles(), loadArticleCategories()]);
+const authorArticles = articles.filter((article) => article.authorSlug === author.slug);
+---
+
+<BaseLayout seo={meta.seo}>
+  <AuthorPage author={author} articles={authorArticles} categories={categories} />
+</BaseLayout>

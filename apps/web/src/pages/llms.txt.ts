@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { loadSiteSettings } from "../content/loaders";
 import { getSitemapPages } from "../page-meta";
 import { site } from "../site";
 
@@ -14,15 +15,19 @@ function escapeLinkUrl(value: string) {
 
 /**
  * llms.txt — curated index for AI answer engines (AEO). See https://llmstxt.org
- * Static-file endpoint: written to `dist/llms.txt` at build time.
+ * Static-file endpoint: written to `dist/llms.txt` at build time. Only lists
+ * pages `getSitemapPages()` considers indexable (live page-settings records,
+ * every live product/category/article/author).
  */
 export const GET: APIRoute = async () => {
-  const pages = await getSitemapPages();
+  const [pages, settings] = await Promise.all([getSitemapPages(), loadSiteSettings()]);
+  const name = settings.siteName || site.name;
+  const description = settings.defaultMetaDescription || site.description;
 
   const llms = [
-    `# ${site.name}`,
+    `# ${name}`,
     "",
-    `> ${site.description}`,
+    `> ${description}`,
     "",
     "## Pages",
     ...pages.map((page) => {

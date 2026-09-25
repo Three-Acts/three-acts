@@ -1,0 +1,12 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { loadProductCategories, loadProducts } from "../../content/loaders";
+import { shopIndexMeta } from "../../page-meta";
+import { ShopIndexPage } from "../../views/shop/ShopIndexPage";
+
+const [meta, categories, products] = await Promise.all([shopIndexMeta(), loadProductCategories(), loadProducts()]);
+---
+
+<BaseLayout seo={meta.seo}>
+  <ShopIndexPage meta={meta} categories={categories} products={products} />
+</BaseLayout>

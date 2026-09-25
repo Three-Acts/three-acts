@@ -1,0 +1,20 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SignUpForm from "../components/islands/sign-up-form";
+import { Section } from "../components/layout/section";
+import { signUpMeta } from "../page-meta/builders";
+---
+
+<BaseLayout seo={signUpMeta.seo}>
+  <Section.Root>
+    <Section.Container className="mx-auto max-w-md">
+      <Section.Header
+        align="center"
+        eyebrow="Account"
+        title="Create an account"
+        lede="Save your details for faster checkout and keep track of every order."
+      />
+      <SignUpForm client:load />
+    </Section.Container>
+  </Section.Root>
+</BaseLayout>

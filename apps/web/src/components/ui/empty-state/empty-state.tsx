@@ -1,0 +1,39 @@
+/* eslint-disable react-refresh/only-export-components */
+import type { HTMLAttributes, ReactNode } from "react";
+import { cn } from "@three-acts/utils";
+
+type RootProps = Omit<HTMLAttributes<HTMLDivElement>, "title"> & {
+  className?: string;
+  icon?: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
+};
+
+/** A centered placeholder for an empty cart, no search results, no reviews yet, etc. */
+function Root({ icon, title, description, action, className, ...props }: RootProps) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center gap-3 border border-dashed border-line px-6 py-16 text-center",
+        className
+      )}
+      {...props}
+    >
+      {icon && (
+        <span aria-hidden="true" className="text-muted">
+          {icon}
+        </span>
+      )}
+      <p className="text-lg font-semibold tracking-tight text-ink">{title}</p>
+      {description && <p className="max-w-sm text-sm leading-6 text-muted">{description}</p>}
+      {action && <div className="mt-3">{action}</div>}
+    </div>
+  );
+}
+
+export const EmptyState = {
+  Root
+};
+
+export type { RootProps as EmptyStateRootProps };

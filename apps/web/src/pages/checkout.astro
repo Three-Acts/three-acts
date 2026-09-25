@@ -1,0 +1,20 @@
+---
+import CheckoutForm from "../components/islands/checkout-form";
+import { Section } from "../components/layout/section";
+import { Typography } from "../components/ui/typography";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { checkoutMeta } from "../page-meta";
+---
+
+<BaseLayout seo={checkoutMeta.seo}>
+  <Section.Root>
+    <Section.Container>
+      <Typography.Display as="h1" className="text-4xl landscape:text-5xl">
+        Checkout
+      </Typography.Display>
+      <div class="mt-10">
+        <CheckoutForm client:load />
+      </div>
+    </Section.Container>
+  </Section.Root>
+</BaseLayout>

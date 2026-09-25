@@ -8,11 +8,12 @@ type RootProps = HTMLAttributes<HTMLDivElement> & {
   value: ReactNode;
 };
 
+/** A single labelled number — trust metrics, order totals, review counts. Renders as a `<dl>` term/definition pair; wrap a group of them in a `<dl>`. */
 function Root({ className, label, value, ...props }: RootProps) {
   return (
-    <div className={cn("border-l border-black pl-4", className)} {...props}>
-      <dt className="text-3xl font-semibold tracking-tight">{value}</dt>
-      <dd className="mt-1 text-sm leading-5 text-neutral-700">{label}</dd>
+    <div className={cn("border-l-2 border-line-strong pl-4", className)} {...props}>
+      <dt className="text-3xl font-semibold tracking-tight text-ink font-serif">{value}</dt>
+      <dd className="mt-1 text-sm leading-5 text-muted">{label}</dd>
     </div>
   );
 }

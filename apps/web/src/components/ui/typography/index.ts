@@ -1,1 +1,1 @@
-export { Typography, type EyebrowProps } from "./typography";
+export { Typography, type EyebrowProps, type HeadingProps, type LedeProps } from "./typography";

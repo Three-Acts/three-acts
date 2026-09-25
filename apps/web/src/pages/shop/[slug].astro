@@ -1,0 +1,82 @@
+---
+import type { Product } from "@three-acts/ecommerce";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AddToCart from "../../components/islands/add-to-cart";
+import ProductReviews from "../../components/islands/product-reviews";
+import { ProductGallery } from "../../components/shop/product-gallery";
+import { Section } from "../../components/layout/section";
+import { Breadcrumb } from "../../components/ui/breadcrumb";
+import { loadFaqs, loadProductCategories, loadProducts, relatedProducts } from "../../content/loaders";
+import { productMeta } from "../../page-meta";
+import { ProductPage } from "../../views/shop/ProductPage";
+
+export async function getStaticPaths() {
+  const products = await loadProducts();
+  return products.map((product) => ({
+    params: { slug: product.slug },
+    props: { product }
+  }));
+}
+
+type Props = { product: Product };
+
+const { product } = Astro.props;
+
+const [categories, allProducts, faqs] = await Promise.all([loadProductCategories(), loadProducts(), loadFaqs()]);
+const category = categories.find((candidate) => candidate.slug === product.categorySlug);
+const related = relatedProducts(product, allProducts, 3);
+const meta = productMeta(product);
+
+const breadcrumbItems = [
+  { label: "Shop", href: "/shop" },
+  ...(category ? [{ label: category.name, href: `/shop/category/${category.slug}` }] : []),
+  { label: product.title }
+];
+
+// Only JSON-serializable data crosses the .astro -> island boundary (see
+// `AddToCart`'s docstring) — this is a plain data literal, not a `Product`.
+const cartProduct = {
+  slug: product.slug,
+  title: product.title,
+  price: product.price,
+  currency: product.currency,
+  availability: product.availability,
+  inventory: product.inventory,
+  image: product.images[0]
+};
+---
+
+<BaseLayout seo={meta.seo}>
+  <Section.Root className="pb-16 pt-6">
+    <Section.Container>
+      <Breadcrumb.Root items={breadcrumbItems} className="mb-8" />
+      <div class="grid gap-10 landscape:grid-cols-2">
+        <ProductGallery images={product.images} title={product.title} />
+        {/*
+          This flex column's document order IS the visual order — the two
+          islands below (review summary, add-to-cart) are mounted directly
+          here (not nested inside `ProductPage`'s own render tree) so their
+          `client:*` directives are recognised by the Astro compiler, and
+          they sit as plain siblings of the static `ProductPage` pieces
+          rather than as JSX passed into a component as a prop.
+        */}
+        <div class="flex flex-col gap-6">
+          <ProductPage.Header product={product} category={category} />
+          <ProductReviews client:visible slug={product.slug} variant="summary" />
+          <ProductPage.Pricing product={product} />
+          <AddToCart client:load product={cartProduct} />
+          <ProductPage.Details product={product} />
+        </div>
+      </div>
+    </Section.Container>
+  </Section.Root>
+
+  <ProductPage.Questions faqs={faqs} />
+  <ProductPage.Related products={related} />
+
+  <Section.Root>
+    <Section.Container>
+      <ProductReviews client:visible slug={product.slug} />
+    </Section.Container>
+  </Section.Root>
+</BaseLayout>

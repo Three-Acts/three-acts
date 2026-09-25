@@ -1,20 +1,38 @@
 ---
-import { getContentSource, type ContentEntry } from "../../content";
+import type { Article, ArticleCategory, Author } from "@three-acts/content";
+import { extractShopSlugs } from "../../components/blog/shop-the-brew";
+import { loadArticleCategories, loadArticles, loadAuthors, loadProducts, relatedArticles } from "../../content/loaders";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { blogPostMeta } from "../../page-meta";
-import { BlogPostPage } from "../../views/BlogPostPage";
+import { articleMeta } from "../../page-meta";
+import { BlogPostPage } from "../../views/blog/BlogPostPage";
 
 export async function getStaticPaths() {
-  const source = await getContentSource();
-  const posts = await source.listPosts();
-  return posts.map((post) => ({ params: { slug: post.slug }, props: { post } }));
+  const [articles, authors, categories] = await Promise.all([loadArticles(), loadAuthors(), loadArticleCategories()]);
+  return articles.map((article) => ({
+    params: { slug: article.slug },
+    props: {
+      article,
+      author: authors.find((author) => author.slug === article.authorSlug),
+      category: categories.find((category) => category.slug === article.categorySlug)
+    }
+  }));
 }
 
-type Props = { post: ContentEntry };
+type Props = { article: Article; author?: Author; category?: ArticleCategory };
 
-const { post } = Astro.props;
+const { article, author, category } = Astro.props;
+const meta = articleMeta(article, author);
+
+const [allArticles, categories, products] = await Promise.all([loadArticles(), loadArticleCategories(), loadProducts()]);
+const related = relatedArticles(article, allArticles, 3);
+
+const shopSlugs = extractShopSlugs(article.body);
+const shopProducts = shopSlugs
+  .map((slug) => products.find((product) => product.slug === slug))
+  .filter((product): product is NonNullable<typeof product> => Boolean(product))
+  .slice(0, 3);
 ---
 
-<BaseLayout seo={blogPostMeta(post).seo}>
-  <BlogPostPage post={post} />
+<BaseLayout seo={meta.seo}>
+  <BlogPostPage article={article} author={author} category={category} categories={categories} related={related} shopProducts={shopProducts} />
 </BaseLayout>

@@ -14,9 +14,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--color-paper);
-  /* No webfont is loaded, so this resolves to the system stack in --font-sans. */
-  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  background: var(--color-surface);
+  font-family: var(--font-sans);
 }
 
 a {
@@ -24,6 +23,30 @@ a {
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-panel);
+}
+
+/*
+ * Shared focus-visible ring. Applied by every interactive UI-kit component
+ * instead of each one re-declaring outline styles, so the recipe (color,
+ * width, offset) only lives in one place — see the focus ring tokens in
+ * theme.css. Never fires on a plain mouse `:focus` — keyboard/AT only.
+ */
+@layer utilities {
+  .focus-ring {
+    outline: none;
+  }
+
+  .focus-ring:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
 }

@@ -1,0 +1,15 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import AccountPage from "../components/islands/account-page";
+import { Section } from "../components/layout/section";
+import { accountMeta } from "../page-meta/builders";
+---
+
+<BaseLayout seo={accountMeta.seo}>
+  <Section.Root>
+    <Section.Container className="mx-auto max-w-3xl">
+      <Section.Header eyebrow="Account" title="Your account" />
+      <AccountPage client:load />
+    </Section.Container>
+  </Section.Root>
+</BaseLayout>

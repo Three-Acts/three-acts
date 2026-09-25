@@ -1,0 +1,13 @@
+---
+import { loadFaqs } from "../content/loaders";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { faqMeta } from "../page-meta";
+import { FaqPage } from "../views/faq";
+
+const faqs = await loadFaqs();
+const meta = await faqMeta(faqs);
+---
+
+<BaseLayout seo={meta.seo}>
+  <FaqPage faqs={faqs} />
+</BaseLayout>

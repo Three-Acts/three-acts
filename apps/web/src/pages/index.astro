@@ -1,23 +1,19 @@
 ---
-import ContactFormIsland from "../components/islands/contact-form-island";
-import {
-  HomeContactSection,
-  HomeConversionPathSection,
-  HomeHeroSection,
-  HomeServicesSection,
-  HomeTechnicalFoundationSection
-} from "../components/sections";
+import { loadArticles, loadFaqs, loadProductCategories, loadProducts, loadTestimonials } from "../content/loaders";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { homeMeta } from "../page-meta";
+import { HomePage } from "../views/home";
+
+const [products, categories, articles, testimonials, faqs] = await Promise.all([
+  loadProducts(),
+  loadProductCategories(),
+  loadArticles(),
+  loadTestimonials(),
+  loadFaqs()
+]);
+const meta = await homeMeta();
 ---
 
-<BaseLayout seo={homeMeta.seo}>
-  <HomeHeroSection />
-  <HomeServicesSection />
-  <HomeConversionPathSection />
-  <HomeTechnicalFoundationSection />
-  <HomeContactSection>
-    {/* Interactive island: hydrates on its own; the rest of the page ships zero JS. */}
-    <ContactFormIsland client:visible />
-  </HomeContactSection>
+<BaseLayout seo={meta.seo}>
+  <HomePage products={products} categories={categories} articles={articles} testimonials={testimonials} faqs={faqs} />
 </BaseLayout>

@@ -1,0 +1,46 @@
+---
+import { Notice } from "../components/ui/notice";
+import { Section } from "../components/layout/section";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { infoPageMeta, isPageLive } from "../page-meta";
+import { site } from "../site";
+import { InfoPage } from "../views/info/InfoPage";
+
+const meta = await infoPageMeta("/subscriptions", {
+  title: "Coffee subscriptions",
+  description: "Fresh coffee on your schedule — launching soon."
+});
+const live = await isPageLive("/subscriptions");
+
+const sections = [
+  {
+    heading: "How it'll work",
+    body: "Pick a coffee (or let us choose), a grind, and a delivery rhythm — every one, two or four weeks. We'll roast it fresh for your delivery date rather than holding stock, so it's never more than a couple of days off the roaster."
+  },
+  {
+    heading: "Full control",
+    body: "Skip a delivery, swap the coffee, change the rhythm or cancel outright, any time from your account, up to two days before the next roast date."
+  },
+  {
+    heading: "Want to be first to know?",
+    body: `We're finishing the roast-scheduling behind subscriptions now. Email ${site.email} and we'll let you know the moment it's live — until then, a one-off order from the shop works exactly the same way.`
+  }
+];
+---
+
+<BaseLayout seo={meta.seo}>
+  {
+    !live && (
+      <Section.Container className="max-w-3xl pt-16 desktop:pt-24">
+        <Notice.Root tone="info" title="Coming soon">
+          Subscriptions aren't open yet — here's what we're building, and how to get a first order in the meantime.
+        </Notice.Root>
+      </Section.Container>
+    )
+  }
+  <InfoPage
+    title="Coffee subscriptions"
+    lede="Fresh coffee on your own schedule — choose a roast, a grind and a delivery rhythm, and change your mind whenever you like."
+    sections={sections}
+  />
+</BaseLayout>

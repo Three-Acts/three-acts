@@ -1,18 +1,32 @@
 ---
 import "../styles.css";
+import { shopConfig } from "@three-acts/ecommerce";
+import AccountLink from "../components/islands/account-link";
+import CartButton from "../components/islands/cart-button";
+import NewsletterForm from "../components/islands/newsletter-form";
+import { loadSiteSettings } from "../content/loaders";
 import { resolveSeo } from "../lib/seo";
-import { navLinks, site, type SeoMetadata } from "../site";
+import { formatMoney } from "../lib/format";
+import type { SeoMetadata } from "../page-meta/types";
+import { footerNav, navLinks, site } from "../site";
 
 type Props = {
   seo: SeoMetadata;
+  /** A thin promo/notice bar shown above the header. Defaults to the shop's free-shipping threshold (`@three-acts/ecommerce`'s `shopConfig`). Pass `""` to hide it. */
+  announcement?: string;
 };
 
-const { seo } = Astro.props;
-const resolved = resolveSeo(seo);
+const { seo, announcement } = Astro.props;
+const siteSettings = await loadSiteSettings();
+const resolved = resolveSeo(seo, siteSettings);
+const year = new Date().getFullYear();
+const footerDescription = siteSettings.defaultMetaDescription || site.description;
+const resolvedAnnouncement =
+  announcement ?? `Free delivery on orders over ${formatMoney(shopConfig.shipping.freeOverInclVat, shopConfig.currency)}`;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={resolved.locale.replace("_", "-")}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -21,58 +35,194 @@ const resolved = resolveSeo(seo);
     {resolved.keywords && <meta name="keywords" content={resolved.keywords} />}
     <meta name="robots" content={resolved.robots} />
     <link rel="canonical" href={resolved.canonical} />
-    <meta name="theme-color" content="#000000" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content={"#171512"} />
+    <link rel="icon" href={resolved.favicon} type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Fonts: Fraunces (display/headings) + Inter (body/UI). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@400;500;600;700&display=swap"
+    />
     <!-- Open Graph -->
-    <meta property="og:site_name" content={site.name} />
-    <meta property="og:title" content={resolved.title} />
-    <meta property="og:description" content={resolved.description} />
+    <meta property="og:site_name" content={resolved.siteName} />
+    <meta property="og:title" content={resolved.ogTitle} />
+    <meta property="og:description" content={resolved.ogDescription} />
     <meta property="og:url" content={resolved.canonical} />
     <meta property="og:type" content={resolved.type} />
     <meta property="og:image" content={resolved.image} />
-    <meta property="og:locale" content={site.locale} />
+    <meta property="og:locale" content={resolved.locale} />
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content={site.twitter} />
-    <meta name="twitter:title" content={resolved.title} />
-    <meta name="twitter:description" content={resolved.description} />
+    <meta name="twitter:site" content={resolved.twitter} />
+    <meta name="twitter:title" content={resolved.ogTitle} />
+    <meta name="twitter:description" content={resolved.ogDescription} />
     <meta name="twitter:image" content={resolved.image} />
     <!-- Structured data (SEO + AEO) -->
     <script is:inline type="application/ld+json" set:html={resolved.jsonLd} />
   </head>
   <body>
-    <div class="flex min-h-screen flex-col bg-white text-black">
-      <header class="border-b border-black py-5">
-        <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-6">
-          <a class="text-2xl font-semibold tracking-tight" href="/">
-            {site.name}
+    <a
+      href="#main-content"
+      class="focus-ring sr-only bg-accent px-4 py-3 text-sm font-semibold text-panel focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50"
+    >
+      Skip to content
+    </a>
+
+    <div class="flex min-h-screen flex-col bg-surface text-ink">
+      {
+        resolvedAnnouncement && (
+          <p class="bg-ink px-6 py-2 text-center text-xs font-semibold uppercase tracking-eyebrow text-paper">{resolvedAnnouncement}</p>
+        )
+      }
+
+      <header class="border-b-2 border-line bg-surface">
+        <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-5">
+          <a href="/" class="focus-ring font-serif text-2xl font-semibold tracking-tight text-ink">
+            {resolved.siteName}
           </a>
-          <nav aria-label="Primary" class="flex items-center gap-2">
+
+          <nav aria-label="Primary" class="hidden items-center gap-1 landscape:flex">
             {
               navLinks.map((item) => (
                 <a
                   href={item.href}
-                  class="border border-transparent px-4 py-2 text-sm font-medium text-black transition hover:border-black hover:bg-black hover:text-white"
+                  class="focus-ring px-3 py-2 text-sm font-medium text-ink transition-colors duration-150 hover:text-accent"
                 >
                   {item.label}
                 </a>
               ))
             }
           </nav>
+
+          <div class="flex items-center gap-4">
+            <div class="hidden items-center gap-4 landscape:flex">
+              <slot name="header-actions">
+                <CartButton client:load />
+                <AccountLink client:load />
+              </slot>
+            </div>
+
+            {/* Mobile nav: a native <details>/<summary> disclosure — no JavaScript. */}
+            <details class="group relative landscape:hidden">
+              <summary class="focus-ring flex size-11 list-none items-center justify-center border border-line [&::-webkit-details-marker]:hidden">
+                <span class="sr-only">Menu</span>
+                <svg aria-hidden="true" viewBox="0 0 20 20" class="size-5 group-open:hidden">
+                  <path d="M2 5h16M2 10h16M2 15h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+                <svg aria-hidden="true" viewBox="0 0 20 20" class="hidden size-5 group-open:block">
+                  <path d="M4 4l12 12M16 4L4 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+              </summary>
+              <nav
+                aria-label="Mobile"
+                class="absolute right-0 top-[calc(100%+0.5rem)] z-40 flex w-56 flex-col gap-1 border border-line bg-surface-raised p-3 shadow-soft"
+              >
+                {
+                  navLinks.map((item) => (
+                    <a href={item.href} class="focus-ring px-2 py-2 text-sm font-medium text-ink hover:text-accent">
+                      {item.label}
+                    </a>
+                  ))
+                }
+                <div class="my-1 border-t border-line" />
+                <slot name="header-actions">
+                  <CartButton client:load />
+                  <AccountLink client:load />
+                </slot>
+              </nav>
+            </details>
+          </div>
         </div>
       </header>
 
-      <main class="flex-1">
+      <main id="main-content" class="flex-1">
         <slot />
       </main>
 
-      <footer class="border-t border-black py-8">
-        <div
-          class="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-6 text-sm text-neutral-600 sm:flex-row"
-        >
-          <span>© {new Date().getFullYear()} {site.name}</span>
-          <span>Static-first · Astro + React · Vercel</span>
+      <footer class="border-t-2 border-line bg-ink text-paper">
+        <div class="mx-auto w-full max-w-6xl px-6 py-16">
+          <div class="grid gap-12 landscape:grid-cols-2 tablet:grid-cols-[1.2fr_repeat(4,1fr)]">
+            <div class="flex flex-col gap-4 tablet:col-span-1">
+              <p class="font-serif text-2xl font-semibold tracking-tight text-paper">{resolved.siteName}</p>
+              <p class="max-w-xs text-sm leading-6 text-paper/70">{footerDescription}</p>
+              <ul class="mt-2 flex flex-col gap-1.5 text-sm text-paper/70">
+                <li>{site.address.street}</li>
+                <li>
+                  {site.address.locality}, {site.address.postalCode}
+                </li>
+                <li>{site.address.country}</li>
+              </ul>
+              <ul class="flex flex-col gap-1.5 text-sm">
+                <li>
+                  <a href={`mailto:${site.email}`} class="focus-ring text-paper/70 hover:text-paper">
+                    {site.email}
+                  </a>
+                </li>
+                <li>
+                  <a href={`tel:${site.phoneHref}`} class="focus-ring text-paper/70 hover:text-paper">
+                    {site.phone}
+                  </a>
+                </li>
+              </ul>
+              <ul class="flex flex-col gap-1 text-xs text-paper/60">
+                {
+                  site.hours.map((entry) => (
+                    <li>
+                      {entry.days}: {entry.hours}
+                    </li>
+                  ))
+                }
+              </ul>
+              <ul class="mt-2 flex items-center gap-4">
+                {
+                  site.social.map((entry) => (
+                    <li>
+                      <a
+                        href={entry.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="focus-ring text-sm font-medium text-paper/70 hover:text-paper"
+                      >
+                        {entry.label}
+                      </a>
+                    </li>
+                  ))
+                }
+              </ul>
+            </div>
+
+            {
+              footerNav.map((group) => (
+                <nav aria-label={group.title}>
+                  <p class="text-xs font-semibold uppercase tracking-eyebrow text-paper/50">{group.title}</p>
+                  <ul class="mt-4 flex flex-col gap-2.5">
+                    {group.links.map((link) => (
+                      <li>
+                        <a href={link.href} class="focus-ring text-sm text-paper/80 hover:text-paper">
+                          {link.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              ))
+            }
+          </div>
+
+          <div class="mt-14 border-t border-paper/15 pt-8">
+            <p class="text-xs font-semibold uppercase tracking-eyebrow text-paper/50">Stay in the loop</p>
+            <div class="mt-4 max-w-md">
+              <slot name="footer-newsletter">
+                <NewsletterForm client:visible />
+              </slot>
+            </div>
+          </div>
+
+          <p class="mt-10 text-xs text-paper/50">
+            © {year} {resolved.siteName}. All rights reserved.
+          </p>
         </div>
       </footer>
     </div>

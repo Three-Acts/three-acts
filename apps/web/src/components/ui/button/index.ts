@@ -1,1 +1,1 @@
-export { Button, type LinkProps, type RootProps } from "./button";
+export { Button, type ButtonSize, type ButtonVariant, type LinkProps, type RootProps } from "./button";

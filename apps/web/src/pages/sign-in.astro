@@ -1,0 +1,20 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SignInForm from "../components/islands/sign-in-form";
+import { Section } from "../components/layout/section";
+import { signInMeta } from "../page-meta/builders";
+---
+
+<BaseLayout seo={signInMeta.seo}>
+  <Section.Root>
+    <Section.Container className="mx-auto max-w-md">
+      <Section.Header
+        align="center"
+        eyebrow="Account"
+        title="Sign in"
+        lede="Sign in to check out faster and see your order history."
+      />
+      <SignInForm client:load />
+    </Section.Container>
+  </Section.Root>
+</BaseLayout>

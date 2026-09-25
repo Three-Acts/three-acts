@@ -1,21 +1,78 @@
 /*
  * Public site theme — the paper-and-ink palette for apps/web.
  * The CMS has its own isolated theme in apps/cms/src/theme.css.
+ *
+ * Brand: Fynbos & Fire, a Cape Town specialty coffee roaster. Warm, editorial,
+ * confident — not a generic storefront theme. See the "Design direction"
+ * section of docs/superpowers/specs/2026-09-25-storefront-domain-packages-and-api-bridge.md
+ * for the full brief this file implements.
  */
 @theme {
+  /* ---------------------------------------------------------------------
+   * Fonts
+   * Fraunces (serif, variable) carries display/headings; Inter (sans) carries
+   * body copy and UI chrome. Both are loaded via a Google Fonts <link> in
+   * BaseLayout.astro (preconnect + display=swap) — no @font-face here.
+   * --------------------------------------------------------------------- */
   --font-sans: "Inter", "Avenir Next", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Fraunces", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-ink: #171512;
-  --color-paper: #f7f1e7;
-  --color-panel: #fffaf0;
-  --color-charcoal: #202733;
-  --color-moss: #365344;
-  --color-rust: #ad5d3a;
-  --color-gold: #d6a23f;
+  /* ---------------------------------------------------------------------
+   * Palette — the four brand surfaces/inks. Every other color token below is
+   * an alias built from these so components never reach for a raw hex.
+   * --------------------------------------------------------------------- */
+  --color-ink: #171512; /* body text; dark "roastery" section backgrounds */
+  --color-paper: #f7f1e7; /* page background */
+  --color-panel: #fffaf0; /* card/raised-surface background */
+  --color-charcoal: #202733; /* secondary dark surface (deeper than ink) */
+  --color-moss: #365344; /* secondary accent: eyebrows, success, links on paper */
+  --color-rust: #ad5d3a; /* primary accent: CTAs, active states */
+  --color-gold: #d6a23f; /* ratings / highlight fills (decorative, not text) */
+
+  /* ---------------------------------------------------------------------
+   * Semantic aliases — components reference intent (surface/line/accent/muted),
+   * not palette names, so the palette can move without touching component code.
+   * Contrast checked against WCAG AA (2026-09-25, sRGB relative luminance):
+   *   ink on paper           16.2:1   paper on ink            16.2:1
+   *   white text on rust      4.8:1   white text on accent-hover 6.5:1
+   *   muted on paper/panel    5.1:1 / 5.5:1
+   * Rust as small *text* on paper is only 4.2:1 (fails AA for body-size text,
+   * passes for large text/UI) — reserve --color-accent for fills, borders,
+   * icons and large headings; use --color-line-strong (ink) for inline links.
+   * --color-gold on paper is ~2:1 — never use gold as a text color; it is a
+   * decorative star fill only (paired with an ink stroke, see Rating).
+   * --------------------------------------------------------------------- */
+  --color-surface: var(--color-paper);
+  --color-surface-raised: var(--color-panel);
+  --color-line: rgb(23 21 18 / 15%); /* hairline structure: card/input borders, dividers */
+  --color-line-strong: var(--color-ink); /* emphasized borders, inline link text */
+  --color-accent: var(--color-rust); /* primary interactive accent */
+  --color-accent-hover: #8f4b2e; /* rust, ~12% darker — hover/active fills */
+  --color-muted: #6b6560; /* secondary text: captions, meta, timestamps */
+
+  /* ---------------------------------------------------------------------
+   * Shape — radius 0 everywhere (the "paper and ink" print feel: sharp cards,
+   * buttons and inputs, no rounded corners). `rounded-card` is an explicit,
+   * greppable escape hatch for anything that would otherwise reach for a
+   * default Tailwind radius utility; nothing in this kit uses `rounded-*`.
+   * One soft shadow token for lifted panels (menus, popovers) — flat surfaces
+   * otherwise rely on --color-line borders, not shadows.
+   * --------------------------------------------------------------------- */
+  --radius-card: 0px;
   --shadow-soft: 0 24px 80px rgb(23 21 18 / 0.14);
 
+  /* ---------------------------------------------------------------------
+   * Focus ring — one recipe, applied via the `.focus-ring` utility in
+   * styles.css (`focus-visible` only, so mouse clicks stay quiet).
+   * --------------------------------------------------------------------- */
+  --color-focus-ring: var(--color-rust);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* ---------------------------------------------------------------------
+   * Breakpoints — no viewport-width media queries beyond these; mobile-first.
+   * --------------------------------------------------------------------- */
   --breakpoint-portrait: 30rem;
   --breakpoint-landscape: 48rem;
   --breakpoint-tablet: 64rem;
@@ -28,9 +85,17 @@
   /* Hero fills the first viewport minus the site header (py-5 + 2.5rem nav). */
   --spacing-hero: calc(100vh - 5.5rem);
 
-  /* Section grids. */
+  /* ---------------------------------------------------------------------
+   * Grid templates — named tracks reused by Section/Grid layouts.
+   * `products-*` back the Grid component's `cols` variants for the shop/
+   * article/testimonial card grids: 1-up portrait, 2-up landscape, 3-up
+   * tablet+, 4-up desktop.
+   * --------------------------------------------------------------------- */
   --grid-template-columns-hero: 1.05fr 0.95fr;
   --grid-template-columns-path: 0.8fr 1.2fr;
   --grid-template-columns-step: 4.5rem 1fr; /* numbered step badge | copy */
   --grid-template-columns-check: 2.75rem 1fr; /* check badge | copy */
+  --grid-template-columns-products-sm: repeat(2, minmax(0, 1fr));
+  --grid-template-columns-products-lg: repeat(3, minmax(0, 1fr));
+  --grid-template-columns-products-xl: repeat(4, minmax(0, 1fr));
 }

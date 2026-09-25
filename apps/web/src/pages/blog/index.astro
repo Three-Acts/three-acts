@@ -1,13 +1,13 @@
 ---
-import { getContentSource } from "../../content";
+import { loadArticleCategories, loadArticles, loadAuthors } from "../../content/loaders";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { blogIndexMeta } from "../../page-meta";
-import { BlogIndexPage } from "../../views/BlogIndexPage";
+import { BlogIndexPage } from "../../views/blog/BlogIndexPage";
 
-const source = await getContentSource();
-const posts = await source.listPosts();
+const [articles, categories, authors] = await Promise.all([loadArticles(), loadArticleCategories(), loadAuthors()]);
+const meta = await blogIndexMeta();
 ---
 
-<BaseLayout seo={blogIndexMeta.seo}>
-  <BlogIndexPage posts={posts} />
+<BaseLayout seo={meta.seo}>
+  <BlogIndexPage articles={articles} categories={categories} authors={authors} />
 </BaseLayout>

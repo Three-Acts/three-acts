@@ -1,0 +1,28 @@
+---
+import RoasteryDetails from "../components/info/roastery-details";
+import ContactForm from "../components/islands/contact-form";
+import { Section } from "../components/layout/section";
+import { Typography } from "../components/ui/typography";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { contactMeta } from "../page-meta";
+
+const meta = await contactMeta();
+---
+
+<BaseLayout seo={meta.seo}>
+  <Section.Root className="py-16 desktop:py-24">
+    <Section.Container className="max-w-5xl">
+      <Typography.Eyebrow>Get in touch</Typography.Eyebrow>
+      <Typography.Display className="mt-5 text-5xl landscape:text-6xl">Contact us</Typography.Display>
+      <Typography.Lede className="mt-6">
+        Questions about an order, a grinder, a wholesale account or anything else — a real person reads every message
+        and we reply within one working day.
+      </Typography.Lede>
+
+      <div class="mt-14 grid gap-12 landscape:grid-cols-2 landscape:gap-16">
+        <RoasteryDetails />
+        <ContactForm client:visible />
+      </div>
+    </Section.Container>
+  </Section.Root>
+</BaseLayout>

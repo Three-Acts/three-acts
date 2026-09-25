@@ -1,9 +1,14 @@
 ---
+import { loadAuthors, loadTestimonials } from "../content/loaders";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { aboutMeta } from "../page-meta";
-import { AboutPage } from "../views/AboutPage";
+import { AboutPage } from "../views/about";
+import { pickFeaturedTestimonials } from "../views/home/select";
+
+const [authors, testimonials] = await Promise.all([loadAuthors(), loadTestimonials()]);
+const meta = await aboutMeta();
 ---
 
-<BaseLayout seo={aboutMeta.seo}>
-  <AboutPage />
+<BaseLayout seo={meta.seo}>
+  <AboutPage authors={authors} testimonials={pickFeaturedTestimonials(testimonials, 3, 4)} />
 </BaseLayout>

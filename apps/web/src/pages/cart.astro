@@ -1,0 +1,20 @@
+---
+import CartPage from "../components/islands/cart-page";
+import { Section } from "../components/layout/section";
+import { Typography } from "../components/ui/typography";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { cartMeta } from "../page-meta";
+---
+
+<BaseLayout seo={cartMeta.seo}>
+  <Section.Root>
+    <Section.Container>
+      <Typography.Display as="h1" className="text-4xl landscape:text-5xl">
+        Your cart
+      </Typography.Display>
+      <div class="mt-10">
+        <CartPage client:load />
+      </div>
+    </Section.Container>
+  </Section.Root>
+</BaseLayout>
