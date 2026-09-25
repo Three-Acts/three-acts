@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type SubmitEvent } from "react";
 import { useCart } from "@three-acts/ecommerce/react";
 import { availabilityLabel, isPurchasable, priceCart, shopConfig, type CartLine, type Product } from "@three-acts/ecommerce";
-import { FreeShippingProgress } from "../checkout/free-shipping-progress";
 import { OrderSummary } from "../checkout/order-summary";
 import { indexBySlug, loadProducts } from "../checkout/product-catalogue";
 import { QuantityStepper } from "../checkout/quantity-stepper";
@@ -34,16 +33,16 @@ function CartLineRow({ line, product, purchasable, onQuantityChange, onRemove }:
     return (
       <li className="flex flex-col gap-4 p-5 landscape:flex-row landscape:items-center">
         <div className="flex flex-1 items-center gap-4">
-          <span className="flex size-20 shrink-0 items-center justify-center overflow-hidden border border-line bg-surface" aria-hidden="true">
-            <span className="text-xs text-muted">No image</span>
+          <span className="flex size-20 shrink-0 items-center justify-center overflow-hidden border border-line bg-block" aria-hidden="true">
+            <span className="text-small text-ink">No image</span>
           </span>
           <div className="flex flex-col gap-1.5">
-            <span className="font-serif text-base font-semibold text-ink">{product?.title ?? line.slug}</span>
+            <span className="text-body font-medium text-ink">{product?.title ?? line.slug}</span>
             <Badge.Root tone="danger">{product ? availabilityLabel(product) : "No longer available"}</Badge.Root>
           </div>
         </div>
         <div className="flex items-center justify-between gap-6 landscape:justify-end">
-          <span className="text-sm text-muted">Qty {line.quantity}</span>
+          <span className="text-small text-ink">Qty {line.quantity}</span>
           <Button.Root type="button" variant="ghost" size="sm" onClick={onRemove}>
             Remove
           </Button.Root>
@@ -57,20 +56,20 @@ function CartLineRow({ line, product, purchasable, onQuantityChange, onRemove }:
   return (
     <li className="flex flex-col gap-4 p-5 landscape:flex-row landscape:items-center">
       <div className="flex flex-1 items-center gap-4">
-        <span className="flex size-20 shrink-0 items-center justify-center overflow-hidden border border-line bg-surface">
+        <span className="flex size-20 shrink-0 items-center justify-center overflow-hidden border border-line bg-block">
           {image ? (
             <Image src={image.src} alt={image.alt} width={160} height={160} className="size-full object-cover" />
           ) : (
-            <span aria-hidden="true" className="text-xs text-muted">
+            <span aria-hidden="true" className="text-small text-ink">
               No image
             </span>
           )}
         </span>
         <div className="flex flex-col gap-1.5">
-          <a href={`/shop/${product.slug}`} className="focus-ring font-serif text-base font-semibold text-ink hover:text-accent">
+          <a href={`/shop/${product.slug}`} className="focus-ring text-body font-medium text-ink hover:underline">
             {product.title}
           </a>
-          <span className="text-sm text-muted">{formatMoney(product.price, product.currency)} each</span>
+          <span className="text-small text-ink">{formatMoney(product.price, product.currency)} each</span>
         </div>
       </div>
 
@@ -81,7 +80,7 @@ function CartLineRow({ line, product, purchasable, onQuantityChange, onRemove }:
           max={product.availability === "preorder" ? 99 : Math.max(1, product.inventory)}
           label={`Quantity for ${product.title}`}
         />
-        <span className="w-20 shrink-0 text-right text-sm font-semibold text-ink">{formatMoney(product.price * line.quantity, product.currency)}</span>
+        <span className="w-20 shrink-0 text-right text-body font-medium text-ink">{formatMoney(product.price * line.quantity, product.currency)}</span>
         <Button.Root type="button" variant="ghost" size="sm" onClick={onRemove}>
           Remove
         </Button.Root>
@@ -157,7 +156,7 @@ function CartPageInner() {
     return (
       <EmptyState.Root
         title="Your cart is empty"
-        description="Browse the shop and add something worth waking up for."
+        description="Browse the shop and add something worth building on."
         action={
           <Button.Link href="/shop" size="lg">
             Continue shopping
@@ -175,7 +174,7 @@ function CartPageInner() {
         {loadError && (
           <Notice.Root tone="error" title="Couldn't load the shop">
             {loadError}{" "}
-            <button type="button" onClick={() => setRetryToken((token) => token + 1)} className="focus-ring font-semibold underline underline-offset-2">
+            <button type="button" onClick={() => setRetryToken((token) => token + 1)} className="focus-ring font-medium underline underline-offset-2">
               Try again
             </button>
           </Notice.Root>
@@ -183,7 +182,7 @@ function CartPageInner() {
         {stillLoading && <Notice.Root tone="info">Loading your cart…</Notice.Root>}
 
         {!stillLoading && (
-          <ul className="flex flex-col divide-y divide-line border border-line bg-surface-raised">
+          <ul className="flex flex-col divide-y divide-line-strong border border-line-strong bg-surface">
             {resolvedLines.map((entry) => (
               <CartLineRow
                 key={entry.line.slug}
@@ -203,29 +202,27 @@ function CartPageInner() {
           note="Estimated · confirmed at checkout"
           footer={
             <>
-              <FreeShippingProgress merchandiseInclVat={breakdown.merchandiseInclVat} freeShipping={breakdown.freeShipping} currency={breakdown.currency} />
-
               {staleReason && staleReason !== dismissedStaleReason && (
-                <Notice.Root tone="error" className="text-xs">
+                <Notice.Root tone="error" className="text-small">
                   Your discount code is no longer valid: {staleReason}{" "}
-                  <button type="button" onClick={() => setDismissedStaleReason(staleReason)} className="focus-ring font-semibold underline underline-offset-2">
+                  <button type="button" onClick={() => setDismissedStaleReason(staleReason)} className="focus-ring font-medium underline underline-offset-2">
                     Dismiss
                   </button>
                 </Notice.Root>
               )}
 
               {discount ? (
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium text-moss">
-                    Code <span className="font-semibold">{discount.code}</span> applied
+                <div className="flex items-center justify-between gap-3 text-body text-ink">
+                  <span className="font-medium">
+                    Code <span className="font-medium">{discount.code}</span> applied
                   </span>
-                  <button type="button" onClick={removeDiscount} className="focus-ring text-xs font-semibold text-muted underline underline-offset-2 hover:text-ink">
+                  <button type="button" onClick={removeDiscount} className="focus-ring text-small font-medium underline underline-offset-2">
                     Remove
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleApplyDiscount} className="flex flex-col gap-2">
-                  <Field.Root label="Discount code" id="discount-code" error={applyError} className="gap-1.5">
+                  <Field.Root label="Discount code" id="discount-code" error={applyError}>
                     <div className="flex gap-2">
                       <Field.Input
                         value={discountInput}
@@ -255,9 +252,9 @@ function CartPageInner() {
 /**
  * `/cart` — reads the shared cart store, resolves lines against the live
  * catalogue (`GET /shop/products`), and prices an estimate for the domestic
- * shipping method (checkout re-prices with the shopper's actual method).
- * Wrapped in `AppProviders` (see `src/lib/providers.tsx`) so it shares
- * `cartStore` with the header's `CartButton` and every other island.
+ * shipping method (checkout re-prices the same way). Wrapped in
+ * `AppProviders` (see `src/lib/providers.tsx`) so it shares `cartStore` with
+ * the header's `CartButton` and every other island.
  */
 export function CartPage() {
   return (

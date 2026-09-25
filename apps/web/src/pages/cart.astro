@@ -9,9 +9,7 @@ import { cartMeta } from "../page-meta";
 <BaseLayout seo={cartMeta.seo}>
   <Section.Root>
     <Section.Container>
-      <Typography.Display as="h1" className="text-4xl landscape:text-5xl">
-        Your cart
-      </Typography.Display>
+      <Typography.Title as="h1">Your cart</Typography.Title>
       <div class="mt-10">
         <CartPage client:load />
       </div>

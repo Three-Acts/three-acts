@@ -7,6 +7,7 @@ import { OrderStatusBadge, PaymentStatusBadge } from "../checkout/status-badge";
 import { Button } from "../ui/button";
 import { Image } from "../ui/image";
 import { Notice } from "../ui/notice";
+import { Typography } from "../ui/typography";
 import { apiFetch } from "../../lib/api-client";
 import { formatMoney } from "../../lib/format";
 import { AppProviders } from "../../lib/providers";
@@ -75,11 +76,11 @@ function CheckoutCompleteInner() {
     return (
       <Notice.Root tone="error" title="We couldn't find that order">
         Check the link you followed, or{" "}
-        <a href="/shop" className="focus-ring font-semibold underline underline-offset-2">
+        <a href="/shop" className="focus-ring font-medium underline underline-offset-2">
           keep shopping
         </a>
         . If you just placed this order while signed in, it should also appear in{" "}
-        <a href="/account" className="focus-ring font-semibold underline underline-offset-2">
+        <a href="/account" className="focus-ring font-medium underline underline-offset-2">
           your account
         </a>
         .
@@ -95,10 +96,10 @@ function CheckoutCompleteInner() {
     <div className="flex flex-col gap-10 landscape:grid landscape:grid-cols-[1fr_360px] landscape:items-start">
       <div className="order-last flex flex-col gap-8 landscape:order-first">
         <div className="flex flex-col gap-3 border-b border-line pb-6">
-          <p className="text-xs font-semibold uppercase tracking-eyebrow text-moss">Order {order.orderNumber}</p>
-          <h1 className="font-serif text-3xl font-semibold tracking-tight text-ink">Thank you, {order.customerName.split(/\s+/)[0]}.</h1>
-          <p className="text-sm leading-6 text-muted">
-            A confirmation has been sent to <span className="font-medium text-ink">{order.customerEmail}</span>.
+          <Typography.Title as="h1">Order {order.orderNumber} confirmed</Typography.Title>
+          <p className="text-body text-ink">
+            Thank you, {order.customerName.split(/\s+/)[0]}. A confirmation has been sent to{" "}
+            <span className="font-medium">{order.customerEmail}</span>.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <OrderStatusBadge status={order.status} />
@@ -107,34 +108,34 @@ function CheckoutCompleteInner() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <h2 className="font-serif text-lg font-semibold tracking-tight text-ink">Items</h2>
-          <ul className="flex flex-col divide-y divide-line border border-line bg-surface-raised">
+          <h2 className="text-h3 font-medium tracking-ui text-ink">Items</h2>
+          <ul className="flex flex-col divide-y divide-line-strong border border-line-strong bg-surface">
             {order.items.map((item) => (
               <li key={item.slug} className="flex items-center gap-4 p-4">
-                <span className="flex size-16 shrink-0 items-center justify-center overflow-hidden border border-line bg-surface">
+                <span className="flex size-16 shrink-0 items-center justify-center overflow-hidden border border-line bg-block">
                   {item.image ? (
                     <Image src={item.image} alt={item.title} width={128} height={128} className="size-full object-cover" />
                   ) : (
-                    <span aria-hidden="true" className="text-xs text-muted">
+                    <span aria-hidden="true" className="text-small text-ink">
                       No image
                     </span>
                   )}
                 </span>
                 <div className="flex flex-1 flex-col gap-0.5">
-                  <span className="text-sm font-semibold text-ink">{item.title}</span>
-                  <span className="text-xs text-muted">
+                  <span className="text-body font-medium text-ink">{item.title}</span>
+                  <span className="text-small text-ink">
                     Qty {item.quantity} × {formatMoney(item.unitPrice, item.currency)}
                   </span>
                 </div>
-                <span className="text-sm font-semibold text-ink">{formatMoney(item.lineTotal, item.currency)}</span>
+                <span className="text-body font-medium text-ink">{formatMoney(item.lineTotal, item.currency)}</span>
               </li>
             ))}
           </ul>
         </div>
 
         <div className="flex flex-col gap-3">
-          <h2 className="font-serif text-lg font-semibold tracking-tight text-ink">Delivery address</h2>
-          <address className="not-italic text-sm leading-6 text-muted">
+          <h2 className="text-h3 font-medium tracking-ui text-ink">Billing address</h2>
+          <address className="not-italic text-body text-ink">
             {order.shippingName}
             <br />
             {order.shippingAddress}
@@ -144,6 +145,20 @@ function CheckoutCompleteInner() {
             {order.shippingCountry}
           </address>
         </div>
+
+        <Notice.Root tone="info" title="Access your files">
+          {status === "authenticated" ? (
+            "Your purchases are attached to your account — sign in to download."
+          ) : (
+            <>
+              Create an account with {order.customerEmail} to access your downloads.{" "}
+              <a href="/sign-up" className="focus-ring font-medium underline underline-offset-2">
+                Sign up
+              </a>
+              .
+            </>
+          )}
+        </Notice.Root>
 
         <div className="flex flex-wrap gap-3">
           <Button.Link href="/shop" size="lg">
@@ -155,16 +170,6 @@ function CheckoutCompleteInner() {
             </Button.Link>
           )}
         </div>
-
-        {status !== "authenticated" && (
-          <Notice.Root tone="info" title="Keep track of this order">
-            Create an account to see your order history and track this order over time.{" "}
-            <a href="/sign-up" className="focus-ring font-semibold underline underline-offset-2">
-              Sign up
-            </a>
-            .
-          </Notice.Root>
-        )}
       </div>
 
       <div className="order-first landscape:order-last">
@@ -175,7 +180,7 @@ function CheckoutCompleteInner() {
 }
 
 /**
- * `/checkout/complete?order=FF-10822` — the order confirmation. Signed-in
+ * `/checkout/complete?order=TA-10822` — the order confirmation. Signed-in
  * shoppers get the live order via `GET /shop/orders/:orderNumber`; everyone
  * else (and a failed/unauthorized fetch) falls back to the copy the checkout
  * island stashed in `sessionStorage` right after placing the order. Wrapped

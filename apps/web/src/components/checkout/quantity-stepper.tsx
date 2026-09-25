@@ -55,13 +55,13 @@ export function QuantityStepper({ quantity, onChange, label, max = DEFAULT_MAX, 
   }
 
   return (
-    <div className={cn("inline-flex items-center border border-line-strong/30", className)}>
+    <div className={cn("inline-flex items-center border border-line-strong", className)}>
       <button
         type="button"
         aria-label={`Decrease ${label}`}
         disabled={disabled || quantity <= MIN}
         onClick={() => commit(quantity - 1)}
-        className="focus-ring flex size-9 items-center justify-center text-ink transition-colors duration-150 hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-40"
+        className="focus-ring flex size-9 items-center justify-center text-ink transition-colors duration-150 hover:bg-ink hover:text-surface disabled:cursor-not-allowed disabled:opacity-40"
       >
         <span aria-hidden="true">−</span>
       </button>
@@ -79,14 +79,14 @@ export function QuantityStepper({ quantity, onChange, label, max = DEFAULT_MAX, 
             commit(Number(event.currentTarget.value));
           }
         }}
-        className="focus-ring h-9 w-11 border-x border-line-strong/30 bg-transparent text-center text-sm text-ink"
+        className="focus-ring h-9 w-11 border-x border-line-strong bg-surface text-center text-small text-ink"
       />
       <button
         type="button"
         aria-label={`Increase ${label}`}
         disabled={disabled || quantity >= max}
         onClick={() => commit(quantity + 1)}
-        className="focus-ring flex size-9 items-center justify-center text-ink transition-colors duration-150 hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-40"
+        className="focus-ring flex size-9 items-center justify-center text-ink transition-colors duration-150 hover:bg-ink hover:text-surface disabled:cursor-not-allowed disabled:opacity-40"
       >
         <span aria-hidden="true">+</span>
       </button>

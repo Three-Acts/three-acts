@@ -9,9 +9,7 @@ import { checkoutMeta } from "../page-meta";
 <BaseLayout seo={checkoutMeta.seo}>
   <Section.Root>
     <Section.Container>
-      <Typography.Display as="h1" className="text-4xl landscape:text-5xl">
-        Checkout
-      </Typography.Display>
+      <Typography.Title as="h1">Checkout</Typography.Title>
       <div class="mt-10">
         <CheckoutForm client:load />
       </div>
