@@ -1,4 +1,17 @@
-export type PublishStatus = "published" | "not_published" | "queued_to_publish";
+/**
+ * Record lifecycle for publish-workflow ("editorial") collections. The site
+ * renders a record's `liveValues` snapshot, never its working `values`:
+ * - "published": working values match the live snapshot.
+ * - "draft": working values differ from the live snapshot (or there is none
+ *   yet). The site keeps the old snapshot; a build does NOT promote the draft.
+ * - "queued_to_publish": like draft, but the next publish promotes the working
+ *   values into the live snapshot and the build ships them.
+ * - "not_published": the record exists but is not on the site at all (no
+ *   snapshot).
+ * "published" is only reached via `publishQueued` (or by saving values that
+ * equal the snapshot); clients can never set it directly.
+ */
+export type PublishStatus = "published" | "draft" | "queued_to_publish" | "not_published";
 
 /**
  * How editors work with a collection's records (mirrors Webflow's split
@@ -32,6 +45,12 @@ export type CmsRecord = {
   createdAt: string;
   modifiedAt: string;
   values: Record<string, CmsRecordValue>;
+  /**
+   * The snapshot the live site renders (set by `publishQueued`, cleared when
+   * unpublished). Null/absent when the record has never been published or for
+   * collections without a publish workflow. Read-only for clients.
+   */
+  liveValues?: Record<string, CmsRecordValue> | null;
 };
 
 export type SelectOption = {
@@ -158,7 +177,7 @@ export type CmsCollection = {
    * How record-level system fields map onto the backing table. Every value is
    * optional; adapters default to `id`, `publish_status`, `created_at`, `updated_at`.
    */
-  systemColumns?: Partial<Record<"id" | "publishStatus" | "createdAt" | "modifiedAt", string>>;
+  systemColumns?: Partial<Record<"id" | "publishStatus" | "createdAt" | "modifiedAt" | "liveValues", string>>;
   /** Column naming used when a field has no explicit `column`. Defaults to "snake_case". */
   columnNaming?: "snake_case" | "as_is";
   /** Collection holds at most one record (e.g. site settings). The API rejects a second create. */

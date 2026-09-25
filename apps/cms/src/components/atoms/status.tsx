@@ -3,7 +3,8 @@ import { statusDotVariants, statusTextVariants } from "./styles";
 
 const statusLabels: Record<PublishStatus, string> = {
   published: "Published",
-  not_published: "Not published",
+  draft: "Draft",
+  not_published: "Unpublished",
   queued_to_publish: "Queued to publish"
 };
 

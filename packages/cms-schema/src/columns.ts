@@ -17,7 +17,9 @@ export const defaultSystemColumns = {
   id: "id",
   publishStatus: "publish_status",
   createdAt: "created_at",
-  modifiedAt: "updated_at"
+  modifiedAt: "updated_at",
+  /** jsonb snapshot of the live values; only created on publish-workflow tables. */
+  liveValues: "published_data"
 } as const;
 
 export function systemColumnsFor(collection: CmsCollection): Record<keyof typeof defaultSystemColumns, string> {
@@ -38,7 +40,7 @@ export function hasPublishWorkflow(collection: CmsCollection): boolean {
 }
 
 /** Every publish status a record can hold, in the order the editor shows them. */
-export const publishStatuses: ReadonlyArray<PublishStatus> = ["published", "not_published", "queued_to_publish"];
+export const publishStatuses: ReadonlyArray<PublishStatus> = ["published", "draft", "queued_to_publish", "not_published"];
 
 /**
  * Every backing column a collection maps onto (system columns first, then

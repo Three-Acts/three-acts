@@ -112,6 +112,7 @@ export const statusDotVariants = cv({
   variants: {
     status: {
       published: ["border-cms-success bg-cms-success"],
+      draft: ["border-dashed border-cms-success"],
       not_published: ["border-cms-track"],
       queued_to_publish: ["border-cms-pending"]
     }
@@ -123,6 +124,7 @@ export const statusTextVariants = cv({
   variants: {
     status: {
       published: ["text-cms-success"],
+      draft: ["text-cms-muted"],
       not_published: ["text-cms-muted"],
       queued_to_publish: ["text-cms-pending"]
     }
