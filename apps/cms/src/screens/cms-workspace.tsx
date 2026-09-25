@@ -7,8 +7,14 @@ import { hasPublishWorkflow, isEditable } from "../lib/records";
 import { BareIconButton, ConfirmDialog, PanelHeader, Tooltip, useToast } from "../components/atoms";
 import { useCmsWorkspace } from "../hooks/use-cms-workspace";
 import { CollectionSidebar, RecordListPane, RecordsToolbar, RecordTable, TopBar } from "../components/workspace";
+import type { WorkspaceTab } from "../components/workspace";
 import { RecordEditor } from "../components/editor";
 import { ImportDialog } from "../components/import";
+import { PageSettingsView, SiteSettingsView } from "../components/settings";
+
+// Keep the top bar focused on the CMS workspace. Settings screens remain
+// implemented for future navigation, but are intentionally not exposed here.
+const availableTabs: WorkspaceTab[] = ["cms"];
 
 export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<void>; user: AuthUser }) {
   const {
@@ -47,6 +53,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
     setIsImportOpen,
     setSearch,
     setSelectedRecordId,
+    settingsCollections,
     toggleRecordSelected,
     toggleSelectAll,
     toggleSelectionMode,
@@ -61,6 +68,16 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   // can be paused behind a confirmation instead of discarding silently.
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
+  // Settings screens own their draft; they report dirtiness up here so the
+  // same guard covers them. Bumping the revision remounts a clean settings
+  // screen so it re-reads records the publish pipeline just changed.
+  const [isSettingsDirty, setIsSettingsDirty] = useState(false);
+  const [settingsRevision, setSettingsRevision] = useState(0);
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("cms");
+  const siteSettingsCollection = settingsCollections.find((collection) => collection.settingsView === "site");
+  const pageSettingsCollection = settingsCollections.find((collection) => collection.settingsView === "pages");
+  const settingsCollection =
+    activeTab === "site-settings" ? siteSettingsCollection : activeTab === "page-settings" ? pageSettingsCollection : undefined;
 
   useEffect(() => {
     if (!error) {
@@ -91,10 +108,14 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   function handlePublished() {
     refreshRecords();
     refreshCollections();
+
+    if (!isSettingsDirty) {
+      setSettingsRevision((revision) => revision + 1);
+    }
   }
 
   function guardNavigation(action: () => void) {
-    if (isDirty) {
+    if (isDirty || isSettingsDirty) {
       setPendingAction(() => action);
     } else {
       action();
@@ -108,7 +129,25 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   }
 
   function handleSelectCollectionGuarded(collectionId: string) {
+    if (collectionId === activeCollection?.id) {
+      return;
+    }
+
     guardNavigation(() => handleSelectCollection(collectionId));
+  }
+
+  // The CMS tab's draft lives in the workspace hook and survives a tab switch;
+  // a settings screen unmounts, so only its unsaved edits need the guard.
+  function handleTabChange(tab: WorkspaceTab) {
+    if (tab === activeTab) {
+      return;
+    }
+
+    if (isSettingsDirty) {
+      setPendingAction(() => () => setActiveTab(tab));
+    } else {
+      setActiveTab(tab);
+    }
   }
 
   function handleSignOutRequest(): Promise<void> {
@@ -130,16 +169,50 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
 
   return (
     <div className="flex h-screen flex-col bg-cms-bg text-ui text-cms-text">
-      <TopBar onPublished={handlePublished} onSignOut={handleSignOutRequest} queuedCount={queuedCount} user={user} />
+      <TopBar
+        activeTab={activeTab}
+        availableTabs={availableTabs}
+        onPublished={handlePublished}
+        onSignOut={handleSignOutRequest}
+        onTabChange={handleTabChange}
+        queuedCount={queuedCount}
+        user={user}
+      />
       <div className="flex min-h-0 flex-1">
-        <CollectionSidebar
-          activeCollectionId={activeCollectionId}
-          groups={groups}
-          isLoading={isLoadingCollections}
-          onSelectCollection={handleSelectCollectionGuarded}
-        />
+        {activeTab === "cms" ? (
+          <CollectionSidebar
+            activeCollectionId={activeCollectionId}
+            groups={groups}
+            isLoading={isLoadingCollections}
+            onSelectCollection={handleSelectCollectionGuarded}
+          />
+        ) : null}
 
-        {activeCollection ? (
+        {activeTab !== "cms" && !settingsCollection ? (
+          <main className="grid flex-1 place-items-center p-8 text-center" role="status">
+            <p className="m-0 text-ui text-cms-subtle">Loading settings…</p>
+          </main>
+        ) : settingsCollection ? (
+          // Settings tabs take the whole workspace below the top bar; the
+          // collections sidebar belongs to the CMS tab only.
+          <main className="relative flex min-h-0 min-w-0 flex-1">
+            {activeTab === "page-settings" ? (
+              <PageSettingsView
+                collection={settingsCollection}
+                key={`${settingsCollection.id}-${settingsRevision}`}
+                onDirtyChange={setIsSettingsDirty}
+                onSaved={refreshCollections}
+              />
+            ) : (
+              <SiteSettingsView
+                collection={settingsCollection}
+                key={`${settingsCollection.id}-${settingsRevision}`}
+                onDirtyChange={setIsSettingsDirty}
+                onSaved={refreshCollections}
+              />
+            )}
+          </main>
+        ) : activeCollection ? (
           <main className="relative flex min-h-0 min-w-0 flex-1">
             <section
               className={cn(
