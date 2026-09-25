@@ -3,7 +3,7 @@ import type { Product } from "@three-acts/ecommerce";
 import { articleMetaLine } from "../../components/blog/article-meta-line";
 import { AuthorCard } from "../../components/blog/author-card";
 import { Byline } from "../../components/blog/byline";
-import { ShopTheBrew } from "../../components/blog/shop-the-brew";
+import { PiecesMentioned } from "../../components/blog/pieces-mentioned";
 import { Grid } from "../../components/layout/grid";
 import { Section } from "../../components/layout/section";
 import { Badge } from "../../components/ui/badge";
@@ -26,9 +26,10 @@ type BlogPostPageProps = {
 };
 
 /**
- * `/blog/:slug`: breadcrumb, header (category, title, excerpt lede, byline),
- * cover image, prose body, tags, an author card, a "Shop the brew" strip
- * (omitted when the body links no products), and "Keep reading".
+ * `/blog/:slug`: breadcrumb, header (category badge, title, excerpt lede,
+ * byline row), cover image, prose body, tags, an author module, a "Pieces
+ * mentioned" strip (omitted when the body links no products), and "Keep
+ * reading".
  */
 export function BlogPostPage({ article, author, category, categories, related, shopProducts }: BlogPostPageProps) {
   const breadcrumbItems: BreadcrumbItem[] = [{ label: "Journal", href: "/blog" }];
@@ -39,39 +40,41 @@ export function BlogPostPage({ article, author, category, categories, related, s
 
   return (
     <>
-      <article>
-        <Section.Container className="max-w-prose pb-0 pt-10">
+      <article className="pb-16 pt-14 desktop:pb-20 desktop:pt-20">
+        <Section.Container className="max-w-3xl">
           <Breadcrumb.Root items={breadcrumbItems} className="mb-8" />
           <header className="flex flex-col gap-6">
-            {category && <Badge.Root tone="accent">{category.name}</Badge.Root>}
-            <Typography.Display as="h1" className="text-4xl landscape:text-5xl">
+            {category && <Badge.Root variant="outline">{category.name}</Badge.Root>}
+            <Typography.Display as="h1" className="max-w-3xl">
               {article.title}
             </Typography.Display>
-            <Typography.Lede className="max-w-none text-xl">{article.excerpt}</Typography.Lede>
+            <Typography.Lede className="max-w-none">{article.excerpt}</Typography.Lede>
             <Byline author={author} publishedAt={article.publishedAt} readingTime={article.readingTime} avatarSize="md" />
           </header>
         </Section.Container>
 
         {article.coverImage && (
-          <Section.Container className="py-10">
-            <Image
-              src={article.coverImage.src}
-              alt={article.coverImage.alt || article.title}
-              width={article.coverImage.width ?? 1600}
-              height={article.coverImage.height ?? 900}
-              loading="eager"
-              className="w-full border border-line object-cover"
-            />
+          <Section.Container className="mt-12 desktop:mt-16">
+            <span className="block aspect-hero w-full overflow-hidden bg-block">
+              <Image
+                src={article.coverImage.src}
+                alt={article.coverImage.alt || article.title}
+                width={article.coverImage.width ?? 1318}
+                height={article.coverImage.height ?? 608}
+                loading="eager"
+                className="size-full object-cover"
+              />
+            </span>
           </Section.Container>
         )}
 
-        <Section.Container className="max-w-prose py-10">
+        <Section.Container className="mt-12 max-w-3xl desktop:mt-16">
           <Prose.Root body={article.body} />
           {article.tags.length > 0 && (
             <ul className="mt-10 flex flex-wrap gap-2">
               {article.tags.map((tag) => (
                 <li key={tag}>
-                  <Badge.Root>{tag}</Badge.Root>
+                  <Badge.Root variant="outline">{tag}</Badge.Root>
                 </li>
               ))}
             </ul>
@@ -80,15 +83,15 @@ export function BlogPostPage({ article, author, category, categories, related, s
       </article>
 
       {author && (
-        <Section.Container className="max-w-prose pb-16">
+        <Section.Container className="max-w-3xl pb-16 desktop:pb-20">
           <AuthorCard.Root author={author} />
         </Section.Container>
       )}
 
       {shopProducts.length > 0 && (
-        <Section.Root className="border-t-2 border-line bg-surface-raised">
+        <Section.Root className="border-t border-line-strong">
           <Section.Container>
-            <ShopTheBrew products={shopProducts} />
+            <PiecesMentioned products={shopProducts} />
           </Section.Container>
         </Section.Root>
       )}
@@ -104,7 +107,6 @@ export function BlogPostPage({ article, author, category, categories, related, s
                   title={relatedArticle.title}
                   href={`/blog/${relatedArticle.slug}`}
                   image={relatedArticle.coverImage}
-                  excerpt={relatedArticle.excerpt}
                   meta={articleMetaLine(relatedArticle, categories)}
                 />
               ))}

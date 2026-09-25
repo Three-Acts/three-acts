@@ -1,2 +1,2 @@
-export { ShopTheBrew } from "./shop-the-brew";
+export { PiecesMentioned } from "./pieces-mentioned";
 export { extractShopSlugs } from "./extract-shop-slugs";

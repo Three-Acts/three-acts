@@ -13,19 +13,19 @@ type CategoryNavProps = Omit<HTMLAttributes<HTMLElement>, "children"> & {
   activeSlug?: string;
 };
 
-function pillClass(active: boolean) {
+function linkClass(active: boolean) {
   return cn(
-    "focus-ring inline-flex items-center gap-1.5 whitespace-nowrap border px-3.5 py-2 text-sm font-medium transition-colors duration-150",
-    active ? "border-ink bg-ink text-paper" : "border-line bg-surface-raised text-ink hover:border-line-strong"
+    "focus-ring text-body text-ink underline decoration-1 underline-offset-4 hover:no-underline",
+    active && "font-medium no-underline"
   );
 }
 
-/** Horizontal strip of journal category filter pills with counts, linking to `/blog` and `/blog/category/:slug`. */
+/** Horizontal strip of journal category text links with counts — underlined, no pills, no fills. */
 export function CategoryNav({ categories, counts, totalCount, activeSlug, className, ...props }: CategoryNavProps) {
   return (
-    <nav aria-label="Journal categories" className={cn("flex flex-wrap gap-2", className)} {...props}>
-      <a href="/blog" aria-current={activeSlug ? undefined : "page"} className={pillClass(!activeSlug)}>
-        All <span className={activeSlug ? "text-muted" : "text-paper/70"}>({totalCount})</span>
+    <nav aria-label="Journal categories" className={cn("flex flex-wrap items-center gap-x-6 gap-y-3", className)} {...props}>
+      <a href="/blog" aria-current={activeSlug ? undefined : "page"} className={linkClass(!activeSlug)}>
+        All <span className="text-small">({totalCount})</span>
       </a>
       {categories.map((category) => {
         const active = category.slug === activeSlug;
@@ -34,9 +34,9 @@ export function CategoryNav({ categories, counts, totalCount, activeSlug, classN
             key={category.slug}
             href={`/blog/category/${category.slug}`}
             aria-current={active ? "page" : undefined}
-            className={pillClass(active)}
+            className={linkClass(active)}
           >
-            {category.name} <span className={active ? "text-paper/70" : "text-muted"}>({counts[category.slug] ?? 0})</span>
+            {category.name} <span className="text-small">({counts[category.slug] ?? 0})</span>
           </a>
         );
       })}

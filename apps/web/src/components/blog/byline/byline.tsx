@@ -14,7 +14,7 @@ type BylineProps = Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
   avatarSize?: AvatarSize;
 };
 
-/** Author avatar + name (linked to `/authors/:slug`) with a date/reading-time meta line underneath. Used on the featured card, the article header, and anywhere else a byline appears. */
+/** Author avatar (square) + name (linked to `/authors/:slug`) + date/reading-time, all in one row. Used on the lead article, the article header, and anywhere else a byline appears. */
 export function Byline({ author, linkAuthor = true, publishedAt, readingTime, avatarSize = "sm", className, ...props }: BylineProps) {
   const metaParts = [publishedAt ? formatDate(publishedAt) : null, typeof readingTime === "number" ? `${readingTime} min read` : null].filter(
     (part): part is string => Boolean(part)
@@ -27,16 +27,21 @@ export function Byline({ author, linkAuthor = true, publishedAt, readingTime, av
   return (
     <div className={cn("flex items-center gap-3", className)} {...props}>
       {author && <Avatar.Root name={author.name} src={author.avatar?.src} size={avatarSize} />}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-ink">
         {author &&
           (linkAuthor ? (
-            <a href={`/authors/${author.slug}`} className="focus-ring text-sm font-semibold text-ink hover:text-accent">
+            <a href={`/authors/${author.slug}`} className="focus-ring font-medium text-ink hover:underline">
               {author.name}
             </a>
           ) : (
-            <span className="text-sm font-semibold text-ink">{author.name}</span>
+            <span className="font-medium text-ink">{author.name}</span>
           ))}
-        {metaParts.length > 0 && <span className="text-xs text-muted">{metaParts.join(" · ")}</span>}
+        {metaParts.length > 0 && (
+          <span>
+            {author && "· "}
+            {metaParts.join(" · ")}
+          </span>
+        )}
       </div>
     </div>
   );

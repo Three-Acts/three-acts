@@ -11,7 +11,7 @@ type ArticleMetaLineOptions = {
   includeCategory?: boolean;
 };
 
-/** The small eyebrow line under a journal card's title, e.g. "Brew Guides · 25 September 2026 · 5 min read". */
+/** The small eyebrow line under a journal card's title, e.g. "Guides · 25 September 2026 · 5 min read". */
 export function articleMetaLine(article: Article, categories: readonly ArticleCategory[], options: ArticleMetaLineOptions = {}): string {
   const includeCategory = options.includeCategory ?? true;
   const parts = [

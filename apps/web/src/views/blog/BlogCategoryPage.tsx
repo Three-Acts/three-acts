@@ -7,7 +7,6 @@ import { Breadcrumb } from "../../components/ui/breadcrumb";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { EmptyState } from "../../components/ui/empty-state";
-import { Typography } from "../../components/ui/typography";
 
 type BlogCategoryPageProps = {
   category: ArticleCategory;
@@ -17,50 +16,49 @@ type BlogCategoryPageProps = {
   categories: ArticleCategory[];
   /** Article count per category slug, across the whole journal. */
   counts: Record<string, number>;
-  /** The "All" pill's count. */
+  /** The "All" link's count. */
   totalCount: number;
 };
 
-/** `/blog/category/:slug`: the category's description, the shared category filter strip, and a grid of its articles (or an empty state). */
+/** `/blog/category/:slug`: breadcrumb, the category's own name/description as the section header, the shared category filter strip, and a grid of its articles (or an empty state). */
 export function BlogCategoryPage({ category, articles, categories, counts, totalCount }: BlogCategoryPageProps) {
   return (
-    <>
-      <Section.Container className="pb-10 pt-14 desktop:pt-20">
-        <Breadcrumb.Root items={[{ label: "Journal", href: "/blog" }, { label: category.name }]} className="mb-6" />
-        <Typography.Eyebrow className="mb-5">The journal</Typography.Eyebrow>
-        <Typography.Display>{category.name}</Typography.Display>
-        {category.description && <Typography.Lede className="mt-6">{category.description}</Typography.Lede>}
-        <CategoryNav categories={categories} counts={counts} totalCount={totalCount} activeSlug={category.slug} className="mt-10" />
-      </Section.Container>
+    <Section.Root>
+      <Section.Container>
+        <Breadcrumb.Root items={[{ label: "Journal", href: "/blog" }, { label: category.name }]} className="mb-8" />
+        <Section.Header eyebrow="Journal" title={category.name} lede={category.description || undefined} />
+        <CategoryNav
+          categories={categories}
+          counts={counts}
+          totalCount={totalCount}
+          activeSlug={category.slug}
+          className="mb-12 desktop:mb-16"
+        />
 
-      <Section.Root className="pt-0">
-        <Section.Container>
-          {articles.length > 0 ? (
-            <Grid.Root cols={3}>
-              {articles.map((article) => (
-                <Card.Article
-                  key={article.slug}
-                  title={article.title}
-                  href={`/blog/${article.slug}`}
-                  image={article.coverImage}
-                  excerpt={article.excerpt}
-                  meta={articleMetaLine(article, categories, { includeCategory: false })}
-                />
-              ))}
-            </Grid.Root>
-          ) : (
-            <EmptyState.Root
-              title={`No ${category.name.toLowerCase()} articles yet`}
-              description="Check back soon — we're always brewing something new for the journal."
-              action={
-                <Button.Link href="/blog" variant="secondary">
-                  Browse the journal
-                </Button.Link>
-              }
-            />
-          )}
-        </Section.Container>
-      </Section.Root>
-    </>
+        {articles.length > 0 ? (
+          <Grid.Root cols={3}>
+            {articles.map((article) => (
+              <Card.Article
+                key={article.slug}
+                title={article.title}
+                href={`/blog/${article.slug}`}
+                image={article.coverImage}
+                meta={articleMetaLine(article, categories, { includeCategory: false })}
+              />
+            ))}
+          </Grid.Root>
+        ) : (
+          <EmptyState.Root
+            title={`No ${category.name.toLowerCase()} articles yet`}
+            description="Check back soon — new articles are on the way."
+            action={
+              <Button.Link href="/blog" variant="secondary">
+                Browse the journal
+              </Button.Link>
+            }
+          />
+        )}
+      </Section.Container>
+    </Section.Root>
   );
 }
