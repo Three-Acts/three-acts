@@ -2,8 +2,13 @@ import { Loader2, Rocket, UserCircle } from "lucide-react";
 import type { AuthUser } from "../../auth/auth-context";
 import { Button, Logo, PanelHeader, Tooltip } from "../atoms";
 import { usePublish } from "../../hooks/use-publish";
+import { WorkspaceTabs } from "./workspace-tabs";
+import type { WorkspaceTab } from "./workspace-tabs";
 
 type TopBarProps = {
+  activeTab: WorkspaceTab;
+  availableTabs: WorkspaceTab[];
+  onTabChange: (tab: WorkspaceTab) => void;
   /** Called after queued records have been published so the workspace can refresh its list. */
   onPublished?: () => void;
   onSignOut: () => Promise<void>;
@@ -12,13 +17,14 @@ type TopBarProps = {
   user: AuthUser;
 };
 
-export function TopBar({ onPublished, onSignOut, queuedCount, user }: TopBarProps) {
+export function TopBar({ activeTab, availableTabs, onPublished, onSignOut, onTabChange, queuedCount, user }: TopBarProps) {
   const { publish, isPublishing } = usePublish({ onPublished });
 
   return (
     <PanelHeader className="justify-between border-cms-line-strong bg-cms-bg">
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex min-w-0 items-center gap-3">
         <Logo />
+        <WorkspaceTabs activeTab={activeTab} available={availableTabs} onChange={onTabChange} />
       </div>
       <div className="flex min-w-0 items-center gap-1.5">
         <Tooltip content="Sign out">

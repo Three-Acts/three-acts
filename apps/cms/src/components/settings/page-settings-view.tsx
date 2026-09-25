@@ -1,0 +1,446 @@
+import { useState } from "react";
+import { ExternalLink, FileText, Trash2 } from "lucide-react";
+import type { CmsField, ImageField, PublishStatus } from "../../cms/types";
+import { applyTitleTemplate, parseSchemaMarkup } from "../../cms/types";
+import { hasPublishWorkflow, isEditable } from "../../lib/records";
+import { Button, ConfirmDialog, PanelHeader, ScrollArea, SplitButton, StatusPill, useToast } from "../atoms";
+import { EditorSection, FieldControl } from "../editor";
+import { SchemaMarkupField, SeoTextField } from "./page-settings/fields";
+import { PageList } from "./page-settings/page-list";
+import { SearchResultPreview, SocialCardPreview } from "./page-settings/previews";
+import {
+  absoluteUrl,
+  canonicalFor,
+  DESCRIPTION_LIMIT,
+  imageSrc,
+  text,
+  TITLE_LIMIT,
+  validateCanonicalUrl,
+  validatePagePath
+} from "./page-settings/seo";
+import type { SiteDefaults } from "./page-settings/seo";
+import { usePageSettings } from "./page-settings/use-page-settings";
+import type { SettingsViewProps } from "./index";
+
+
+const noop = () => {};
+
+/**
+ * Per-page SEO for the site's static routes (Webflow's "Page settings"): a
+ * page list on the left, the selected page's settings in the middle, and
+ * live search/social previews on the right, rendered through the sitewide
+ * title template and default share image.
+ */
+export function PageSettingsView({ collection, onDirtyChange, onSaved }: SettingsViewProps) {
+  const settings = usePageSettings(collection, { onDirtyChange, onSaved });
+  const { draft, isDirty, isSaving, pages, selectedId } = settings;
+  const toast = useToast();
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  // Required-but-empty errors only appear once a save has been attempted;
+  // format errors (bad path, bad JSON) show as they're typed.
+  const [showRequired, setShowRequired] = useState(false);
+  const editable = isEditable(collection);
+  const publishable = hasPublishWorkflow(collection);
+
+  function guard(action: () => void) {
+    if (isDirty) {
+      setPendingAction(() => action);
+    } else {
+      action();
+    }
+  }
+
+  function selectPage(pageId: string) {
+    if (pageId === selectedId) {
+      return;
+    }
+
+    guard(() => {
+      setShowRequired(false);
+      settings.selectPage(pageId);
+    });
+  }
+
+  const values = draft?.values ?? {};
+  const pageName = text(values, "pageName");
+  const pagePath = text(values, "pagePath");
+  const otherPaths = pages.filter((page) => page.id !== draft?.id).map((page) => text(page.values, "pagePath"));
+  const nameError = showRequired && !pageName.trim() ? "A page name is required." : null;
+  const rawPathError = validatePagePath(pagePath, otherPaths);
+  const pathError = rawPathError && (pagePath || showRequired) ? rawPathError : null;
+  const canonicalError = validateCanonicalUrl(text(values, "canonicalUrl"));
+  const schemaResult = parseSchemaMarkup(text(values, "schemaMarkup"));
+  const blockingErrors = [
+    !pageName.trim() ? "page name" : null,
+    rawPathError ? "page path" : null,
+    canonicalError ? "canonical URL" : null,
+    schemaResult.ok ? null : "schema markup"
+  ].filter((item): item is string => item !== null);
+
+  async function handleSave(nextStatus?: Exclude<PublishStatus, "published">) {
+    // Draft-only saves (and unpublishing) may carry an unfinished page; a
+    // page queued for the live site must be complete and valid.
+    if (blockingErrors.length > 0 && nextStatus !== "not_published") {
+      setShowRequired(true);
+      const description = `Fix the ${blockingErrors.join(", ")} before saving.`;
+      // Base UI's toast `add` flushes synchronously; defer it out of React's update.
+      window.setTimeout(() => toast.push({ tone: "error", title: "Check this page’s settings", description, duration: 6000 }), 0);
+      return;
+    }
+
+    const saved = await settings.save(nextStatus);
+    if (saved) {
+      setShowRequired(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1">
+      <PageList
+        canCreate={editable}
+        isLoading={settings.isLoading}
+        onCreate={() => guard(() => void settings.createPage())}
+        onSelect={selectPage}
+        pages={pages}
+        selectedId={selectedId}
+        showStatus={publishable}
+        title={collection.label}
+      />
+
+      {draft ? (
+        <section aria-label={`${pageName || "Untitled page"} settings`} className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
+          <PanelHeader className="justify-between">
+            <div className="flex min-w-0 items-baseline gap-2">
+              <h2 className="truncate text-ui-lg font-semibold text-cms-text">{pageName || "Untitled page"}</h2>
+              <span className="truncate font-mono text-ui text-cms-subtle">{pagePath}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {isDirty ? (
+                <>
+                  <span className="inline-flex items-center gap-1.5 px-1 text-ui text-cms-subtle">
+                    <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-cms-pending" />
+                    Unsaved
+                  </span>
+                  <Button disabled={isSaving} onClick={() => void settings.discard()} variant="ghost">
+                    Discard
+                  </Button>
+                </>
+              ) : null}
+              {publishable && editable ? (
+                <>
+                  <StatusPill status={draft.publishStatus} />
+                  <SplitButton
+                    disabled={isSaving}
+                    label={isSaving ? "Saving…" : "Save & queue to publish"}
+                    onClick={() => void handleSave("queued_to_publish")}
+                    options={[
+                      { label: "Save as draft", onSelect: () => void handleSave("not_published") },
+                      {
+                        disabled: draft.publishStatus !== "published",
+                        label: "Unpublish",
+                        onSelect: () => void handleSave("not_published")
+                      }
+                    ]}
+                    primaryDisabled={draft.publishStatus === "queued_to_publish" && !isDirty}
+                  />
+                </>
+              ) : null}
+              {editable ? (
+                <Button disabled={isSaving || !isDirty} onClick={() => void handleSave()} variant={publishable ? "normal" : "primary"}>
+                  {isSaving ? "Saving…" : "Save"}
+                </Button>
+              ) : null}
+            </div>
+          </PanelHeader>
+
+          <div className="flex min-h-0 flex-1">
+            <ScrollArea className="min-h-0 min-w-0 flex-1" viewportClassName="[overflow-anchor:none]">
+              {settings.hasConflict ? (
+                <div
+                  className="mx-3 mt-3 flex items-center justify-between gap-3 rounded-cms border border-cms-danger-line bg-cms-danger-surface px-3 py-2 text-ui text-cms-text"
+                  role="alert"
+                >
+                  <span className="min-w-0">This page was changed elsewhere. Reload it to get the latest version, then reapply your edits.</span>
+                  <Button onClick={() => void settings.discard()}>Reload latest</Button>
+                </div>
+              ) : null}
+
+              <PageSettingsForm
+                canonicalError={canonicalError}
+                editable={editable}
+                fields={collection.fields}
+                nameError={nameError}
+                onUpdateValue={settings.updateValue}
+                onUpload={settings.uploadAsset}
+                pathError={pathError}
+                record={draft}
+                site={settings.site}
+                uploadingField={settings.uploadingField}
+              />
+
+              {/* Below xl the preview rail has no room beside the form, so it folds in at the end. */}
+              <div className="xl:hidden">
+                <EditorSection title="Preview">
+                  <PagePreviews site={settings.site} values={values} />
+                </EditorSection>
+              </div>
+
+              <footer className="flex gap-1.5 border-t border-cms-line px-3 py-2.5">
+                {editable ? (
+                  <Button className="text-cms-muted hover:text-cms-danger" onClick={() => setIsConfirmingDelete(true)}>
+                    <Trash2 size={13} />
+                    Delete page
+                  </Button>
+                ) : null}
+              </footer>
+            </ScrollArea>
+
+            <aside aria-label="Previews" className="hidden w-88 shrink-0 flex-col border-l border-cms-line xl:flex">
+              <ScrollArea className="min-h-0 flex-1" viewportClassName="px-3 py-4">
+                <PagePreviews site={settings.site} values={values} />
+                {!settings.hasSiteSettings ? (
+                  <p className="m-0 mt-4 text-ui leading-5 text-cms-subtle">
+                    No site settings found, so previews show this page’s own values without a title template or default image.
+                  </p>
+                ) : null}
+              </ScrollArea>
+            </aside>
+          </div>
+        </section>
+      ) : (
+        <div className="grid min-w-0 flex-1 place-items-center p-8 text-center">
+          <div className="grid justify-items-center gap-2">
+            <FileText aria-hidden="true" className="text-cms-subtle" size={20} />
+            <p className="m-0 text-ui text-cms-subtle">
+              {settings.isLoading ? "Loading pages…" : pages.length === 0 ? "Add a page to edit its SEO settings." : "Select a page to edit its settings."}
+            </p>
+            {!settings.isLoading && pages.length === 0 && editable ? (
+              <Button onClick={() => void settings.createPage()} variant="primary">
+                Add page
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        description="Its SEO settings will be removed and the page will fall back to the sitewide defaults. This cannot be undone."
+        onConfirm={() => {
+          setShowRequired(false);
+          void settings.deletePage();
+        }}
+        onOpenChange={setIsConfirmingDelete}
+        open={isConfirmingDelete}
+        title={`Delete ${pageName || "this page"}?`}
+      />
+
+      <ConfirmDialog
+        confirmLabel="Discard"
+        description="You have unsaved changes to this page. Discard them?"
+        onConfirm={() => pendingAction?.()}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingAction(null);
+          }
+        }}
+        open={pendingAction !== null}
+        title="Discard unsaved changes?"
+      />
+    </div>
+  );
+}
+
+type PageSettingsFormProps = {
+  canonicalError: string | null;
+  editable: boolean;
+  fields: CmsField[];
+  nameError: string | null;
+  onUpdateValue: (fieldKey: string, value: string) => void;
+  onUpload: ReturnType<typeof usePageSettings>["uploadAsset"];
+  pathError: string | null;
+  record: NonNullable<ReturnType<typeof usePageSettings>["draft"]>;
+  site: SiteDefaults;
+  uploadingField: string | null;
+};
+
+function PageSettingsForm({
+  canonicalError,
+  editable,
+  fields,
+  nameError,
+  onUpdateValue,
+  onUpload,
+  pathError,
+  record,
+  site,
+  uploadingField
+}: PageSettingsFormProps) {
+  const values = record.values;
+  const pageName = text(values, "pageName");
+  const pagePath = text(values, "pagePath");
+  const metaTitle = text(values, "metaTitle");
+  const metaDescription = text(values, "metaDescription");
+  const titleFallback = metaTitle || pageName;
+  const descriptionFallback = metaDescription || site.defaultMetaDescription;
+  const renderedTitle = applyTitleTemplate(site.titleTemplate, titleFallback);
+
+  // Labels and help come from the registry when it defines the field; the
+  // fallbacks keep the form usable against an older registry.
+  function label(key: string, fallback: string): string {
+    return fields.find((field) => field.key === key)?.label ?? fallback;
+  }
+
+  function imageField(key: string, fallbackLabel: string, helpText: string): ImageField {
+    const found = fields.find((field) => field.key === key);
+    const base: ImageField =
+      found?.type === "image" ? (found as ImageField) : { key, label: fallbackLabel, type: "image", bucket: "cms-assets", accept: "image/*" };
+    return { ...base, helpText };
+  }
+
+  const bind = (key: string) => ({
+    onChange: (value: string) => onUpdateValue(key, value),
+    value: text(values, key)
+  });
+
+  const renderImage = (field: ImageField) => (
+    <FieldControl
+      field={field}
+      onAssetUpload={onUpload}
+      onGalleryItemUpload={noop}
+      onGalleryUpload={noop}
+      onUpdateValue={(key, value) => onUpdateValue(key, typeof value === "string" ? value : "")}
+      readOnly={!editable}
+      record={record}
+      uploadingField={uploadingField}
+    />
+  );
+
+  const siteImageHint = site.defaultOgImage ? "Leave empty to use the site’s default share image." : "Recommended 1200 × 630.";
+
+  return (
+    <fieldset className="m-0 min-w-0 border-0 p-0" disabled={!editable}>
+      <EditorSection title="Page">
+        <SeoTextField {...bind("pageName")} error={nameError} hint="Only shown in the CMS." label={label("pageName", "Page name")} required />
+        <SeoTextField
+          {...bind("pagePath")}
+          error={pathError}
+          hint="The route on the live site these settings apply to."
+          label={label("pagePath", "Page path")}
+          mono
+          placeholder="/about"
+          required
+        />
+        {pagePath && !pathError ? (
+          <div className="-mt-2 mb-4 flex min-h-6 items-center gap-1.5 overflow-hidden rounded-cms bg-cms-surface px-2 font-mono text-ui text-cms-subtle last:mb-0">
+            <ExternalLink aria-hidden="true" size={12} />
+            <span className="truncate">{canonicalFor(pagePath)}</span>
+          </div>
+        ) : null}
+      </EditorSection>
+
+      <EditorSection title="SEO">
+        <SeoTextField
+          {...bind("metaTitle")}
+          countValue={renderedTitle}
+          hint={site.titleTemplate ? `Shown as “${renderedTitle}”. The count includes the site title template.` : "The title tag for browser tabs and search results."}
+          label={label("metaTitle", "Title tag")}
+          limit={TITLE_LIMIT}
+          placeholder={pageName}
+        />
+        <SeoTextField
+          {...bind("metaDescription")}
+          countValue={metaDescription}
+          hint={metaDescription || !site.defaultMetaDescription ? "The snippet under the title in search results." : "Leave empty to use the site’s default description."}
+          label={label("metaDescription", "Meta description")}
+          limit={DESCRIPTION_LIMIT}
+          multiline
+          placeholder={site.defaultMetaDescription || "Summarize this page in a sentence or two."}
+        />
+        <SeoTextField
+          {...bind("canonicalUrl")}
+          error={canonicalError}
+          hint="Leave empty to use this page’s own URL. Set it only when another URL is the primary copy."
+          label={label("canonicalUrl", "Canonical URL")}
+          mono
+          placeholder={pagePath ? canonicalFor(pagePath) : undefined}
+        />
+      </EditorSection>
+
+      <EditorSection title="Open Graph">
+        <p className="-mt-1 mb-3 text-ui leading-5 text-cms-subtle">How this page looks when it’s shared on social platforms and in messages.</p>
+        <SeoTextField
+          {...bind("ogTitle")}
+          countValue={text(values, "ogTitle") || titleFallback}
+          hint={text(values, "ogTitle") ? undefined : "Leave empty to use the title tag."}
+          label={label("ogTitle", "Open Graph title")}
+          limit={TITLE_LIMIT}
+          placeholder={titleFallback}
+        />
+        <SeoTextField
+          {...bind("ogDescription")}
+          countValue={text(values, "ogDescription")}
+          hint={text(values, "ogDescription") ? undefined : "Leave empty to use the meta description."}
+          label={label("ogDescription", "Open Graph description")}
+          limit={DESCRIPTION_LIMIT}
+          multiline
+          placeholder={descriptionFallback}
+        />
+        {renderImage(imageField("ogImage", "Open Graph image", siteImageHint))}
+      </EditorSection>
+
+      <EditorSection title="Search">
+        <p className="-mt-1 mb-3 text-ui leading-5 text-cms-subtle">Overrides for how this page is listed in search results.</p>
+        <SeoTextField
+          {...bind("searchTitle")}
+          hint={text(values, "searchTitle") ? undefined : "Leave empty to use the title tag."}
+          label={label("searchTitle", "Search title")}
+          placeholder={titleFallback}
+        />
+        <SeoTextField
+          {...bind("searchDescription")}
+          hint={text(values, "searchDescription") ? undefined : "Leave empty to use the meta description."}
+          label={label("searchDescription", "Search description")}
+          multiline
+          placeholder={descriptionFallback}
+        />
+        {renderImage(imageField("searchImage", "Search image", "Leave empty to use the Open Graph image."))}
+      </EditorSection>
+
+      <EditorSection title="Schema markup">
+        <SchemaMarkupField {...bind("schemaMarkup")} />
+      </EditorSection>
+    </fieldset>
+  );
+}
+
+/** Both previews, resolved through the same fallbacks the live site applies. */
+function PagePreviews({ site, values }: { site: SiteDefaults; values: Record<string, unknown> }) {
+  const read = (key: string) => (typeof values[key] === "string" ? (values[key] as string) : "");
+  const pageName = read("pageName");
+  const pagePath = read("pagePath") || "/";
+  const metaTitle = read("metaTitle") || pageName;
+  const metaDescription = read("metaDescription") || site.defaultMetaDescription;
+  const url = absoluteUrl(read("canonicalUrl") || pagePath);
+  const ogImage = imageSrc(read("ogImage")) || site.defaultOgImage;
+  // An explicit search title replaces the templated title tag outright.
+  const searchTitle = read("searchTitle") || applyTitleTemplate(site.titleTemplate, metaTitle);
+
+  return (
+    <div className="grid gap-5">
+      <SearchResultPreview
+        description={read("searchDescription") || metaDescription}
+        faviconSrc={site.favicon}
+        siteName={site.siteName}
+        title={searchTitle}
+        url={url}
+      />
+      <SocialCardPreview
+        description={read("ogDescription") || metaDescription}
+        imageSrc={ogImage}
+        title={read("ogTitle") || metaTitle}
+        url={url}
+      />
+    </div>
+  );
+}
