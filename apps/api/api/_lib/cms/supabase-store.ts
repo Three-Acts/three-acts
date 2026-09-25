@@ -71,7 +71,7 @@ function toRecordValue(field: CmsField, raw: unknown): CmsRecordValue {
   }
 
   // Datetimes come back from Supabase already as ISO strings; everything else
-  // (text/textarea/slug/select/asset/readonly) is stored as plain text.
+  // (text/textarea/slug/select/asset/image/image-gallery/readonly) is stored as plain text.
   return String(raw);
 }
 

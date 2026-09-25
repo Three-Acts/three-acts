@@ -3,13 +3,17 @@ import {
   MAX_ASSET_UPLOAD_BYTES,
   collectionRegistry,
   hasPublishWorkflow,
-  type AssetField,
+  parseImageGallery,
+  parseImageValue,
+  serializeImageGallery,
+  serializeImageValue,
   type AssetUploadResult,
   type CmsCollection,
   type CmsCollectionSummary,
   type CmsField,
   type CmsRecord,
   type CmsRecordValue,
+  type ImageGalleryField,
   type ListRecordsOptions,
   type ListRecordsResult,
   type PublishStatus,
@@ -45,6 +49,7 @@ function validationError(field: CmsField, message: string): CmsError {
 function defaultValueForField(field: CmsField): CmsRecordValue {
   if (field.type === "boolean") return false;
   if (field.type === "number") return 0;
+  if (field.type === "image-gallery") return "[]";
   return "";
 }
 
@@ -68,6 +73,33 @@ function validateFieldValue(field: CmsField, raw: CmsRecordValue, enforceRequire
         throw validationError(field, `${field.label} is required.`);
       }
       return text;
+    }
+    case "image": {
+      // Single typed image: stored as an ImageValue JSON string, read back
+      // leniently so legacy plain-URL rows keep validating.
+      const parsed = parseImageValue(raw);
+      if (enforceRequired && field.required && !parsed) {
+        throw validationError(field, `${field.label} is required.`);
+      }
+      return serializeImageValue(parsed);
+    }
+    case "image-gallery": {
+      // Ordered gallery: stored as an ImageValue[] JSON string. Like
+      // `required`, `minItems`/`maxItems` gate publishing, not drafting.
+      const items = parseImageGallery(raw);
+      if (enforceRequired) {
+        const galleryField = field as ImageGalleryField;
+        if (field.required && items.length === 0) {
+          throw validationError(field, `${field.label} is required.`);
+        }
+        if (galleryField.minItems !== undefined && items.length > 0 && items.length < galleryField.minItems) {
+          throw validationError(field, `${field.label} needs at least ${galleryField.minItems} image(s).`);
+        }
+        if (galleryField.maxItems !== undefined && items.length > galleryField.maxItems) {
+          throw validationError(field, `${field.label} accepts at most ${galleryField.maxItems} image(s).`);
+        }
+      }
+      return serializeImageGallery(items);
     }
     case "number": {
       if (raw === "" || raw === null || raw === undefined) {
@@ -293,16 +325,26 @@ export async function uploadAsset(collectionId: string, fieldKey: string, body: 
   const collection = assertWritable(getCollectionOrThrow(collectionId));
   const field = collection.fields.find((item) => item.key === fieldKey);
 
-  if (!field || field.type !== "asset") {
+  // Uploads serve generic files (`asset`) as well as typed images: single
+  // (`image`) and per-item gallery uploads (`image-gallery`). The stored
+  // record value stays a URL/JSON string the caller composes — no blob
+  // deletes happen here.
+  if (!field || (field.type !== "asset" && field.type !== "image" && field.type !== "image-gallery")) {
     throw new CmsError("not_found", `Unknown asset field: ${fieldKey}`);
   }
-  const assetField = field as AssetField;
+  const bucket = (field as { bucket: string }).bucket;
 
   if (!body || typeof body.fileName !== "string" || !body.fileName.trim()) {
     throw new CmsError("validation", "fileName is required.");
   }
   if (typeof body.size !== "number" || !Number.isFinite(body.size) || body.size <= 0) {
     throw new CmsError("validation", "size must be a positive number.");
+  }
+  if (
+    (field.type === "image" || field.type === "image-gallery") &&
+    (typeof body.contentType !== "string" || !body.contentType.startsWith("image/"))
+  ) {
+    throw new CmsError("validation", `${field.label} only accepts images.`);
   }
   if (body.size > MAX_ASSET_UPLOAD_BYTES) {
     throw new CmsError("validation", `File exceeds the ${MAX_ASSET_UPLOAD_BYTES} byte upload limit.`);
@@ -326,7 +368,7 @@ export async function uploadAsset(collectionId: string, fieldKey: string, body: 
   const path = `${collection.tableName}/${Date.now()}-${safeName}`;
   const contentType = typeof body.contentType === "string" && body.contentType ? body.contentType : "application/octet-stream";
 
-  const uploaded = await getBlobStore().upload({ bucket: assetField.bucket, path, contentType, data: buffer });
+  const uploaded = await getBlobStore().upload({ bucket, path, contentType, data: buffer });
 
   return { path: uploaded.path, url: uploaded.url, fileName: body.fileName, size: buffer.length };
 }

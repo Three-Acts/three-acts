@@ -67,6 +67,14 @@ _Avoid_: Raw column, inferred field
 A Collection Field that uploads a file to the Blob Store and stores the file reference on the record.
 _Avoid_: Asset library, media collection
 
+**Image Field**:
+A Collection Field for a single image. It uploads through the Blob Store like an Asset Field, but the record stores a typed `ImageValue` JSON string (`src`, `fileName`, `size`, `width`, `height`, `alt`) instead of a bare URL. Legacy plain-URL rows still read.
+_Avoid_: Bare image URL, asset field for photos
+
+**Image Gallery Field**:
+A Collection Field for an ordered set of images, stored as an `ImageValue[]` JSON string with optional `minItems`/`maxItems` publish-time rules.
+_Avoid_: Comma-separated URLs, asset library
+
 **CMS Data Adapter**:
 The interface the CMS uses to list, read, create, save, delete, and import collection records, and to run the Publish Transition. Asset uploads go through the CMS Backend's storage side instead.
 _Avoid_: REST client, direct database access, mock data
@@ -137,6 +145,7 @@ _Avoid_: Production content, screenshot copy
 - The **Collection Registry** defines which backing tables appear as **CMS Collections**.
 - A **CMS Collection** has one or more **Collection Fields**.
 - An **Asset Field** belongs to exactly one **CMS Collection** field configuration.
+- An **Image Field** and an **Image Gallery Field** are typed variants of an **Asset Field**: same Blob Store upload, but the record stores `ImageValue` JSON so filename, dimensions, and alt text survive.
 - The **CMS Backend**'s data adapter provides records, and its storage adapter provides asset uploads through the **Blob Store**, for each **CMS Collection**.
 - The **REST Bridge** exposes a **Data Store** and a **Blob Store** to the `rest` **CMS Backend** over HTTP, validated against the **Collection Schema Package**.
 - The **Collection Schema Package** defines the **Collection Registry** and field types once, shared by the CMS and the **REST Bridge**.

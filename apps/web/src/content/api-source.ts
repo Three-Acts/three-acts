@@ -1,4 +1,4 @@
-import { collectionRegistry, contentApiPaths, type CmsRecord, type ListRecordsResult } from "@three-acts/cms-schema";
+import { collectionRegistry, contentApiPaths, imageSrc, type CmsRecord, type ListRecordsResult } from "@three-acts/cms-schema";
 import type { ContentEntry, ContentSource } from "./content-source";
 
 /**
@@ -64,7 +64,9 @@ function mapRecord(record: CmsRecord): ContentEntry | null {
     .map((tag) => tag.trim())
     .filter((tag) => tag.length > 0);
 
-  const coverImage = readString(record.values[FIELD.coverImage]).trim();
+  // Cover images are typed `image` fields (ImageValue JSON) with legacy
+  // plain-URL rows still in the wild — `imageSrc` reads both forms.
+  const coverImage = imageSrc(record.values[FIELD.coverImage]).trim();
   const author = readString(record.values[FIELD.author]).trim();
   const publishedAt = readString(record.values[FIELD.publishedAt]).trim();
 

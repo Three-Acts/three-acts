@@ -9,7 +9,18 @@ export type PublishStatus = "published" | "not_published" | "queued_to_publish";
  */
 export type CollectionMode = "editorial" | "data" | "readonly";
 
-export type FieldType = "text" | "slug" | "textarea" | "number" | "boolean" | "select" | "datetime" | "asset" | "readonly";
+export type FieldType =
+  | "text"
+  | "slug"
+  | "textarea"
+  | "number"
+  | "boolean"
+  | "select"
+  | "datetime"
+  | "asset"
+  | "image"
+  | "image-gallery"
+  | "readonly";
 
 export type CmsRecordValue = string | number | boolean | null | undefined;
 
@@ -45,7 +56,7 @@ type FieldBase<TType extends FieldType> = {
   column?: string;
 };
 
-export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "asset">>;
+export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "asset" | "image" | "image-gallery">>;
 
 export type SelectField = FieldBase<"select"> & {
   type: "select";
@@ -63,13 +74,37 @@ export type AssetField = FieldBase<"asset"> & {
   accept?: string;
 };
 
-export type CmsField = PrimitiveField | SelectField | SlugField | AssetField;
+/**
+ * Single typed image: uploads to the Blob Store like an Asset Field but the
+ * record stores an `ImageValue` JSON string (see `./images`) instead of a
+ * bare URL, so filename, dimensions, and alt text survive the round trip.
+ */
+export type ImageField = FieldBase<"image"> & {
+  type: "image";
+  bucket: string;
+  accept?: string;
+};
+
+/**
+ * Ordered gallery of typed images, stored as an `ImageValue[]` JSON string.
+ * `minItems`/`maxItems` are publish-time rules (like `required`), not
+ * draft-time ones — see the API service's `validateFieldValue`.
+ */
+export type ImageGalleryField = FieldBase<"image-gallery"> & {
+  type: "image-gallery";
+  bucket: string;
+  accept?: string;
+  minItems?: number;
+  maxItems?: number;
+};
+
+export type CmsField = PrimitiveField | SelectField | SlugField | AssetField | ImageField | ImageGalleryField;
 
 export type ListColumn = {
   key: string;
   label: string;
   width?: string;
-  valueType?: "text" | "status" | "datetime" | "boolean" | "asset";
+  valueType?: "text" | "status" | "datetime" | "boolean" | "asset" | "image";
 };
 
 export type CmsCollection = {

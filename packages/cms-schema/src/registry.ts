@@ -13,7 +13,7 @@ export const collectionRegistry: CmsCollection[] = [
       { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/blog/" },
       { key: "excerpt", label: "Excerpt", type: "textarea", required: true, helpText: "Shown in listings and as the meta description." },
       { key: "body", label: "Body", type: "textarea", required: true },
-      { key: "coverImage", label: "Cover image", type: "asset", bucket: "cms-assets", accept: "image/*" },
+      { key: "coverImage", label: "Cover image", type: "image", bucket: "cms-assets", accept: "image/*" },
       { key: "author", label: "Author", type: "text" },
       { key: "tags", label: "Tags", type: "text", helpText: "Comma-separated, e.g. performance, seo, workflow." },
       { key: "publishedAt", label: "Published at", type: "datetime", required: true, helpText: "Drives ordering and the sitemap lastmod." }
@@ -52,7 +52,16 @@ export const collectionRegistry: CmsCollection[] = [
       },
       { key: "priority", label: "Priority", type: "number" },
       { key: "featured", label: "Featured", type: "boolean" },
-      { key: "heroImage", label: "Hero image", type: "asset", bucket: "cms-assets", accept: "image/*" },
+      { key: "heroImage", label: "Hero image", type: "image", bucket: "cms-assets", accept: "image/*" },
+      {
+        key: "imageGallery",
+        label: "Image gallery",
+        type: "image-gallery",
+        bucket: "cms-assets",
+        accept: "image/*",
+        minItems: 1,
+        maxItems: 8
+      },
       { key: "publishAt", label: "Publish at", type: "datetime" },
       { key: "recordId", label: "Item ID", type: "readonly" }
     ],
