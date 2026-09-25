@@ -6,7 +6,7 @@ import { parseImageGallery, parseImageValue } from "../images";
 import { collectionRegistry } from "../registry";
 import { parseSchemaMarkup } from "../schema-markup";
 import type { CmsCollection, CmsRecordValue } from "../types";
-import { productSlugs, staticPagePaths } from "./keys";
+import { productCategorySlugs, productSlugs, staticPagePaths } from "./keys";
 import { siteSeed } from "./site";
 
 function collectionFor(id: string): CmsCollection {
@@ -26,7 +26,7 @@ describe("site seed", () => {
     assert.deepEqual(Object.keys(siteSeed).sort(), ["form-submissions", "media-library", "page-settings", "redirect-rules", "site-settings"]);
     assert.equal(siteSeed["site-settings"].length, 1);
     assert.ok(siteSeed["redirect-rules"].length >= 40);
-    assert.ok(siteSeed["media-library"].length >= 55);
+    assert.ok(siteSeed["media-library"].length >= 60);
     assert.ok(siteSeed["form-submissions"].length >= 75);
   });
 
@@ -135,38 +135,49 @@ describe("site seed", () => {
     for (const path of staticPagePaths) assert.ok(byPath.has(path), `missing page settings for ${path}`);
     assert.equal(byPath.size, staticPagePaths.length);
     assert.equal(byPath.get("/careers")?.publishStatus, "queued_to_publish");
-    assert.equal(byPath.get("/subscriptions")?.publishStatus, "not_published");
-    const wholesale = byPath.get("/wholesale");
-    assert.equal(wholesale?.publishStatus, "draft");
-    assert.ok(wholesale?.liveValues, "wholesale draft keeps its older live snapshot");
+    assert.equal(byPath.get("/changelog")?.publishStatus, "not_published");
+    const agencies = byPath.get("/agencies");
+    assert.equal(agencies?.publishStatus, "draft");
+    assert.ok(agencies?.liveValues, "agencies draft keeps its older live snapshot");
+    const refunds = byPath.get("/refunds");
+    assert.equal(refunds?.publishStatus, "queued_to_publish");
+    assert.ok(refunds?.liveValues, "refunds queued edit still shows the old copy live until the next publish");
     assert.equal(byPath.get("/")?.publishStatus, "published");
 
     const types = (path: string) => (parseSchemaMarkup(String(byPath.get(path)?.values.schemaMarkup)) as { ok: true; value: Record<string, unknown>[] }).value.map((item) => item["@type"]);
     assert.deepEqual(types("/"), ["WebSite"]);
     assert.deepEqual(types("/faq"), ["FAQPage"]);
-    assert.deepEqual(types("/visit-the-roastery"), ["CafeOrCoffeeShop"]);
     assert.deepEqual(types("/shop"), ["CollectionPage"]);
-    for (const record of byPath.values()) assert.match(String(record.values.canonicalUrl), /^https:\/\/fynbosandfire\.co\.za\//);
+    for (const record of byPath.values()) assert.match(String(record.values.canonicalUrl), /^https:\/\/threeacts\.dev\//);
   });
 
   it("gives site settings a draft with an older live snapshot", () => {
     const [settings] = siteSeed["site-settings"];
     assert.equal(settings.publishStatus, "draft");
     assert.ok(settings.liveValues);
-    assert.equal(settings.values.titleTemplate, "%s · Fynbos & Fire");
+    assert.equal(settings.values.titleTemplate, "%s · Three Acts");
     assert.equal(settings.values.allowIndexing, true);
   });
 
   it("resolves cross-collection references", () => {
     const knownProducts = new Set<string>(productSlugs);
+    const knownCategories = new Set<string>(productCategorySlugs);
+    const staticPaths = new Set<string>(staticPagePaths);
     for (const record of siteSeed["redirect-rules"]) {
       const target = String(record.values.targetUrl);
       assert.ok(target.startsWith("/") || target.startsWith("https://"), `${record.id}: target ${target}`);
-      const match = /^\/shop\/([^/?#]+)/.exec(target);
-      if (match) assert.ok(knownProducts.has(match[1]), `${record.id}: unknown product ${match[1]}`);
+      assert.ok(!staticPaths.has(`/${record.values.sourcePath}`), `${record.id}: source ${record.values.sourcePath} shadows a real static page`);
+      const category = /^\/shop\/category\/([^/?#]+)/.exec(target);
+      if (category) {
+        assert.ok(knownCategories.has(category[1]), `${record.id}: unknown product category ${category[1]}`);
+      } else {
+        const match = /^\/shop\/([^/?#]+)/.exec(target);
+        if (match) assert.ok(knownProducts.has(match[1]), `${record.id}: unknown product ${match[1]}`);
+      }
       assert.equal(record.values.permanent, record.values.statusCode === "301" || record.values.statusCode === "308", `${record.id}: permanent matches code`);
     }
-    assert.ok(siteSeed["redirect-rules"].some((record) => /^\/shop\/[^/?#]+/.test(String(record.values.targetUrl))));
+    assert.ok(siteSeed["redirect-rules"].some((record) => /^\/shop\/[^/?#]+$/.test(String(record.values.targetUrl))));
+    assert.ok(siteSeed["redirect-rules"].some((record) => /^\/shop\/category\/[^/?#]+$/.test(String(record.values.targetUrl))));
   });
 
   it("covers every form option and every media edge case", () => {

@@ -19,7 +19,7 @@ function freshStore(t: TestContext): void {
 async function maxExistingOrderNumber(): Promise<number> {
   const orders = await findRecords("orders", () => true);
   return orders.reduce((max, record) => {
-    const n = Number(String(record.values.orderNumber ?? "").replace(/^FF-/, ""));
+    const n = Number(String(record.values.orderNumber ?? "").replace(/^TA-/, ""));
     return Number.isFinite(n) && n > max ? n : max;
   }, 0);
 }
@@ -66,7 +66,7 @@ test("checkout: happy path matches priceCart, decrements inventory, updates the 
   assert.equal(order.itemCount, 2);
   assert.equal(order.paymentStatus, "paid");
   assert.equal(order.status, "paid");
-  assert.equal(order.orderNumber, `FF-${maxBefore + 1}`);
+  assert.equal(order.orderNumber, `TA-${maxBefore + 1}`);
   assert.equal(order.items.length, 1);
   assert.equal(order.items[0]?.slug, product.slug);
 

@@ -1,3 +1,8 @@
+/**
+ * Merges the three domain seeds (content, shop, site) into one dataset for
+ * the "Three Acts" demo brand — the template selling itself. See `./keys.ts`
+ * for the shared brand and cross-reference contract each seed builds against.
+ */
 import { contentSeed } from "./content";
 import { shopSeed } from "./shop";
 import { siteSeed } from "./site";

@@ -41,7 +41,7 @@ export const collectionRegistry: CmsCollection[] = [
     description: "Blog articles rendered on the public site at /blog/:slug. Only published records reach the site.",
     fields: [
       { key: "title", label: "Title", type: "text", required: true },
-      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/blog/" },
+      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "threeacts.dev/blog/" },
       { key: "excerpt", label: "Excerpt", type: "textarea", required: true, helpText: "One or two sentences shown in listings and as the fallback meta description." },
       { key: "body", label: "Body", type: "textarea", required: true, helpText: "Article body. Blank lines separate paragraphs." },
       { key: "coverImage", label: "Cover image", type: "image", bucket: "cms-assets", accept: "image/*", required: true, helpText: "Every article needs a cover: it is the card image in listings and the social preview." },
@@ -73,7 +73,7 @@ export const collectionRegistry: CmsCollection[] = [
     description: "Article bylines and author profile pages at /authors/:slug. Articles reference authors by slug.",
     fields: [
       { key: "name", label: "Name", type: "text", required: true },
-      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/authors/" },
+      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "threeacts.dev/authors/" },
       { key: "role", label: "Role", type: "text", helpText: "Job title shown under the byline, e.g. Senior Editor." },
       { key: "bio", label: "Bio", type: "textarea", required: true, helpText: "Short biography for the author page and article footers." },
       { key: "avatar", label: "Avatar", type: "image", bucket: "cms-assets", accept: "image/*" },
@@ -99,7 +99,7 @@ export const collectionRegistry: CmsCollection[] = [
     description: "Blog categories with listing pages at /blog/category/:slug. Articles reference them by slug.",
     fields: [
       { key: "name", label: "Name", type: "text", required: true },
-      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/blog/category/" },
+      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "threeacts.dev/blog/category/" },
       { key: "description", label: "Description", type: "textarea", helpText: "Intro copy for the category page and its meta description." },
       { key: "sortOrder", label: "Sort order", type: "number", helpText: "Lower numbers appear first in the blog navigation." }
     ],
@@ -129,9 +129,9 @@ export const collectionRegistry: CmsCollection[] = [
         options: [
           { label: "General", value: "general" },
           { label: "Orders & payment", value: "orders" },
-          { label: "Shipping & delivery", value: "shipping" },
-          { label: "Returns & exchanges", value: "returns" },
-          { label: "Products & care", value: "products" },
+          { label: "Delivery & access", value: "shipping" },
+          { label: "Refunds", value: "returns" },
+          { label: "Products & licensing", value: "products" },
           { label: "Account", value: "account" }
         ]
       },
@@ -182,7 +182,7 @@ export const collectionRegistry: CmsCollection[] = [
     description: "Storefront products at /shop/:slug with pricing, stock and media. Only published products are listed in the shop.",
     fields: [
       { key: "title", label: "Title", type: "text", required: true },
-      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/shop/" },
+      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "threeacts.dev/shop/" },
       { key: "sku", label: "SKU", type: "text", required: true, unique: true, helpText: "Stock-keeping unit, unique across the catalogue, e.g. TA-MUG-001." },
       { key: "category", label: "Category", type: "text", required: true, helpText: "Category slug — matches product-categories.slug, e.g. ceramics." },
       { key: "price", label: "Price", type: "number", required: true, helpText: "Selling price in the product currency, tax inclusive, e.g. 349.00." },
@@ -239,7 +239,7 @@ export const collectionRegistry: CmsCollection[] = [
     description: "Shop categories with listing pages at /shop/category/:slug. Products reference them by slug.",
     fields: [
       { key: "name", label: "Name", type: "text", required: true },
-      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "www.threeacts.test/shop/category/" },
+      { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "threeacts.dev/shop/category/" },
       { key: "description", label: "Description", type: "textarea", helpText: "Intro copy for the category page and its meta description." },
       { key: "image", label: "Image", type: "image", bucket: "cms-assets", accept: "image/*" },
       { key: "sortOrder", label: "Sort order", type: "number", helpText: "Lower numbers appear first in the shop navigation." }
@@ -549,7 +549,7 @@ export const collectionRegistry: CmsCollection[] = [
     settingsView: "redirects",
     description: "Redirects with status codes, hit counts, and review notes.",
     fields: [
-      { key: "sourcePath", label: "Source path", type: "slug", required: true, urlPrefix: "www.threeacts.test/" },
+      { key: "sourcePath", label: "Source path", type: "slug", required: true, urlPrefix: "threeacts.dev/" },
       { key: "targetUrl", label: "Target URL", type: "text", required: true },
       { key: "notes", label: "Notes", type: "textarea" },
       {

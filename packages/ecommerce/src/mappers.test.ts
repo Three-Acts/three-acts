@@ -131,8 +131,8 @@ describe("toCustomer", () => {
 
 describe("parseOrderItems / serializeOrderItems", () => {
   const items: OrderLineItem[] = [
-    { slug: "house-blend-350g", sku: "FF-BAG-350", title: "House Blend 350g", quantity: 2, unitPrice: 350, lineTotal: 700, currency: "ZAR" },
-    { slug: "aeropress-go", sku: "FF-GEAR-AGO", title: "AeroPress Go", quantity: 1, unitPrice: 620, lineTotal: 620, currency: "ZAR", image: "https://cdn.example.com/aeropress.jpg" }
+    { slug: "web-app", sku: "TA-APP-WEB", title: "Web App (Astro Static Site)", quantity: 2, unitPrice: 149, lineTotal: 298, currency: "USD" },
+    { slug: "storefront-module", sku: "TA-MOD-STOREFRONT", title: "Storefront Module", quantity: 1, unitPrice: 79, lineTotal: 79, currency: "USD", image: "https://cdn.example.com/storefront-module.jpg" }
   ];
 
   it("round-trips a list of line items through serialize -> parse", () => {
@@ -150,7 +150,7 @@ describe("parseOrderItems / serializeOrderItems", () => {
 
   it("drops malformed entries but keeps well-formed ones in the same array", () => {
     const raw = JSON.stringify([
-      { slug: "good", title: "Good Item", quantity: 1, unitPrice: 100, lineTotal: 100, currency: "ZAR" },
+      { slug: "good", title: "Good Item", quantity: 1, unitPrice: 100, lineTotal: 100, currency: "USD" },
       { slug: "missing-quantity", title: "Bad Item" },
       "not-an-object",
       null

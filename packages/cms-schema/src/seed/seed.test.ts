@@ -111,7 +111,7 @@ describe("merged seed", () => {
     const codeWord = /\b(?:code|coupon|voucher)\s+([A-Z][A-Z0-9-]{3,})\b/g;
     for (const submission of records("form-submissions")) {
       const message = String(submission.values.message ?? "");
-      for (const match of message.matchAll(/#(FF-\d+)/g)) {
+      for (const match of message.matchAll(/#(TA-\d+)/g)) {
         assert.ok(orderNumbers.has(match[1]), `${submission.id}: order #${match[1]} exists`);
       }
       for (const match of message.matchAll(codeWord)) {

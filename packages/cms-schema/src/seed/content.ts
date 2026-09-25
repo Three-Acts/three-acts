@@ -4,9 +4,11 @@ import { articleCategorySlugs, authorSlugs, productSlugs, seedBrand } from "./ke
 import { createRandom, daysAgo, seedRecord, type SeedCollections } from "./types";
 
 /**
- * Content seed for Fynbos & Fire's brewing journal: authors, article
- * categories, ~40 articles and the FAQ page. Fully deterministic — dates come
- * from `daysAgo`, variation from `createRandom`.
+ * Content seed for Three Acts' own journal: authors, article categories, ~40
+ * articles and the FAQ page. The site is the template selling itself — the
+ * shop sells the template's pieces, the journal is engineering and design
+ * notes about building with it. Fully deterministic — dates come from
+ * `daysAgo`, variation from `createRandom`.
  */
 
 type AuthorSlug = (typeof authorSlugs)[number];
@@ -62,88 +64,89 @@ type AuthorSpec = {
 
 const authorSpecs: AuthorSpec[] = [
   {
-    slug: "lindiwe-khumalo",
-    name: "Lindiwe Khumalo",
-    role: "Co-founder & Head Roaster",
-    bio: "Lindiwe started Fynbos & Fire on a 1 kg sample roaster in a Salt River garage in 2019. She now runs the roasting programme in Woodstock and still cups every production batch before it ships. When she is not at the roaster she is probably hiking Lion's Head with a flask of whatever she roasted yesterday.",
-    email: `lindiwe@${emailDomain}`,
-    instagramHandle: "@lindiwe.roasts",
-    linkedinUrl: "https://www.linkedin.com/in/lindiwe-khumalo-coffee",
+    slug: "nico-de-wet",
+    name: "Nico de Wet",
+    role: "Founder & Architect",
+    bio: "Nico built the first version of Three Acts after forking the same Astro-plus-CMS starter for a fourth client in a row and getting tired of it. He owns the boundary between the public site, the CMS and the API, and still reviews every registry change himself. Based in Cape Town, he is happiest when a system diagram fits on one whiteboard.",
+    email: `nico@${emailDomain}`,
+    websiteUrl: "https://nicodewet.dev",
+    xHandle: "@nicodewet",
+    linkedinUrl: "https://www.linkedin.com/in/nico-de-wet",
     createdDays: 610,
     modifiedDays: 40
   },
   {
-    slug: "pieter-van-wyk",
-    name: "Pieter van Wyk",
-    role: "Green Coffee Buyer & Q Grader",
-    bio: "Pieter is a licensed Q Arabica Grader who spent six years buying for an importer in Durban before joining us. He spends roughly three months a year at origin, mostly in East Africa, and writes our origin reports from notebooks that are usually damp with coffee cherry.",
-    email: `pieter@${emailDomain}`,
-    xHandle: "@pietervwcoffee",
-    linkedinUrl: "https://www.linkedin.com/in/pietervanwyk",
-    createdDays: 608,
-    modifiedDays: 120
+    slug: "thandi-mokoena",
+    name: "Thandi Mokoena",
+    role: "CMS Engineer",
+    bio: "Thandi owns the Editorial App end to end — the record editor, the publish model, and the pluggable mock/REST backend split. She spent four years building internal admin tools before joining Three Acts and has strong, well-tested opinions about optimistic UI updates.",
+    email: `thandi@${emailDomain}`,
+    xHandle: "@thandimokoena",
+    linkedinUrl: "https://www.linkedin.com/in/thandi-mokoena-cms",
+    createdDays: 580,
+    modifiedDays: 90
   },
   {
-    slug: "ama-mensah",
-    name: "Ama Mensah",
-    role: "Head of Education & Barista Trainer",
-    bio: "Ama is an SCA Authorized Specialty Coffee Trainer who grew up between Accra and Johannesburg. She runs our home-brewing workshops and wholesale barista training, and she believes most bad coffee is a grind-size problem wearing a disguise.",
-    email: `ama@${emailDomain}`,
-    instagramHandle: "@ama.brews",
-    xHandle: "@amamensah",
-    createdDays: 590,
+    slug: "sarah-lindqvist",
+    name: "Sarah Lindqvist",
+    role: "API & Platform Engineer",
+    bio: "Sarah owns apps/api: the REST bridge, the Data Store and Blob Store interfaces, and the storefront/auth bridge every browser write goes through. She previously built payment infrastructure at a Stockholm fintech, and she's the reason Three Acts treats Supabase as one implementation among several rather than a dependency.",
+    email: `sarah@${emailDomain}`,
+    xHandle: "@sarahlindqvist",
+    linkedinUrl: "https://www.linkedin.com/in/sarah-lindqvist-platform",
+    createdDays: 560,
+    modifiedDays: 20
+  },
+  {
+    slug: "kabelo-sithole",
+    name: "Kabelo Sithole",
+    role: "Design System Lead",
+    bio: "Kabelo designed the wireframe design system that ships with the template — tokens, primitives and the dot-notation component API. He trained as a product designer, taught himself enough React to stop waiting on engineers, and now reviews every new component for one-class-per-element discipline.",
+    email: `kabelo@${emailDomain}`,
+    instagramHandle: "@kabelo.designs",
+    linkedinUrl: "https://www.linkedin.com/in/kabelo-sithole-design",
+    createdDays: 540,
+    modifiedDays: 50
+  },
+  {
+    slug: "maya-rosenberg",
+    name: "Maya Rosenberg",
+    role: "DX & Docs Writer",
+    bio: "Maya writes and maintains CONTEXT.md, the ADRs and the fork-time checklist that keeps new agencies from guessing at the architecture. She joined from a developer-relations role at an API company and treats every support ticket as a missing sentence in the docs.",
+    email: `maya@${emailDomain}`,
+    xHandle: "@mayarosenberg",
+    websiteUrl: "https://mayarosenberg.dev",
+    createdDays: 500,
     modifiedDays: 15
   },
   {
-    slug: "jordan-le-roux",
-    name: "Jordan le Roux",
-    role: "Editor",
-    bio: "Jordan edits the Fynbos & Fire journal and tests more grinders than is strictly healthy. Before coffee they were a features writer at a Cape Town food magazine. Jordan has opinions about burr alignment and would love to share them with you.",
-    email: `jordan@${emailDomain}`,
-    websiteUrl: "https://jordanleroux.co.za",
-    xHandle: "@jordanleroux",
-    instagramHandle: "@jordan.writes.coffee",
-    linkedinUrl: "https://www.linkedin.com/in/jordan-le-roux",
-    createdDays: 560,
-    modifiedDays: 8
+    slug: "daniel-okoye",
+    name: "Daniel Okoye",
+    role: "Front-End Engineer",
+    bio: "Daniel owns apps/web's rendering model: static-first Astro pages, islands hydration, and the image pipeline that ships AVIF by default. He is mildly evangelical about shipping zero JavaScript until a page actually needs it, and he profiles every new island before it merges.",
+    email: `daniel@${emailDomain}`,
+    xHandle: "@danielokoye",
+    linkedinUrl: "https://www.linkedin.com/in/daniel-okoye-frontend",
+    createdDays: 470,
+    modifiedDays: 25
   },
   {
-    slug: "zanele-ndlovu",
-    name: "Zanele Ndlovu",
-    role: "Sustainability & Impact Lead",
-    bio: "Zanele looks after our direct-trade relationships, packaging and the yearly transparency report. She trained as an environmental scientist at UCT and still gets visibly excited about compost temperatures.",
-    email: `zanele@${emailDomain}`,
-    linkedinUrl: "https://www.linkedin.com/in/zanele-ndlovu-impact",
-    createdDays: 500,
-    modifiedDays: 30
-  },
-  {
-    slug: "marco-ferreira",
-    name: "Marco Ferreira",
-    role: "Guest Contributor",
-    bio: "Marco is a Maputo-born photographer and writer based in Bogotá, where he documents smallholder coffee farms across Huila and Nariño. He travels with Pieter on our Colombian buying trips and contributes photo essays to the journal.",
-    email: "marco@marcoferreira.photo",
-    websiteUrl: "https://marcoferreira.photo",
-    instagramHandle: "@marco.ferreira.photo",
+    slug: "lena-fischer",
+    name: "Lena Fischer",
+    role: "QA & Accessibility",
+    bio: "Lena tests every template release against a screen reader, a keyboard-only pass and a slow-network throttle before it ships. She came from an accessibility consultancy in Berlin and maintains the checklist that gates every new UI primitive in the design system.",
+    email: `lena@${emailDomain}`,
+    linkedinUrl: "https://www.linkedin.com/in/lena-fischer-a11y",
     createdDays: 420,
-    modifiedDays: 200
-  },
-  {
-    slug: "fatima-patel",
-    name: "Fatima Patel",
-    role: "Wholesale & Café Partnerships Manager",
-    bio: "Fatima looks after the 60-odd cafés, offices and restaurants that pour our coffee, from Sea Point to Stellenbosch. She has pulled shots behind more La Marzoccos than she can count and writes about recipes that actually work in a busy service.",
-    email: `fatima@${emailDomain}`,
-    linkedinUrl: "https://www.linkedin.com/in/fatimapatel-coffee",
-    createdDays: 380,
     modifiedDays: 60
   },
   {
-    slug: "sam-okafor",
-    name: "Sam Okafor",
-    role: "Guest Contributor",
-    bio: "Sam is a Lagos-born software engineer and home-espresso obsessive living in Observatory. He is writing his first guest piece for the journal.",
-    email: "sam.okafor@proton.me",
+    slug: "ruben-adams",
+    name: "Ruben Adams",
+    role: "Agency Partnerships",
+    bio: "Ruben works with the agencies forking Three Acts for their own clients, from first fork to first deploy. He previously ran delivery at a Cape Town digital agency and is still finishing his first journal post about what that side of the template actually needs.",
+    email: `ruben@${emailDomain}`,
+    linkedinUrl: "https://www.linkedin.com/in/ruben-adams-partnerships",
     createdDays: 12,
     modifiedDays: 3,
     status: "draft"
@@ -181,44 +184,41 @@ const authorRecords: CmsRecord[] = authorSpecs.map((spec) =>
 
 const categorySpecs: Array<{ slug: CategorySlug; name: string; description: string }> = [
   {
-    slug: "brew-guides",
-    name: "Brew Guides",
+    slug: "guides",
+    name: "Guides",
+    description: "Practical, step-by-step walkthroughs for building and forking a client site on Three Acts — from a first afternoon build to swapping in a real data store."
+  },
+  {
+    slug: "architecture",
+    name: "Architecture",
     description:
-      "Step-by-step recipes for pour-over, AeroPress, French press and espresso, tested on our training bar in Woodstock. Ratios, grind settings and the mistakes we made so you don't have to."
+      "How the pieces fit together: the boundary between the public site, the CMS and the API, the domain packages underneath them, and the trade-offs behind each decision."
   },
   {
-    slug: "origins",
-    name: "Origins",
-    description:
-      "Field notes from the farms, washing stations and cooperatives we buy from in Ethiopia, Kenya, Rwanda, Colombia and Brazil — who grows our coffee, how it is processed and what it costs."
+    slug: "design-system",
+    name: "Design system",
+    description: "The wireframe design system that ships with the template — tokens, primitives, the dot-notation component API, and how to make it your own."
   },
   {
-    slug: "gear-reviews",
-    name: "Gear Reviews",
-    description:
-      "Long-term, honest reviews of grinders, brewers, kettles and scales. We only review gear we have used daily for at least a month, and we say so when we sell it."
+    slug: "cms",
+    name: "CMS",
+    description: "Notes on the Editorial Workspace: the collection registry, the publish model, field types and the pluggable CMS backend."
   },
   {
-    slug: "recipes",
-    name: "Recipes",
-    description: "Iced coffee, cold brew, espresso drinks and the occasional dessert. Coffee recipes for hot Cape Town summers and slow winter weekends."
+    slug: "release-notes",
+    name: "Release notes",
+    description: "What shipped in each release of the template's apps and domain packages, and what changes for a fork already in production."
   },
   {
-    slug: "roastery-news",
-    name: "Roastery News",
-    description: "New arrivals, events, opening hours and behind-the-scenes updates from the Fynbos & Fire roastery in Woodstock, Cape Town."
-  },
-  {
-    slug: "sustainability",
-    name: "Sustainability",
-    description:
-      "How we buy, pack and ship coffee more responsibly: direct-trade pricing, our yearly transparency report, compostable packaging and the numbers behind them."
+    slug: "case-studies",
+    name: "Case studies",
+    description: "Real (well, real-ish) agency builds on Three Acts — what changed, what stayed default, and what each one taught us."
   }
 ];
 
 const categoryRecords: CmsRecord[] = categorySpecs.map((spec, index) => {
   const values: Values = { name: spec.name, slug: spec.slug, description: spec.description, sortOrder: (index + 1) * 10 };
-  if (spec.slug === "sustainability") {
+  if (spec.slug === "case-studies") {
     // Description rewrite in progress; the live site still shows the old copy.
     return seedRecord({
       id: `article-category-${spec.slug}`,
@@ -226,7 +226,7 @@ const categoryRecords: CmsRecord[] = categorySpecs.map((spec, index) => {
       createdAt: daysAgo(600),
       modifiedAt: daysAgo(4),
       values,
-      liveValues: { ...values, description: "How we try to buy, roast and ship coffee in a way we can be proud of." }
+      liveValues: { ...values, description: "Case studies of agencies building client sites on Three Acts." }
     });
   }
   return seedRecord({ id: `article-category-${spec.slug}`, createdAt: daysAgo(600 - index), modifiedAt: daysAgo(300 - index * 20), values });
@@ -292,340 +292,336 @@ function articleRecord(spec: ArticleSpec): CmsRecord {
   });
 }
 
-const v60BodyLive = paragraphs(
-  `The V60 is the brewer we reach for most at the roastery. It is cheap, it is fast and it rewards a little attention. Here is the recipe we teach in our home-brewing workshops.`,
-  `Use 15 g of coffee to 250 g of water just off the boil, around 94 °C. Grind medium-fine, roughly the texture of table salt. Rinse the paper filter with hot water first to get rid of any papery taste and to warm the dripper.`,
-  `Bloom with 45 g of water and give the slurry a gentle swirl. After 40 seconds, pour slowly in spirals up to 150 g, pause, then continue to 250 g. Aim to finish draining at around three minutes.`,
-  `If it tastes sour, grind finer. If it tastes bitter or dry, grind coarser. Change one thing at a time.`
+const publishModelBodyLive = paragraphs(
+  `Every editorial record has a status — published, draft, queued to publish or not published — and the site only ever renders its live snapshot, not its current values.`,
+  `Editing a published record moves it to draft. Nothing changes on the site until you queue it and click Publish, which copies the values into the live snapshot and rebuilds the site.`
 );
 
-const v60Body = paragraphs(
-  `The V60 is the brewer we reach for most at the roastery. It is cheap, it is fast, and it rewards exactly as much attention as you are willing to give it. This is the recipe we teach in our Saturday home-brewing workshops, refined over roughly four thousand cups on the training bar.`,
-  `You will need a V60 (our ${shopLink("v60-ceramic-dripper")} holds heat better than plastic, but plastic brews just as well), a paper filter, a kettle — ideally a gooseneck such as the ${shopLink("gooseneck-kettle-900ml")} — and a scale. Volume scoops are the single biggest source of inconsistency we see in people's home brewing, so if you only buy one thing this year, make it a scale.`,
-  `Start with 15 g of coffee and 250 g of water, a ratio of about 1:16.7. Heat the water to between 92 °C and 96 °C; if you don't have a thermometer, let a boiled kettle rest for thirty seconds. Grind medium-fine, somewhere between table salt and caster sugar. On a Comandante that is around 22 clicks; on a Baratza Encore ESP, start at 14.`,
-  `Rinse the filter thoroughly with hot water. This washes out paper flavour and preheats the dripper and your cup. Discard the rinse water, add your coffee, and shake the dripper gently to level the bed.`,
-  `Start your timer and pour 45 g of water — three times the coffee weight — making sure every ground is wet. Give the dripper one gentle swirl. This is the bloom: fresh coffee releases carbon dioxide, and letting it escape for 40 seconds means the rest of the water can extract evenly instead of being pushed away by gas.`,
-  `At 0:40, pour in slow, steady spirals up to 150 g, keeping the stream in the middle two-thirds of the bed and avoiding the paper walls. Let it drop for about ten seconds, then pour again to 250 g by roughly 1:45. Finish with a single gentle swirl so the bed settles flat.`,
-  `The brew should finish draining between 2:45 and 3:30. Much faster, and your cup will likely be thin and sour — grind finer. Much slower, and it will taste bitter, drying or muddy — grind coarser. A flat bed at the end is a good sign; a crater or a wall of grounds high on the paper suggests your pour was too aggressive.`,
-  `Taste as it cools. Our washed Ethiopians, like the ${shopLink("ethiopia-yirgacheffe-kochere")}, open up enormously between 60 °C and 45 °C, and you will often find jasmine and bergamot that were hiding when it was hot. Adjust one variable at a time, write it down, and within a week you will have a recipe that is genuinely yours.`
+const publishModelBody = paragraphs(
+  `A CMS record's \`values\` and what the public site renders are deliberately two different things. Every editorial collection carries a \`publishStatus\` — published, draft, queued_to_publish or not_published — and a separate \`liveValues\` snapshot that only a publish actually changes.`,
+  `Save a change to a published article and its status flips to draft: your edit sits in \`values\`, the site keeps rendering the old \`liveValues\` untouched. Nothing ships until you explicitly queue it.`,
+  `Queue it, and the status becomes queued_to_publish — still no change to the live site. Only the Publish Transition, the first half of clicking Publish in the CMS top bar, copies every queued record's \`values\` over its \`liveValues\` in the Data Store. The second half, Site Deploy, then rebuilds the static site from that new snapshot.`,
+  `A brand-new record queued for the first time has no old snapshot to protect — its \`liveValues\` stay null until that first Publish Transition runs. An unpublished record's \`liveValues\` are always null, whatever its values say, so it can never leak onto the live site by accident.`,
+  `This two-step model is why the CMS shows queued → building → deployed as one flow, but the Data Store and the static site can genuinely disagree for a few seconds: the transition and the deploy are two separate calls, and the second one is what actually makes the change visible. See ${shopLink("cms-app")} for the editor and ${shopLink("api-app")} for both halves of the flow.`
 );
 
-const kenyaBodyLive = paragraphs(
-  `We visited the Gatomboya factory in Nyeri in March, just after the long rains began. The cherries were ripening unevenly and the farmers were picking in several passes.`,
-  `This year's AA lot cupped at 88 points on our table, with blackcurrant, grapefruit and a tomato-leaf savouriness that we love in Nyeri coffees. It is available now in 250 g and 1 kg bags.`,
-  `We paid well above the cooperative's auction average for this lot and will publish the full figures in our transparency report.`
+const islandsBodyLive = paragraphs(
+  `Most pages on the public site ship zero JavaScript. Only components explicitly hydrated as Astro islands — a contact form, an add-to-cart button — load any client-side code, and only on the page that uses them.`,
+  `Cart, checkout, sign-in and account are the exception: they render a static shell first, then hydrate fully to talk to the API at runtime.`
 );
 
-const kenyaBody = paragraphs(
-  `We arrived at the Gatomboya factory in Nyeri county in the second week of March, a few days after the long rains had broken. The red volcanic soil was slick, the Aberdare foothills were wrapped in cloud most mornings, and the factory manager, Mr Wachira, warned us that picking had become a patchwork: cherries on the same tree were ripening days apart.`,
-  `Gatomboya is one of several factories — Kenya's word for a washing station — owned by a farmers' cooperative society of roughly 1,200 members. Most members farm fewer than 250 trees each, largely SL28 and SL34, with some Ruiru 11 and Batian planted after the coffee berry disease outbreaks of the last decade. Cherry is delivered by hand each afternoon, sorted on tarpaulins, pulped, and fermented in concrete tanks before being washed, soaked and dried on raised beds for up to three weeks.`,
-  `That long soak and slow drying are a big part of why Nyeri coffees taste the way they do. On our cupping table in Woodstock the AA lot scored 88.25, with blackcurrant, pink grapefruit, cane sugar and that faintly savoury tomato-leaf note that makes Kenyan coffee so unmistakable. As a filter roast it is juicy and structured; as espresso it is a lot, in the best way.`,
-  `We bought the lot through the cooperative's marketing agent rather than at the Nairobi auction, which lets us agree the price before the coffee is milled. We paid USD 9.10 per kilogram FOB for this lot, about 38% above the society's average auction price for the season. Zanele will break the figures down in our transparency report later this year.`,
-  `The ${shopLink("kenya-nyeri-gatomboya")} is available now in 250 g and 1 kg bags. We recommend brewing it a touch coarser than you would an Ethiopian, and giving it a week off roast before you open the bag.`
+const islandsBody = paragraphs(
+  `Open the network tab on most of the public site and you'll see HTML, CSS, and nothing else. Every page under apps/web prerenders to static output by default; JavaScript only ships for a component explicitly hydrated as an Astro island, and only on the page that uses it.`,
+  `There are three shapes a page can take. Static, no interactivity — no client:* directive, zero JavaScript, full stop. Static with islands — the page is static HTML, but a component like the home page's contact form gets client:visible and hydrates on its own once it scrolls into view. Client routes — cart, checkout, sign-in/up and account — server-render a static shell with baked SEO metadata, then hydrate with client:load and fetch live data at runtime.`,
+  `Only pages containing an island load Astro's small hydration runtime and that island's chunk — a blog post with no interactive component loads nothing beyond its HTML and CSS, even though the shop three clicks away has an add-to-cart island.`,
+  `This is also why the Cart persists in localStorage through the ecommerce package's storage-agnostic store rather than a server session: it needs to survive navigation between static pages, including ones the cart island never touches.`,
+  `The discipline this requires is mostly negative: resist hydrating a whole page when a small island would do. It's one of the easier rules in CONTEXT.md's architecture section to break by accident and the hardest to notice once you have — a page that quietly went from zero JS to a full client bundle rarely gets caught in review unless someone's watching the bundle size.`
+);
+
+const wireframeBodyLive = paragraphs(
+  `The wireframe design system that ships with the template isn't meant to be any client's final look. It's a deliberately plain, accessible base — restyle it through tokens rather than rewriting components.`,
+  `Components use dot notation — Section.Root, Button.Link, Card.Marketing — so composition stays explicit and each app can subpath-import only what a page needs.`
+);
+
+const wireframeBody = paragraphs(
+  `Every template component is built to be replaced. The wireframe design system that ships with Three Acts isn't meant to be a client's final visual identity — it's a deliberately plain, fully accessible base that a fork restyles through tokens rather than rewrites component by component.`,
+  `Components use element-scoped dot notation: Section.Root, Section.Container, Button.Root, Button.Link, Card.Marketing — one import per component family, subcomponents for composition instead of a single component with a dozen boolean props. Subpath exports keep each app's bundle to only the pieces a page actually uses.`,
+  `Each app owns its own theme.css deliberately: apps/web's paper-and-ink public site and apps/cms's dark editorial workspace are isolated on purpose, so restyling a client's public site never risks the CMS, and vice versa.`,
+  `Accessibility isn't a pass at the end — a checklist gates every new primitive before it merges: keyboard operability, a screen-reader pass, and correct semantic HTML underneath whatever the visual style is doing. A Typography.Heading always renders a real heading element, whatever font size the token maps it to.`,
+  `The whole system, tokens included, ships in ${shopLink("wireframe-theme")}. Restyle it by changing the tokens first; reach for a one-off component override only when the token system genuinely can't express what the design needs.`
 );
 
 const flagshipArticles: ArticleSpec[] = [
   {
-    key: "v60-guide",
-    slug: "v60-brew-guide",
-    title: "The Fynbos & Fire V60 guide: a 15 g cup that tastes like you meant it",
-    excerpt: "Our workshop recipe for the Hario V60 — ratio, grind, bloom and pour — plus how to fix a cup that tastes sour, bitter or thin.",
-    body: v60Body,
-    author: "ama-mensah",
-    category: "brew-guides",
-    tags: "v60, pour-over, filter, beginner",
+    key: "afternoon-launch",
+    slug: "ship-a-client-site-in-an-afternoon",
+    title: "Ship a client site in an afternoon",
+    excerpt: "The lightweight path needs no CMS, API, database or provider: clone the repo, swap in content, and you have a static site by lunchtime.",
+    body: paragraphs(
+      `Most client sites don't need a database on day one. The lightweight path runs apps/web alone — Astro output: static, React only where a component is explicitly hydrated as an island — against the package's built-in mock content. Clone the template, run \`npm install\` and \`npm run dev:web\`, and you already have a working site with no environment variables at all.`,
+      `Swap the example content first. Nothing about the lightweight path is a placeholder you build around — it's the same field keys, the same routes, and the same SEO metadata the application-backed path uses once you outgrow it. Edit the seed, the site config in apps/web/src/site.ts, and the theme tokens in theme.css, and the static output already looks like the client's site, not a demo.`,
+      `Add interactivity only where the page needs it. A contact form, a filter, an accordion — each becomes a self-contained React island with a \`client:visible\` or \`client:load\` directive, and only the pages that use one pay for Astro's small hydration runtime. Everything else ships as plain HTML and CSS.`,
+      `When the brief grows past static pages — a blog an editor updates without a pull request, a shop, an account area — the path is incremental, not a rewrite: add ${shopLink("cms-app")} and ${shopLink("api-app")} without touching how the public pages render. Until then, ${shopLink("wireframe-theme")} and ${shopLink("web-app")} alone are a complete, deployable site.`,
+      `We've watched agency partners turn around a five-page marketing site between a morning call and an afternoon deadline this way. The trick isn't speed for its own sake — it's not building CMS, auth and database plumbing a client doesn't need yet.`
+    ),
+    author: "daniel-okoye",
+    category: "guides",
+    tags: "guides, quickstart, astro, lightweight path",
     publishedDays: 480,
     featured: true,
-    seoTitle: "V60 Brew Guide: Ratio, Grind & Pour Technique",
-    seoDescription: "Learn to brew a sweet, balanced V60 at home with our step-by-step pour-over recipe, grind settings for popular grinders and troubleshooting tips.",
-    coverAlt: "A ceramic V60 dripper on a glass server, mid-pour from a gooseneck kettle",
+    seoTitle: "Ship a Client Site in an Afternoon",
+    seoDescription: "How the lightweight path lets you build and ship a static client site with Three Acts in a single afternoon — no CMS or API required.",
+    coverAlt: "A laptop showing a freshly deployed static site on a plain desk"
+  },
+  {
+    key: "registry-source-of-truth",
+    slug: "the-collection-registry-is-the-only-source-of-truth",
+    title: "The collection registry is the only source of truth",
+    excerpt: "One TypeScript file drives the CMS editor, the REST bridge's validation and the generated Postgres schema. Nothing about a field is defined twice.",
+    body: paragraphs(
+      `Ask where a CMS field "lives" in most stacks and you'll get three different answers: a database column, an ORM model, and a hand-written form component, usually drifting slowly apart. Three Acts collapses that into one file: packages/cms-schema/src/registry.ts.`,
+      `Every collection — articles, products, orders, FAQs, site settings — is an entry in \`collectionRegistry\`: an id, a table name, a mode, and a \`fields\` array typed against the same \`CmsCollection\` shape the Editorial App renders and the REST bridge validates against. Add a field there, and the record editor grows the matching input; nothing in apps/cms guesses a field's type from data.`,
+      `The database follows the registry, not the other way round. \`npm run schema:sql\` prints an idempotent \`CREATE TABLE\` for every collection, with CHECK constraints for select options and partial unique indexes for slug fields; \`schema:diff\` compares the registry against a committed snapshot and prints the migration. You review the SQL — the tooling never applies it silently.`,
+      `This is also why the Public Content Route and the CMS's REST bridge never disagree about a field's shape: both validate against the same registry import, ${shopLink("content-package")} on the read side and ${shopLink("cms-app")} on the write side.`,
+      `The trade-off is explicit: there's no live database introspection, so a column that isn't in the registry simply doesn't exist as far as the CMS or the API are concerned. We think that's a feature — a fork's entire content model is readable in one file, in order, instead of scattered across migrations.`
+    ),
+    author: "nico-de-wet",
+    category: "architecture",
+    tags: "architecture, cms, registry, schema",
+    publishedDays: 455,
+    featured: true,
+    seoTitle: "The Collection Registry: One Source of Truth",
+    seoDescription: "How packages/cms-schema's collection registry drives the CMS editor, the REST bridge's validation and the generated Postgres schema — all from one file.",
+    coverAlt: "A single TypeScript file with arrows pointing out to a database, an API and an editor UI"
+  },
+  {
+    key: "publish-model",
+    slug: "draft-queued-live-how-publishing-works",
+    title: "Draft, queued, live: how the publish model actually works, snapshot by snapshot",
+    excerpt: "Editing a record and publishing it are two different actions, on purpose. Here's exactly what changes — and when — at each step of the publish model.",
+    body: publishModelBody,
+    author: "thandi-mokoena",
+    category: "cms",
+    tags: "cms, publish model, editorial workflow",
+    publishedDays: 400,
+    featured: true,
+    seoTitle: "The CMS Publish Model, Snapshot by Snapshot",
+    seoDescription: "Draft, queued_to_publish, published and not_published — exactly what each status means for a record's live snapshot, and what a Publish click actually does.",
+    coverAlt: "A record editor showing a status badge next to a Publish button",
     status: "draft",
     modifiedDays: 2,
     liveOverrides: {
-      title: "How to brew a better V60",
-      excerpt: "Our simple V60 recipe: 15 g of coffee, 250 g of water and three minutes.",
-      body: v60BodyLive,
-      seoDescription: "A simple V60 pour-over recipe from the Fynbos & Fire roastery in Cape Town."
+      title: "How publishing works",
+      excerpt: "Editing a record doesn't publish it. Here's what publish status actually controls.",
+      body: publishModelBodyLive,
+      seoDescription: "What each CMS publish status controls, and what actually happens when you click Publish."
     }
   },
   {
-    key: "aeropress-recipes",
-    slug: "three-aeropress-recipes",
-    title: "Three AeroPress recipes we actually use (including the upside-down one)",
-    excerpt: "A clean everyday cup, a concentrated 'espresso-style' shot for milk, and the inverted recipe our team keeps coming back to.",
+    key: "swap-datastore",
+    slug: "swapping-the-file-store-for-supabase-or-neon",
+    title: "Swapping the file store for Supabase or Neon",
+    excerpt: "The zero-config File Data Store isn't production persistence. Here's how a fork swaps it for a real Postgres provider without touching the CMS.",
     body: paragraphs(
-      `The AeroPress might be the most forgiving brewer ever made. It is nearly unbreakable, it cleans itself in ten seconds, and it tolerates a wide range of grind sizes and temperatures. That forgiveness is also why there are thousands of AeroPress recipes online. These are the three that live on the laminated card above our training bar.`,
-      `The everyday cup. 15 g of coffee, medium grind, 230 g of water at 90 °C. Standard orientation with a rinsed paper filter. Pour all the water in ten seconds, stir three times, put the plunger on to create a seal, and wait until 1:45. Swirl, then press gently for about 30 seconds. It is clean, sweet and very hard to get wrong.`,
-      `The concentrate for milk. 18 g of coffee, fine grind, 90 g of water at 85 °C. Stir vigorously for ten seconds, wait one minute, and press hard. Top with 120 ml of steamed or cold milk. It is not espresso — nothing without nine bars of pressure is — but with our ${shopLink("house-espresso-blend")} it makes a flat-white-adjacent drink that has saved many a load-shedding morning.`,
-      `The inverted recipe. Put the plunger in about 1 cm, flip the AeroPress upside down and stand it on the plunger. Add 16 g of coffee ground slightly coarser than for pour-over and 240 g of water at 93 °C. Stir, cap it with a rinsed filter, and steep for two minutes. Then — carefully — flip it onto your mug and press. Inverted brewing stops coffee dripping through during the steep, so it behaves more like a small French press with a paper filter: fuller body, still clean.`,
-      `A few notes that apply to all three. Fresh-ground coffee matters more than any recipe. Paper filters give a cleaner cup than metal ones. And if you travel, the ${shopLink("aeropress-go")} packs everything — including a mug — into a space smaller than a cooldrink can.`
+      `The File Data Store — one JSON file per collection under \`CMS_DATA_DIR\` — is the zero-configuration default for local development. It's not production persistence, and on Vercel its directory isn't durable, so every fork eventually swaps it for something real.`,
+      `Supabase ships today: implement nothing, just set \`CMS_DATA_BACKEND=supabase\`, \`CMS_STORAGE_BACKEND=supabase\`, and provide \`SUPABASE_URL\` and \`SUPABASE_SERVICE_ROLE_KEY\` in apps/api's environment. The service-role client talks directly to Postgres and Supabase Storage behind the REST bridge.`,
+      `Plain Postgres — Neon, RDS, whatever a client already runs — means implementing the Data Store interface once: list, read, create, save, delete and the publish transition, against \`pg\` or Drizzle, and registering it next to the existing \`file\`/\`memory\`/\`supabase\` options. Nothing in apps/cms changes, because it only ever talks to the REST bridge, never a database directly.`,
+      `Run \`npm run schema:sql -w @three-acts/api\` against the new database first — it's generated straight from the registry, so a fresh Neon branch gets the exact same tables, constraints and indexes the file store's shape implies, with none of it typed twice. Reach for ${shopLink("supabase-data-store")} if you're staying on Supabase, covered by either a ${shopLink("single-site-license")} or an ${shopLink("agency-license")} depending on how many client projects you're running it on.`,
+      `The Blob Store interface is a separate, smaller swap — asset uploads only — and most forks change both at once, but you don't have to: a Postgres data store with file-backed uploads during a migration is a perfectly reasonable intermediate state.`
     ),
-    author: "ama-mensah",
-    category: "brew-guides",
-    tags: "aeropress, recipes, travel, inverted",
-    publishedDays: 455,
-    seoTitle: "3 AeroPress Recipes: Classic, Concentrate & Inverted",
-    seoDescription: "Three tested AeroPress recipes from our barista trainers, with grind, ratio and timing for each.",
-    coverAlt: "An AeroPress pressing coffee into an enamel mug on a wooden table"
+    author: "sarah-lindqvist",
+    category: "guides",
+    tags: "guides, data store, supabase, neon, postgres",
+    publishedDays: 340,
+    seoTitle: "Swap the File Data Store for Supabase or Neon",
+    seoDescription: "How to move a fork off the zero-config File Data Store onto a real Postgres provider without touching the CMS or the registry.",
+    coverAlt: "A database connection diagram with two provider logos and an arrow between them"
   },
   {
-    key: "espresso-dial-in",
-    slug: "dialling-in-espresso-at-home",
-    title: "Dialling in espresso at home without losing your mind",
-    excerpt: "Dose, yield, time — in that order. A calm, repeatable method for getting a sweet shot from a new bag of beans.",
+    key: "api-bridge",
+    slug: "the-api-is-the-only-door-auth-checkout-and-forms",
+    title: "The API is the only door: auth, checkout and forms all go through one bridge",
+    excerpt: "Neither the public site nor the CMS ever holds a database credential or a payment key. Every browser write goes through apps/api — no exceptions.",
     body: paragraphs(
-      `Every new bag of coffee means dialling in again, and for many home baristas that means a morning of sink shots and swearing. It doesn't have to. The method below is the one we teach wholesale partners, and it works just as well on a home machine.`,
-      `Fix your dose first. Your basket has a design dose, usually stamped on it: 18 g for most double baskets. Use it, weigh it every time, and don't change it while you are dialling in. Dose is the foundation; if it moves, everything else moves with it.`,
-      `Choose a ratio. For our ${shopLink("house-espresso-blend")} we start at 1:2 — 18 g in, 36 g out. Lighter single origins often taste better longer, at 1:2.3 or even 1:2.5. Put a scale under your cup and stop the shot on weight, not on time or volume.`,
-      `Then adjust grind to hit time. With dose and yield fixed, grind size is the only thing you are changing. We aim for 27–32 seconds from pressing the button. Too fast? Grind finer. Too slow? Grind coarser. On a stepless grinder, make small moves. On the ${shopLink("baratza-encore-esp")}, one number on the espresso range is a meaningful change.`,
-      `Taste, don't just time. Time is a guide, not a goal. A 30-second shot that tastes sour is still under-extracted. Sourness, a thin body and a short finish mean you need more extraction: grind finer or pull a longer ratio. Bitterness, astringency and a hollow middle mean you have gone too far.`,
-      `Keep a notebook. Date, coffee, roast date, dose, yield, time, grind setting, a few words about taste. It feels fussy for a week. After a month it is the most useful thing on your counter.`,
-      `Finally, remember that coffee changes. A shot that was perfect five days off roast may run faster at three weeks as the beans degas. Small grind adjustments over the life of a bag are normal — they are not a sign you did it wrong.`
+      `Neither the public site nor the CMS ever holds a database credential, a payment provider key or an identity store connection. Every browser write, and every auth call, goes through apps/api — that's not a convention, it's the one architectural rule the rest of the template is built to make hard to violate.`,
+      `Sign-up and sign-in post to \`/api/auth/*\`, checkout prices the cart server-side and charges through the configured \`PaymentProvider\` behind the API's checkout route, and the contact, newsletter and inquiry forms all land on \`/api/forms/submit\`. Each of those routes uses the System Write Path — \`createSystemRecord\`/\`updateSystemRecord\` — to write orders, customers and form submissions regardless of the collection's usual editor-facing rules.`,
+      `That's also why orders and customers are Record Source "site": an editor can view, edit the fields that are theirs, and delete, but New and Import are hidden, because only Checkout should ever invent an order. Read-only fields like an order's total or a customer's email follow the same logic — an editor sees the value, never an input, and only the system write path can change it.`,
+      `Same-origin by default keeps this simple: apps/web and apps/cms call \`/api/*\`, and a dev-server proxy or a Vercel rewrite bridges it to the deployed apps/api project, so there's no CORS configuration for normal traffic. Direct cross-origin calls are opt-in through \`API_ALLOWED_ORIGINS\`, not the default.`,
+      `If you're building on top of ${shopLink("api-app")}, this is the boundary to respect: add a new privileged operation as a new route in apps/api, never as a client-side call from ${shopLink("web-app")} or ${shopLink("cms-app")}.`
     ),
-    author: "ama-mensah",
-    category: "brew-guides",
-    tags: "espresso, dial-in, home barista, grinder",
-    publishedDays: 400,
-    featured: true,
-    seoTitle: "How to Dial In Espresso at Home",
-    seoDescription: "A calm, repeatable method for dialling in espresso: fix your dose, pick a ratio, then use grind size to hit your shot time.",
-    coverAlt: "Espresso pouring from a bottomless portafilter into a glass cup on a scale"
-  },
-  {
-    key: "ethiopia-origin-trip",
-    slug: "ten-days-in-yirgacheffe",
-    title: "Ten days in Yirgacheffe: notes from the Kochere washing stations",
-    excerpt: "Pieter's field notes from Gedeo Zone — the smallholders, the washing stations and why our Kochere tastes like jasmine and lemon.",
-    body: paragraphs(
-      `The road south from Addis Ababa to Dilla takes most of a day, and the last stretch into Kochere woreda climbs through enset and shade trees so dense that you smell the coffee before you see it. We arrived in late November, at the height of the harvest, and spent ten days moving between three washing stations that supply our Yirgacheffe.`,
-      `Almost none of this coffee is grown on what a European would call a farm. The typical Gedeo smallholder has less than a hectare, planted with heirloom varieties among false banana, avocado and cordia trees. They deliver cherry to a washing station in the afternoon, often carried on their backs for several kilometres, and are paid on the spot by weight.`,
-      `At the station, cherry is hand-sorted, pulped, fermented under water for 36 to 48 hours, washed in long channels and then dried on raised African beds for twelve to fifteen days. The workers turn the parchment every hour, and cover it in the heat of the afternoon so it doesn't crack. It is slow, precise and extraordinarily labour-intensive, and it is the reason washed Yirgacheffe tastes so clean.`,
-      `We cupped over 40 day-lots at the station laboratory. The one we bought — lot 14 — had the brightest acidity of the week: lemon, jasmine, white peach and a black-tea finish. At 1,950 to 2,100 metres, cool nights slow cherry maturation, and the result is a denser bean with more of the organic acids that read as brightness in the cup.`,
-      `We pay a premium over the Ethiopian Commodity Exchange reference price and a second payment to the station owner once the coffee is sold, which he has committed to passing on to his cherry suppliers. We saw last year's second payment ledger with our own eyes; it is not a perfect system, but it is a traceable one.`,
-      `Our ${shopLink("ethiopia-yirgacheffe-kochere")} is roasted light for filter. Brew it on a V60 or Chemex, let it cool a little, and you will taste those washing channels in Kochere.`
-    ),
-    author: "pieter-van-wyk",
-    category: "origins",
-    tags: "ethiopia, yirgacheffe, washed, origin trip",
+    author: "sarah-lindqvist",
+    category: "architecture",
+    tags: "architecture, api, auth, checkout, forms",
     publishedDays: 290,
     featured: true,
-    seoTitle: "Yirgacheffe Origin Trip: Inside the Kochere Washing Stations",
-    seoDescription: "Field notes from ten days in Ethiopia's Gedeo Zone, where our washed Yirgacheffe Kochere is grown, processed and bought.",
-    coverAlt: "Coffee parchment drying on raised beds at a washing station in Yirgacheffe"
+    seoTitle: "Why Every Write Goes Through apps/api",
+    seoDescription: "The API app is the only place that holds provider credentials, a payment provider or an identity store — every browser write and every auth call goes through it.",
+    coverAlt: "A diagram showing the public site and CMS both pointing to a single API layer"
   },
   {
-    key: "kenya-nyeri-trip",
-    slug: "nyeri-after-the-rains",
-    title: "Nyeri after the rains: how we bought this year's Gatomboya AA",
-    excerpt: "Inside the Gatomboya factory in Nyeri — cooperative farming, the famous Kenyan double fermentation and what we paid for this year's AA lot.",
-    body: kenyaBody,
-    author: "pieter-van-wyk",
-    category: "origins",
-    tags: "kenya, nyeri, SL28, cooperative, origin trip",
-    publishedDays: 165,
-    seoTitle: "Nyeri, Kenya: Buying the Gatomboya AA",
-    seoDescription: "Our green buyer on visiting the Gatomboya factory in Nyeri, how Kenyan coffee is processed, and the price we paid for the AA lot.",
-    coverAlt: "Rows of coffee trees on a misty hillside in Nyeri, Kenya",
+    key: "islands-hydration",
+    slug: "islands-only-how-little-javascript-actually-ships",
+    title: "Islands only: how little JavaScript a Three Acts page actually ships",
+    excerpt: "A page-by-page look at which routes hydrate, which stay fully static, and why only cart, checkout, sign-in and account ship a client-side app.",
+    body: islandsBody,
+    author: "daniel-okoye",
+    category: "architecture",
+    tags: "architecture, astro, islands, performance",
+    publishedDays: 220,
+    seoTitle: "How Astro Islands Keep Three Acts Pages Fast",
+    seoDescription: "A page-by-page look at which routes hydrate, which stay fully static, and why only cart, checkout, sign-in and account ship a client-side app.",
+    coverAlt: "A map of a website's pages with only a few highlighted as interactive islands",
     status: "queued_to_publish",
     modifiedDays: 1,
     liveOverrides: {
-      title: "Nyeri after the rains: buying the Gatomboya AA",
-      excerpt: "Notes from the Gatomboya factory in Nyeri and this year's AA lot.",
-      body: kenyaBodyLive
+      title: "How little JavaScript a page actually ships",
+      excerpt: "Static by default, islands only where a page needs interaction — here's what that means in practice.",
+      body: islandsBodyLive,
+      seoDescription: "Why most Three Acts pages ship zero JavaScript, and which routes hydrate fully."
     }
   },
   {
-    key: "colombia-huila",
-    slug: "la-esperanza-huila",
-    title: "La Esperanza, Huila: the Muñoz family behind our Colombian",
-    excerpt: "A photo essay from Pitalito, where Doña Rubiela Muñoz and her sons grow the caturra and pink bourbon in our Colombia Huila.",
+    key: "seo-settings",
+    slug: "seo-you-dont-have-to-think-about",
+    title: "SEO you don't have to think about",
+    excerpt: "A cascading fallback from page settings to site defaults means most pages need zero manual SEO work.",
     body: paragraphs(
-      `Finca La Esperanza sits at 1,750 metres above the town of Pitalito, in the south of Huila. To get there you take a jeep up a road that is more suggestion than route, past plantain groves and drying patios, until the cloud forest begins. Doña Rubiela Muñoz has farmed here for 31 years, and for the last six she has sold part of her harvest to us.`,
-      `The farm is just under four hectares. Doña Rubiela grows caturra and castillo, and — since 2021 — a small block of pink bourbon that her eldest son, Andrés, is quietly obsessed with. Cherry is picked selectively, fermented overnight in plastic tanks and dried in a parabolic dryer, a greenhouse-like tunnel that keeps the rain off during Huila's unpredictable harvests.`,
-      `"Antes vendíamos todo al intermediario," she told me — before, we sold everything to the middleman — "and we never knew where the coffee went." Now each harvest arrives in Cape Town with her name on the bag, and every year Pieter brings back photos of the café customers who drink it. She keeps them pinned above the depulper.`,
-      `In the cup, La Esperanza is everything people love about Huila: panela sweetness, red apple, a soft citrus acidity and a chocolatey finish that makes it one of the most versatile coffees we roast. It is as good in a moka pot as in a V60, and it is a favourite in our wholesale cafés for milk drinks.`,
-      `Our ${shopLink("colombia-huila-la-esperanza")} is roasted medium-light. Gracias, Doña Rubiela.`
+      `The registry has two collections most forks barely touch after setup: \`site-settings\`, a singleton with sitewide defaults, and \`page-settings\`, one record per static route. Between them, most pages need no manual SEO work at all.`,
+      `Every meta field cascades. A blog post's SEO title falls back to its title, its SEO description to its excerpt. A static page's meta title falls back to its page name, its open graph image to the site's default open graph image, its meta description to the site's default meta description. Fill in the singleton once and every page already has something reasonable.`,
+      `Only override a page's fields when it genuinely needs something different — a landing page with its own social preview image, a legal page you'd rather exclude from search snippets. Empty is not a mistake; it's the fallback working as intended.`,
+      `\`src/page-meta.ts\` centralizes this on the apps/web side, and \`src/layouts/BaseLayout.astro\` renders it into every page's head. \`sitemap.xml\`, \`robots.txt\` and \`llms.txt\` are generated from the same \`includeInSitemap\` flags, so a page you mark noindex disappears from all three at once, not just one.`,
+      `Product and article JSON-LD ride the same fallback chain automatically — there's nothing extra to configure for structured data once ${shopLink("content-package")} and ${shopLink("ecommerce-package")} are wired up.`
     ),
-    author: "marco-ferreira",
-    category: "origins",
-    tags: "colombia, huila, photo essay, smallholder",
-    publishedDays: 230,
-    seoTitle: "Finca La Esperanza, Huila: Meet the Muñoz Family",
-    seoDescription: "A photo essay from Pitalito, Colombia, on the family farm that grows our Colombia Huila La Esperanza.",
-    coverAlt: "Doña Rubiela Muñoz holding ripe coffee cherries at Finca La Esperanza"
+    author: "maya-rosenberg",
+    category: "guides",
+    tags: "guides, seo, site settings, page settings",
+    publishedDays: 250,
+    seoTitle: "SEO Defaults: Site and Page Settings",
+    seoDescription: "How Three Acts' cascading SEO fallback — page, then site defaults — means most pages need zero manual SEO work.",
+    coverAlt: "A settings screen showing meta title and description fields with placeholder fallback text"
   },
   {
-    key: "comandante-vs-encore",
-    slug: "comandante-c40-vs-baratza-encore-esp",
-    title: "Comandante C40 vs Baratza Encore ESP: which grinder should you buy first?",
-    excerpt: "A hand grinder that costs twice as much, or an electric one that does espresso? We used both daily for three months to find out.",
-    body: paragraphs(
-      `This is the question we get asked more than any other at the roastery counter: "I have a budget of about R4,000 to R7,000 — which grinder should I buy?" In our range the answer is almost always one of two machines, the ${shopLink("comandante-c40-grinder")} hand grinder or the ${shopLink("baratza-encore-esp")} electric. We used both every day for three months, for filter and espresso, to give a proper answer.`,
-      `Grind quality. For filter coffee, the Comandante is the better grinder. Its Nitro Blade burrs produce a remarkably even grind with very few fines, and cups are noticeably clearer and more articulate, especially with light-roasted washed coffees. The Encore ESP is very good for its price, but side by side the cups are a touch muddier.`,
-      `Espresso. Here the Encore ESP wins, and not narrowly. Its dedicated espresso range has fine, microscopic steps that make dialling in easy. The Comandante can grind for espresso — and the optional Red Clix axle helps — but hand-grinding 18 g at espresso fineness takes over a minute of real effort. Every morning. Before coffee.`,
-      `Speed and convenience. The Encore ESP grinds a 15 g filter dose in about ten seconds. The Comandante takes 40–50 seconds, which some people find meditative and others find a reason to skip their morning coffee. Be honest with yourself about which one you are.`,
-      `Load-shedding. A point in the Comandante's favour that only South Africans will appreciate: it works at 06:00 during stage 6.`,
-      `Our verdict. If you mostly brew filter, love light roasts and don't mind the workout, buy the Comandante — it will last decades. If you make espresso, or share your kitchen with people who want coffee quickly, the Encore ESP is the more sensible first grinder. Either will improve your coffee more than any brewer upgrade.`,
-      `Disclosure: we sell both grinders. We paid for our review units from our own stock and neither Comandante nor Baratza saw this review before publication.`
-    ),
-    author: "jordan-le-roux",
-    category: "gear-reviews",
-    tags: "grinders, comandante, baratza, review, espresso",
+    key: "wireframe-design-system",
+    slug: "building-the-wireframe-design-system",
+    title: "Building the wireframe design system: tokens, primitives and the dot-notation API, revisited",
+    excerpt: "A deliberately plain, fully accessible base a fork restyles through tokens — not a finished visual identity.",
+    body: wireframeBody,
+    author: "kabelo-sithole",
+    category: "design-system",
+    tags: "design system, tokens, components, accessibility",
     publishedDays: 210,
     featured: true,
-    seoTitle: "Comandante C40 vs Baratza Encore ESP: Grinder Review",
-    seoDescription: "We used the Comandante C40 and Baratza Encore ESP daily for three months. Here is which grinder to buy first for filter or espresso.",
-    coverAlt: "A Comandante C40 hand grinder beside a Baratza Encore ESP on a kitchen counter",
+    seoTitle: "Inside the Wireframe Design System",
+    seoDescription: "How Three Acts' wireframe design system composes tokens, primitives and a dot-notation component API — and why it deliberately stays unopinionated.",
+    coverAlt: "A grid of plain, unstyled UI components labelled with their token names",
     status: "draft",
     modifiedDays: 5,
     liveOverrides: {
-      seoTitle: "Comandante vs Encore ESP — which grinder?",
-      body: paragraphs(
-        `This is the question we get asked most at the roastery counter: which grinder should I buy first? In our range it is usually the ${shopLink("comandante-c40-grinder")} or the ${shopLink("baratza-encore-esp")}.`,
-        `For filter coffee the Comandante produces a clearer, more even cup. For espresso the Encore ESP is far easier to dial in and much faster.`,
-        `If you mostly brew filter and don't mind hand-grinding, buy the Comandante. If you make espresso, buy the Encore ESP.`
-      )
+      title: "Building the wireframe design system",
+      excerpt: "A plain, accessible base you restyle through tokens, not a finished visual identity.",
+      body: wireframeBodyLive,
+      seoDescription: "The wireframe design system is a plain, accessible base you restyle through tokens, not a fixed visual identity."
     }
   },
   {
-    key: "cold-brew",
-    slug: "cold-brew-for-a-cape-town-summer",
-    title: "Cold brew for a Cape Town summer (and why we steep it for 16 hours)",
-    excerpt: "Our café cold-brew concentrate, scaled down for a home fridge: coarse grind, 1:8 ratio, 16 hours, and a few ways to serve it.",
+    key: "fork-diversity",
+    slug: "one-template-a-la-carte",
+    title: "One template, à la carte: how three agencies forked Three Acts differently 🎉",
+    excerpt: "Ask three agencies to fork the same template and you'll get three very different sites. The interesting part isn't what they added — it's what they deleted.",
     body: paragraphs(
-      `When the south-easter drops and Cape Town hits 34 °C, our wholesale cafés go through cold brew by the bucket. This is the recipe they use, scaled down to fit a one-litre jar in your fridge.`,
-      `You'll need 100 g of coffee, 800 g of cold filtered water, a large jar and something to filter with: a nut-milk bag, a French press, or a V60 with a paper filter for the cleanest result. We like the ${shopLink("brazil-cerrado-natural")} for cold brew — its chocolate and hazelnut notes survive the long, cold extraction beautifully.`,
-      `Grind coarse, like rough sea salt. Fine grounds over-extract during a long steep and make filtering a nightmare. Add the coffee and water to the jar, stir until every ground is wet, and put the lid on.`,
-      `Steep for 16 hours in the fridge. We have tested everything from 8 to 24 hours. Below 12 hours the concentrate tastes thin and grassy; beyond 20 it becomes woody and flat. Sixteen is the sweet spot — conveniently, that is an overnight steep started after dinner.`,
-      `Filter twice. Pour through a coarse filter first to remove most of the grounds, then through paper to clean it up. You'll get about 600 ml of concentrate, which keeps for ten days sealed in the fridge.`,
-      `To serve, dilute 1:1 with water or milk over plenty of ice. For something special, top 60 ml of concentrate with tonic water and a twist of orange peel, or pour it over a scoop of vanilla ice cream for an easy affogato.`
+      `Ask three agencies to fork the same template and you'll get three very different sites — which is exactly the point. Over the past year, agency partners have shipped client builds ranging from a two-location retailer to a five-partner law firm to a four-practitioner clinic, and the interesting part isn't what they added. It's what they deleted.`,
+      `A retailer needed the full storefront module and a couple of registry fields the ecommerce package doesn't model out of the box. A law firm needed the shop and account modules gone entirely, replaced by nothing more than a new team-directory collection. A clinic needed a fourth form type layered onto the existing forms package rather than a shop at all.`,
+      `None of the three touched the publish model, the SEO settings screens or the API's auth routes. That's the part of the template a fork almost never needs to change, and it's deliberately the part with the least surface area to get wrong.`,
+      `We've written each one up properly — look for the individual case studies alongside this one for what specifically changed, what stayed default, and roughly how long each build took.`
     ),
-    author: "fatima-patel",
-    category: "recipes",
-    tags: "cold brew, iced coffee, summer, recipe",
-    publishedDays: 250,
-    seoTitle: "Easy Cold Brew Coffee Recipe (16-Hour Method)",
-    seoDescription: "Make café-quality cold brew concentrate at home with our 1:8, 16-hour recipe — plus three ways to serve it.",
-    coverAlt: "A jar of cold brew concentrate beside two iced coffees on a sunny windowsill"
+    author: "maya-rosenberg",
+    category: "case-studies",
+    tags: "case studies, agencies, forking",
+    publishedDays: 180,
+    seoTitle: "",
+    seoDescription: "",
+    coverAlt: "Three different client site homepages shown side by side on a desk"
   },
   {
-    key: "flash-brew-iced-coffee",
-    slug: "flash-brewed-iced-coffee",
-    title: "Flash-brewed iced coffee: bright, fast, and better than it has any right to be",
-    excerpt: "Brew hot straight onto ice for an iced coffee with all the fruit and aroma of a pour-over — ready in four minutes, no overnight steep.",
+    key: "year-of-forks",
+    slug: "a-year-of-forks-what-we-changed-because-you-asked",
+    title: "A year of forks: what we changed because you asked",
+    excerpt: "A year after the first public release, we pulled the numbers on what forks actually change — and used it to decide what belongs in the template by default.",
     body: paragraphs(
-      `Cold brew is smooth and chocolatey, but it loses the bright, fruity character that makes a good Ethiopian or Kenyan special. Flash brewing — sometimes called Japanese-style iced coffee — keeps it. You brew hot, directly onto ice, and the rapid chill locks in aroma.`,
-      `The trick is to replace some of your brew water with ice. For one large glass, use 20 g of coffee, 180 g of hot water and 120 g of ice in the server. Grind a little finer than usual, because you are extracting with less water.`,
-      `Brew exactly as you would a V60: bloom with 50 g of water for 40 seconds, then pour to 180 g in slow spirals. The coffee drips onto the ice and chills instantly. Swirl the server until the ice has mostly melted and pour over fresh ice.`,
-      `This method is made for washed, fruit-forward coffees. Try it with the ${shopLink("kenya-nyeri-gatomboya")} for something that tastes like blackcurrant cordial, or the ${shopLink("ethiopia-yirgacheffe-kochere")} for iced lemon tea with a caffeine problem.`
+      `A year after the template's first public release, we pulled the numbers on what forks actually change, and used it to decide what belongs in the template by default versus what stays a fork-time knob.`,
+      `The single most common first edit, by a wide margin, is \`packages/ecommerce/src/config.ts\` — currency, VAT rate and shipping bands. That's exactly the file it's meant to be: one place, not scattered across route handlers, which is why \`shopConfig\` hasn't needed a shape change since we introduced it.`,
+      `The second most common change surprised us: forks with no shop at all still kept apps/api running, purely for the auth and forms bridge. That's part of why the forms and auth packages now ship as fully standalone domain packages rather than bundled inside the ecommerce logic — a site with no products still needs sign-in and a contact form to go through the same privileged bridge.`,
+      `The least common change: nobody has swapped the wireframe design system's component API itself, only its tokens. That's the signal we needed that the dot-notation primitives are doing their job — restyled, not rebuilt.`,
+      `If you're planning a fork and want the short version of all of this, ${shopLink("complete-template-bundle")} ships every package and app together with the licence question already answered.`
     ),
-    author: "ama-mensah",
-    category: "recipes",
-    tags: "iced coffee, flash brew, japanese iced coffee, v60",
-    publishedDays: 330,
-    seoTitle: "Flash-Brewed (Japanese) Iced Coffee Recipe",
-    seoDescription: "Brew hot coffee directly onto ice for a bright, aromatic iced coffee in four minutes.",
-    coverAlt: "Iced coffee in a tall glass with a V60 dripping onto ice behind it"
+    author: "nico-de-wet",
+    category: "release-notes",
+    tags: "release notes, roadmap, community",
+    publishedDays: 95,
+    seoTitle: "A Year of Three Acts Forks: What Changed",
+    seoDescription: "The most common changes agencies made after forking Three Acts, and which ones we pulled back into the template itself.",
+    coverAlt: "A changelog-style timeline of releases across a year"
   },
   {
-    key: "new-roaster",
-    slug: "meet-tannie-our-new-roaster",
-    title: "Meet Tannie: our new 15 kg roaster has landed in Woodstock",
-    excerpt: "After five years on a 5 kg machine, we've installed a 15 kg roaster with an afterburner — here's what changes for your coffee.",
+    key: "history-retro",
+    slug: "everything-we-changed-deleted-rebuilt-and-changed-back",
+    title:
+      "Everything we changed, deleted, rebuilt and changed back while turning a single-tenant client build into a fork-ready template with a CMS, an API bridge and four domain packages",
+    excerpt: "Three Acts didn't start as a template. This is the honest version of how one client's website became the thing you're reading about now.",
     body: paragraphs(
-      `On a grey Tuesday in May, a flatbed truck reversed very slowly down Albert Road and a crane lifted a 1.2-tonne roaster through the front of our Woodstock roastery. The team named her Tannie before she was even bolted to the floor.`,
-      `We have roasted every bean you've bought from us on a 5 kg drum roaster since 2021. It served us brilliantly, but by last summer it was running eleven hours a day, six days a week, and we were turning down wholesale partners. Tannie roasts up to 15 kg per batch, which means fewer, more consistent batches and a lot fewer 04:00 starts for Lindiwe.`,
-      `More importantly, Tannie comes with a catalytic afterburner that cleans the smoke from roasting before it leaves our chimney. Our neighbours — a bakery and a recording studio — have been very patient. They deserve this more than anyone.`,
-      `Will your coffee taste different? We hope not, or at least not in any way you'd notice. We spent six weeks profiling every coffee on both machines side by side, and we only switched each one over when blind cupping couldn't tell them apart. The ${shopLink("house-espresso-blend")} was the last to move — our wholesale cafés are, rightly, very particular about it.`,
-      `Come and meet her at our Saturday open roastery, 09:00 to 13:00. She is loud, she is warm and she smells amazing.`
+      `Three Acts didn't start as a template. It started as one client's website, with a hand-written admin page, a couple of database tables nobody had diagrammed, and business logic wherever it was needed at the time. This is the honest version of how it became the thing you're reading about now.`,
+      `The first real change was extracting a registry. Every field the admin page edited got written down once, in one file, and the admin UI, the database schema and the API's validation all started reading from it instead of drifting independently. That file is now packages/cms-schema/src/registry.ts, and almost nothing about its shape has changed since.`,
+      `The second was pulling the business logic — cart pricing, session handling, form validation — out of route handlers and into framework-agnostic packages with no dependency on any of the three apps. That split wasn't obvious at the time; it only became necessary once a second client build needed the same checkout math with a different VAT rate, and copy-pasting it once was one time too many.`,
+      `The third, and the one that took longest, was drawing a hard line around apps/api: every provider credential, every payment call, every password hash moved behind one bridge, and apps/web and apps/cms stopped being able to reach a database even if a future contributor tried. That rule is now load-bearing enough that CONTEXT.md spells it out in its own section.`,
+      `None of this happened as a plan. It happened because the same problems kept showing up on the third and fourth client project, and eventually rewriting from scratch was cheaper than patching around them again. If you're forking ${shopLink("complete-template-bundle")} today, you're starting from the version of that lesson we'd already learned the hard way.`
     ),
-    author: "lindiwe-khumalo",
-    category: "roastery-news",
-    tags: "roastery, woodstock, news, behind the scenes",
-    publishedDays: 110,
-    featured: true,
-    seoTitle: "Meet Tannie, Our New 15 kg Coffee Roaster",
-    seoDescription: "We've installed a 15 kg roaster with an afterburner at our Woodstock roastery. Here's what it means for your coffee.",
-    coverAlt: "A new black-and-copper coffee roaster being installed in a brick warehouse"
+    author: "nico-de-wet",
+    category: "cms",
+    tags: "cms, architecture, history, retrospective",
+    publishedDays: 70,
+    seoTitle: "How Three Acts Became a Template",
+    seoDescription: "The real history behind Three Acts: from a one-off client build to a registry-driven CMS, an API bridge and four reusable domain packages.",
+    coverAlt: "A long, messy whiteboard timeline covered in crossed-out boxes"
   },
   {
-    key: "transparency-report-2026",
-    slug: "transparency-report-2026",
-    title: "Our 2026 transparency report: what we paid, and to whom",
-    excerpt: "Every green coffee we bought this year, what we paid per kilogram, how that compares to the market, and where we fell short.",
+    key: "auth-package-preview",
+    slug: "auth-package-two-point-oh-whats-changing",
+    title: "Auth package 2.0: what's changing",
+    excerpt: "Refresh tokens, passkey sign-in and a pluggable rate limiter — a preview of what's landing in @three-acts/auth 2.0.",
     body: paragraphs(
-      `Specialty coffee loves the words "direct trade" and "ethically sourced", and almost never backs them with numbers. This is our third transparency report, and like the first two it lists every green coffee we bought in the past twelve months, who we bought it from, and what we paid.`,
-      `This year we bought 38.4 tonnes of green coffee across 14 lots from six countries. The weighted average price we paid was USD 7.42 per kilogram FOB, compared with an average New York "C" market price of USD 5.18 over the same period. 71% of our volume came from producers we have bought from for at least three consecutive years.`,
-      `Our biggest single relationship remains the Kochere washing stations in Ethiopia, followed by Gatomboya in Kenya and Finca La Esperanza in Colombia. For the first time, we also bought from a women-led cooperative in Huye, Rwanda — the lot behind our ${shopLink("rwanda-huye-mountain")}.`,
-      `Where we fell short: our Brazilian coffee is bought through an exporter, and while we know the farm, we could not verify the price paid to the producer. We have set ourselves a goal of full farm-gate price visibility for every lot by 2028, and we will report on progress, including failures, next year.`,
-      `The full table, with lot-level prices and volumes, is available as a download at the end of this report.`
+      `Auth package 2.0 is queued for next week's release. It's the first version since 1.0 that changes the token shape, so here's what to expect before it ships.`,
+      `Refresh tokens replace the current single long-lived session token. A short-lived access token and a longer-lived refresh token mean \`AUTH_TOKEN_TTL_SECONDS\` now controls the access token only, with a separate refresh window.`,
+      `Passkey sign-in joins email/password as a second first-class method, behind the same \`AuthClient\` interface — apps/web and apps/cms don't need to know which one a shopper or editor used.`,
+      `A pluggable rate limiter sits in front of sign-in and sign-up, with an in-memory implementation for local development and an interface any fork can back with Redis or a provider's own rate limiting.`,
+      `None of this changes the \`Session\` type's shape from the outside — \`scope: "shop" | "cms"\` still works exactly as it does today. Full migration notes land with the release, at ${shopLink("auth-package")}.`
     ),
-    author: "zanele-ndlovu",
-    category: "sustainability",
-    tags: "transparency, direct trade, pricing, report",
-    publishedDays: -5,
-    seoTitle: "2026 Coffee Transparency Report",
-    seoDescription: "What Fynbos & Fire paid for every green coffee lot this year, how it compares to the market, and where we fell short.",
-    coverAlt: "Green coffee sacks stacked in the Fynbos & Fire warehouse",
+    author: "sarah-lindqvist",
+    category: "release-notes",
+    tags: "release notes, auth, roadmap",
+    publishedDays: -6,
+    seoTitle: "Auth Package 2.0 Preview",
+    seoDescription: "A preview of what's landing in @three-acts/auth 2.0: refresh tokens, passkey support and a pluggable rate limiter.",
+    coverAlt: "A changelog draft for auth package 2.0 open in an editor",
     status: "queued_to_publish",
     modifiedDays: 1
   },
   {
-    key: "compostable-bags",
-    slug: "home-compostable-coffee-bags",
-    title: "Why our bags are now home-compostable (and what took so long)",
-    excerpt: "Our new bags break down in a home compost heap in about six months. Here's why it took three years and four failed suppliers to get here.",
+    key: "grid-section",
+    slug: "grid-and-section-the-two-layout-primitives-that-do-most-of-the-work",
+    title: "Grid and Section: the two layout primitives that do most of the work",
+    excerpt: "Section owns vertical rhythm, Grid owns horizontal composition. Between them they cover most of what a marketing page needs from layout.",
     body: paragraphs(
-      `Coffee packaging is harder than it looks. A bag has to keep oxygen and moisture out for months, let carbon dioxide escape through a one-way valve, survive a courier van in a Karoo summer, and ideally not end up in a landfill for 400 years. Most "eco" bags manage two of those.`,
-      `Since August, every retail bag we ship is certified home-compostable to the Australian AS 5810 standard. The outer layer is kraft paper, the barrier is a plant-based film, and even the degassing valve and label adhesive are compostable. In our own test heap behind the roastery, a shredded bag had disappeared in 26 weeks.`,
-      `It took so long because the first four materials we trialled failed. Two let enough oxygen through that coffee tasted stale within three weeks. One cracked at the seal. One was genuinely compostable, but only in industrial facilities — and Cape Town has very few that accept packaging from households.`,
-      `The new bags cost us about 40% more than the old foil-lined ones. We have absorbed that cost rather than raising prices. If you don't have a compost heap, the bags can go in your garden-waste bin, or bring them back to the roastery and we'll compost them with our chaff.`
+      `Open almost any template page and the outer structure is two components: Section for vertical rhythm, Grid for horizontal composition inside it. Between them they cover most of what a marketing page needs from layout.`,
+      `\`Section.Root\` owns spacing between blocks of a page — a hero, a features block, a testimonial strip — and \`Section.Container\` owns the horizontal max-width and gutters inside each one. They're deliberately separate: nesting a Grid directly in \`Section.Root\` without a Container is the most common layout bug we see in early forks, because the grid then spans the full viewport instead of the content column.`,
+      `Grid takes a column count and a gap token, and its children don't need to know how many columns exist — a three-card row and a four-card row are the same component with a different prop, not two different components.`,
+      `Both are token-driven rather than pixel-driven: gap, max-width and the vertical rhythm scale all come from theme.css, so restyling a client's spacing scale changes every Section and Grid on the site without touching a single page. The full set, with every subcomponent, ships in ${shopLink("wireframe-theme")}.`
     ),
-    author: "zanele-ndlovu",
-    category: "sustainability",
-    tags: "packaging, compostable, sustainability, waste",
-    publishedDays: 60,
-    seoTitle: "Home-Compostable Coffee Bags: Why We Switched",
-    seoDescription: "Our coffee bags are now certified home-compostable. Here's how we tested them and why it took three years.",
-    coverAlt: "Kraft paper coffee bags beside a garden compost heap"
+    author: "kabelo-sithole",
+    category: "design-system",
+    tags: "design system, layout, grid, section",
+    publishedDays: 150,
+    seoTitle: "Grid and Section: Core Layout Primitives",
+    seoDescription: "How Section and Grid divide vertical rhythm from horizontal composition, and why most template pages need nothing else for layout.",
+    coverAlt: "A page wireframe with grid lines overlaid to show its section structure"
   },
   {
-    key: "cafe-kaffie-ikofu",
-    slug: "cafe-kaffie-ikofu",
-    title: "Café, kaffie, ikofu: how Cape Town says coffee ☕",
-    excerpt: "From Bo-Kaap moer koffie to the Xhosa ikofu and a Portuguese bica, a look at the many languages of coffee in our city.",
+    key: "seo-aeo-free",
+    slug: "seo-and-aeo-for-free-sitemap-robots-and-llms-txt",
+    title: "SEO and AEO for free: sitemap, robots and llms.txt",
+    excerpt: "sitemap.xml, robots.txt and llms.txt all generate from the same page-settings flags, so they can't quietly disagree with each other.",
     body: paragraphs(
-      `Walk ten minutes in any direction from our roastery and you will hear coffee ordered in half a dozen languages. In Afrikaans it is kaffie or koffie; in isiXhosa, ikofu; in isiZulu, ikhofi. At the Portuguese deli on Victoria Road the owner still calls an espresso a bica, and our Congolese regulars ask for a café noir, sans sucre, s'il vous plaît.`,
-      `Many Capetonians grew up on moer koffie — ground coffee boiled in a pot and left to settle, the grounds "moered" down with a splash of cold water. It is strong, it is gritty, and for a lot of older customers it is the taste of home. Our ${shopLink("table-mountain-filter-blend")} started life as an attempt to make a filter coffee that tasted familiar to people raised on it.`,
-      `Molo, sawubona, goeie môre — however you greet the morning, we are glad you start it with us. Enkosi kakhulu for reading.`
+      `Three small files decide a lot about how a site gets found: \`sitemap.xml\` for search engines, \`robots.txt\` for crawlers in general, and \`llms.txt\` — the newer convention for pointing AI systems at a site's actual content instead of its navigation chrome. All three generate from the same source in Three Acts, so they can't quietly disagree with each other.`,
+      `Each static page and each entry from an editorial collection carries an \`includeInSitemap\` flag. Set it once in page settings or leave a collection's default, and \`src/pages/sitemap.xml.ts\` writes the URL with the right \`lastmod\`, \`changefreq\` and \`priority\` — no page forgotten, because the endpoint builds itself from the same routes \`getStaticPaths\` expands.`,
+      `\`robots.txt\` reads the sitewide \`allowIndexing\` flag: off adds \`noindex\` to every page's head and disallows crawling wholesale, useful for a staging fork nobody should be indexing yet. \`llms.txt\` lists the same public routes in a format meant to be read by a model rather than rendered, summarizing what the site actually contains.`,
+      `None of this needs a plugin or a third-party SEO package — it's plain Astro endpoints reading the same \`page-meta.ts\` config every page's \`<head>\` already uses. Wire up ${shopLink("content-package")} once and the three files stay accurate as content changes, without a second SEO tool to keep in sync.`
     ),
-    author: "zanele-ndlovu",
-    category: "roastery-news",
-    tags: "culture, cape town, language, community",
-    publishedDays: 180,
-    seoTitle: "",
-    seoDescription: "",
-    coverAlt: "Coffee cups on a café counter in the Bo-Kaap, Cape Town"
-  },
-  {
-    key: "rwanda-147-roasts",
-    slug: "rwanda-huye-147-roasts",
-    title:
-      "Everything we learned from roasting, cupping, brewing and re-brewing the same Rwandan lot 147 times over one very long, very caffeinated Cape Town winter in Woodstock",
-    excerpt: "One lot, 147 roast profiles, and a lot of spreadsheets: what an obsessive winter taught us about roasting washed Rwandan coffee.",
-    body: paragraphs(
-      `Last winter we bought more of one Rwandan lot than we have ever bought of anything, and we decided to use it as an experiment. Over fourteen weeks, Lindiwe roasted it 147 different ways, varying charge temperature, development time and airflow, and the whole team cupped every single batch blind.`,
-      `The big lesson: development time after first crack mattered far more than total roast time. Between 1:20 and 1:40 the coffee tasted of red plum and black tea; beyond two minutes, the fruit disappeared into caramel and the cup went flat. Charge temperature barely registered on the table.`,
-      `The second lesson was humility. Our favourite profile on the cupping table was not our favourite in a V60, and the best espresso roast was one we had scored in the middle of the pack. We now cup every candidate profile as both filter and espresso before choosing.`,
-      `The winning filter profile is what you get in every bag of ${shopLink("rwanda-huye-mountain")} today. The spreadsheet has 4,116 rows. Nobody is allowed to open it before 10:00.`
-    ),
-    author: "lindiwe-khumalo",
-    category: "origins",
-    tags: "rwanda, roasting, experiment, cupping",
-    publishedDays: 75,
-    seoTitle: "147 Roasts of One Rwandan Coffee: What We Learned",
-    seoDescription: "What roasting a single washed Rwandan lot 147 ways taught us about development time, cupping and brewing.",
-    coverAlt: "Rows of cupping bowls on a long table at the roastery"
+    author: "daniel-okoye",
+    category: "guides",
+    tags: "guides, seo, aeo, llms.txt, sitemap",
+    publishedDays: 320,
+    seoTitle: "Sitemap, Robots.txt and llms.txt, Generated",
+    seoDescription: "How sitemap.xml, robots.txt and llms.txt are generated from the same page-settings flags, with nothing to maintain by hand.",
+    coverAlt: "A robots.txt file open in an editor next to a sitemap diagram"
   }
 ];
 
@@ -649,426 +645,413 @@ type GeneratedTopic = {
   seoTitle?: string;
 };
 
-type OriginItem = {
+type CollectionSpotlight = {
   key: string;
-  country: string;
-  region: string;
-  name: string;
-  process: string;
-  altitude: string;
-  varieties: string;
-  notes: string;
-  producer: string;
-  brew: string;
+  id: string;
+  label: string;
+  mode: string;
+  detail: string;
+  quirk: string;
+  consumer: string;
   product?: ProductSlug;
 };
 
-const origins: OriginItem[] = [
+const collectionSpotlights: CollectionSpotlight[] = [
   {
-    key: "rwanda-huye",
-    country: "Rwanda",
-    region: "Huye",
-    name: "Huye Mountain",
-    process: "washed",
-    altitude: "1,900–2,100 m",
-    varieties: "Red Bourbon",
-    notes: "red plum, black tea and orange blossom",
-    producer: "a women-led cooperative of about 600 members on the slopes of Mount Huye",
-    brew: "a V60 or Kalita Wave",
-    product: "rwanda-huye-mountain"
+    key: "articles",
+    id: "articles",
+    label: "Articles",
+    mode: "the full editorial publish workflow",
+    detail: "a required cover image and an optional SEO title/description pair that falls back to the excerpt",
+    quirk: "reading time is computed from the body on every save — nobody types it in",
+    consumer: "the Public Content Route and the mock content source",
+    product: "journal-module"
   },
   {
-    key: "brazil-cerrado",
-    country: "Brazil",
-    region: "Cerrado Mineiro",
-    name: "Cerrado Natural",
-    process: "natural",
-    altitude: "1,100–1,250 m",
-    varieties: "Yellow Catuaí and Mundo Novo",
-    notes: "milk chocolate, roasted hazelnut and dried fig",
-    producer: "the Oliveira family's 180-hectare farm near Patrocínio",
-    brew: "espresso, a moka pot or cold brew",
-    product: "brazil-cerrado-natural"
+    key: "products",
+    id: "products",
+    label: "Products",
+    mode: "the same editorial publish workflow as Articles",
+    detail: "an image gallery with a required first image, plus an optional product video and a spec-sheet upload",
+    quirk: "compare-at price is a plain number, not a discount rule — there's no automatic sale calculation in the registry",
+    consumer: "the shop routes in apps/api and the storefront pages in apps/web",
+    product: "ecommerce-package"
   },
   {
-    key: "peru-decaf",
-    country: "Peru",
-    region: "Cajamarca",
-    name: "Swiss Water Decaf",
-    process: "washed, Swiss Water decaffeinated",
-    altitude: "1,700–1,900 m",
-    varieties: "Caturra, Bourbon and Typica",
-    notes: "cocoa nib, brown sugar and red apple",
-    producer: "smallholders in the San Ignacio province who sell through the Cenfrocafe cooperative",
-    brew: "a French press or a milky flat white",
-    product: "swiss-water-decaf-peru"
+    key: "orders",
+    id: "orders",
+    label: "Orders",
+    mode: '"data" mode with Record Source "site" — New and Import are hidden entirely',
+    detail: "only Checkout's System Write Path can create or update the money fields",
+    quirk: "total, subtotal, tax and the line-items JSON are all read-only fields an editor can see but never edit",
+    consumer: "the account page's order history, filtered to the signed-in shopper",
+    product: "ecommerce-package"
   },
   {
-    key: "burundi-kayanza",
-    country: "Burundi",
-    region: "Kayanza",
-    name: "Kayanza Honey",
-    process: "honey",
-    altitude: "1,800–1,950 m",
-    varieties: "Red Bourbon",
-    notes: "hibiscus, raspberry jam and panela",
-    producer: "the Buziraguhindwa washing station, which buys cherry from around 2,000 families",
-    brew: "an AeroPress or a Chemex"
+    key: "customers",
+    id: "customers",
+    label: "Customers",
+    mode: '"data" mode, Record Source "site"',
+    detail: "lifetime value and order counts are recomputed by Checkout, never typed in",
+    quirk: "the password hash never lives on this record — it's in a separate Identity Store an editor can't reach, even by exporting the collection",
+    consumer: "sign-up and Checkout, both through the system write path",
+    product: "auth-package"
   },
   {
-    key: "guatemala-huehuetenango",
-    country: "Guatemala",
-    region: "Huehuetenango",
-    name: "Huehuetenango",
-    process: "washed",
-    altitude: "1,600–1,900 m",
-    varieties: "Bourbon, Caturra and Pache",
-    notes: "green apple, toffee and cocoa",
-    producer: "a group of 12 neighbouring farms around La Libertad",
-    brew: "a Clever dripper or drip machine"
+    key: "faqs",
+    id: "faqs",
+    label: "FAQs",
+    mode: "the editorial publish workflow, grouped by a fixed topic",
+    detail: "the same record can show up on /faq and on a product page, scoped by an optional product slug",
+    quirk: "topic isn't free text: it's six select options, each with its own contiguous sort order the CMS keeps in sync",
+    consumer: "the /faq page's FAQPage JSON-LD and individual product pages",
+    product: "content-package"
   }
 ];
 
-function originTopic(item: OriginItem): GeneratedTopic {
-  const shop = item.product ? ` You'll find it in the shop at ${shopLink(item.product)}.` : ` This lot sold out in five weeks; we hope to buy from ${item.region} again next season.`;
+function collectionTopic(item: CollectionSpotlight): GeneratedTopic {
   return {
-    key: `origin-${item.key}`,
-    category: "origins",
-    authors: ["pieter-van-wyk", "lindiwe-khumalo"],
-    titles: [
-      `Origin notes: ${item.region}, ${item.country}`,
-      `Cupping table: our ${item.country} ${item.name}`,
-      `Why ${item.region} coffee tastes the way it does`
-    ],
-    excerpt: `Where our ${item.country} ${item.name} comes from, how it's ${item.process.split(",")[0]} processed and why it tastes of ${item.notes}.`,
+    key: `cms-${item.key}`,
+    category: "cms",
+    authors: ["thandi-mokoena", "sarah-lindqvist"],
+    titles: [`Inside the ${item.label} collection`, `What ${item.label} actually looks like in the registry`, `${item.label}, field by field`],
+    excerpt: `A field-by-field look at the ${item.label} collection: ${item.mode}, and ${item.quirk.charAt(0).toLowerCase()}${item.quirk.slice(1)}.`,
     body: paragraphs(
-      `Our ${item.country} ${item.name} comes from ${item.producer}. The coffee is grown at ${item.altitude} in ${item.region}, and is mostly ${item.varieties}.`,
+      `${item.label} runs on ${item.mode}. Its fields are defined once in packages/cms-schema/src/registry.ts, and that same definition drives the editor, the REST bridge's validation and the generated Postgres schema.`,
       pick([
-        `Altitude matters here. Cooler nights slow the ripening of the cherry, giving the seed more time to develop sugars and acids, and that density shows up both in the roaster and in the cup.`,
-        `It is the kind of coffee that makes a strong case for terroir: soil, altitude, rainfall and the people doing the picking all leave fingerprints you can taste.`,
-        `We first cupped a sample of this coffee in a crowded lab at origin and asked for a second sample before we had finished the first bowl.`
+        `Nothing about this collection is inferred from the database. If a field isn't in the registry, the editor can't show it and the schema tooling won't create a column for it.`,
+        `The Editorial Workspace never introspects the database to build its form — every input, every select option, comes from this one file.`,
+        `Changing what an editor sees always starts here, not in a migration.`
       ]),
-      `This lot is ${item.process} processed. ${pick([
-        "Processing is where a producer's skill becomes most visible, and here it is meticulous.",
-        "Processing shapes the cup as much as variety or altitude, and this lot is a textbook example.",
-        "Every processing step is logged by lot, which makes it one of the most traceable coffees we buy."
-      ])} On our table it tastes of ${item.notes}.`,
-      `We roast it to highlight that character and recommend brewing it with ${item.brew}. ${pick([
-        "Give it at least five days off roast before opening the bag.",
-        "It is at its best between one and four weeks after roasting.",
-        "Try it slightly cooler than usual — around 90 °C — to keep the sweetness front and centre."
-      ])}${shop}`
+      `The detail worth knowing: ${item.detail}.`,
+      `The quirk worth knowing: ${item.quirk}.`,
+      `In production, ${item.label} is read by ${item.consumer}.${item.product ? ` If you want the underlying logic rather than just the registry entry, it ships in ${shopLink(item.product)}.` : ""}`
     ),
-    tags: `${item.country.toLowerCase()}, ${item.region.toLowerCase()}, ${item.process.split(",")[0]}, single origin`,
-    coverAlt: `Coffee farm landscape in ${item.region}, ${item.country}`
+    tags: `cms, registry, ${item.id}, collections`,
+    coverAlt: `A close-up of the ${item.label} collection open in the Editorial Workspace`
   };
 }
 
-type MethodItem = { key: string; method: string; ratio: string; grind: string; time: string; tip: string; product?: ProductSlug };
+type GuideTask = { key: string; task: string; steps: string; time: string; gotcha: string; product?: ProductSlug };
 
-const methods: MethodItem[] = [
-  { key: "chemex", method: "Chemex", ratio: "30 g of coffee to 500 g of water", grind: "medium-coarse, like kosher salt", time: "4:00 to 4:30", tip: "The thick bonded filters need a very thorough rinse.", product: "chemex-six-cup" },
-  { key: "french-press", method: "French press", ratio: "30 g of coffee to 500 g of water", grind: "coarse, like breadcrumbs", time: "4:00 steep, then 5 minutes of settling", tip: "Skim the crust off the top instead of plunging hard." },
-  { key: "moka-pot", method: "moka pot", ratio: "a full basket, level but not tamped", grind: "fine, a little coarser than espresso", time: "about 4 minutes on a medium flame", tip: "Start with water just off the boil so the grounds don't cook on the stove." },
-  { key: "clever-dripper", method: "Clever dripper", ratio: "18 g of coffee to 300 g of water", grind: "medium, like granulated sugar", time: "2:30 steep plus a 1-minute drawdown", tip: "Add water first, then coffee, for a faster, more even drawdown." },
-  { key: "kalita-wave", method: "Kalita Wave", ratio: "20 g of coffee to 320 g of water", grind: "medium-fine", time: "3:15 to 3:45", tip: "Pour in small, frequent pulses to keep the bed level." }
+const guideTasks: GuideTask[] = [
+  {
+    key: "add-field",
+    task: "add a field to a collection",
+    steps: "add it to the collection's `fields` array in registry.ts, run `schema:diff` to generate the migration SQL, review it, then apply it with psql or the Supabase SQL editor",
+    time: "about ten minutes for a simple text or number field",
+    gotcha: "the database never defines a field — if you add a column by hand first, the diff will try to add it again",
+    product: "cms-app"
+  },
+  {
+    key: "wire-payment",
+    task: "wire up a real payment provider",
+    steps: "implement the `PaymentProvider` interface in apps/api, register it alongside the `mock` provider, and point `PAYMENT_PROVIDER` at it",
+    time: "an afternoon for a provider with a simple charge API",
+    gotcha: "checkout, the order write and the customer upsert all happen inside the same request — a provider that requires an async webhook needs a pending order status, not a direct charge",
+    product: "ecommerce-package"
+  },
+  {
+    key: "add-redirect",
+    task: "add a redirect",
+    steps: "create a `redirect-rules` record with a source path, target URL and status code — no deploy required, since redirects are read at request/build time from the Public Content Route",
+    time: "under a minute",
+    gotcha: "`redirect-rules` has no publish workflow, so a saved redirect is live immediately, with no draft state to catch a typo",
+    product: "content-package"
+  },
+  {
+    key: "configure-vat-shipping",
+    task: "set currency, VAT and shipping for a client",
+    steps: "edit `shopConfig` in packages/ecommerce/src/config.ts — currency, VAT rate, shipping bands and the order-number prefix all live in that one file",
+    time: "a few minutes, plus a sanity-check order through checkout",
+    gotcha: "shopConfig is the one file most forks forget to touch before their first real order goes out at the template's default VAT rate",
+    product: "ecommerce-package"
+  },
+  {
+    key: "write-island",
+    task: "write your first Astro island",
+    steps: "build a self-contained React component with JSON-serializable props, then render it from a `.astro` page with a `client:*` directive — `client:visible` for below-the-fold, `client:load` for anything the page needs immediately",
+    time: "half an hour if the component doesn't need new server data",
+    gotcha: "only pages containing an island load Astro's hydration runtime at all — a static page next to it still ships zero JavaScript",
+    product: "web-app"
+  }
 ];
 
-function methodTopic(item: MethodItem): GeneratedTopic {
+function guideTopic(item: GuideTask): GeneratedTopic {
   return {
-    key: `brew-${item.key}`,
-    category: "brew-guides",
-    authors: ["ama-mensah", "ama-mensah", "fatima-patel"],
-    titles: [
-      `${item.method[0].toUpperCase()}${item.method.slice(1)} brew guide: ratio, grind and timing`,
-      `Getting more sweetness out of your ${item.method}`,
-      `A weekday ${item.method} recipe in under five minutes`
-    ],
-    excerpt: `Our tested ${item.method} recipe — ${item.ratio}, ground ${item.grind.split(",")[0]} — and the one adjustment that fixes most bad cups.`,
+    key: `guide-${item.key}`,
+    category: "guides",
+    authors: ["daniel-okoye", "sarah-lindqvist", "thandi-mokoena"],
+    titles: [`How to ${item.task}`, `A five-minute guide to ${item.task}`, `${item.task[0].toUpperCase()}${item.task.slice(1)}, step by step`],
+    excerpt: `The short version: ${item.steps.split(",")[0]}. Here's the full walkthrough, including the part that trips people up.`,
     body: paragraphs(
       pick([
-        `The ${item.method} is one of the most requested topics in our workshops, and one of the most misunderstood.`,
-        `Plenty of people own a ${item.method} and quietly suspect they are using it wrong. Most of the time, they are only one adjustment away from a great cup.`,
-        `We brew on the ${item.method} at the roastery more often than you might expect, especially for customers who want a reliable cup without a lot of fuss.`
+        `This is one of the first things most forks need to do, and it's simpler than it looks once you know where the file lives.`,
+        `We get asked about this constantly in support, so here's the version we'd want to read.`,
+        `Nothing here needs a framework upgrade or a new dependency — just the right file and the right order of operations.`
       ]),
-      `Start with ${item.ratio}. Grind ${item.grind}. Total brew time should land around ${item.time}. ${item.tip}`,
-      `If your cup tastes sour or thin, grind finer or extend the brew slightly. If it tastes bitter or dry, go coarser. ${pick([
-        "Change one variable at a time and write it down.",
-        "Resist the urge to change the ratio and the grind on the same day.",
-        "A scale and a timer will teach you more than any recipe card."
-      ])}`,
+      `To ${item.task}: ${item.steps}. Budget ${item.time}.`,
+      `The gotcha: ${item.gotcha}.`,
       `${pick([
-        "A medium roast is the easiest place to start",
-        "Our blends are designed to be forgiving on this brewer",
-        "Washed coffees tend to shine here"
-      ])}; try the ${shopLink(item.key === "moka-pot" ? "house-espresso-blend" : "table-mountain-filter-blend")} if you want a dependable baseline.${item.product ? ` We stock the brewer too: ${shopLink(item.product)}.` : ""}`
+        "Do it once on a throwaway branch first if you're not sure — nothing here is destructive, but it's still worth seeing the diff before you commit to it.",
+        "None of this needs the CMS or the API running if you're just checking the shape of the change.",
+        "If you get stuck, the architecture behind this is written up in CONTEXT.md — start there before assuming it's a bug."
+      ])}${item.product ? ` More detail ships with ${shopLink(item.product)}.` : ""}`
     ),
-    tags: `${item.method.toLowerCase()}, brew guide, recipe, home brewing`,
-    coverAlt: `Coffee brewing in a ${item.method} on a kitchen counter`
+    tags: `guide, ${item.key.replace(/-/g, " ")}, how-to`,
+    coverAlt: `A terminal and code editor open side by side, mid-edit`
   };
 }
 
-type DrinkItem = { key: string; drink: string; lede: string; method: string; serve: string };
+type ComponentSpotlight = { key: string; name: string; api: string; behavior: string; tip: string; product?: ProductSlug };
 
-const drinks: DrinkItem[] = [
+const componentSpotlights: ComponentSpotlight[] = [
   {
-    key: "espresso-tonic",
-    drink: "Espresso tonic",
-    lede: "Bitter, fizzy, bright and absurdly refreshing, the espresso tonic has become our most-ordered summer drink at the Saturday bar.",
-    method: "Fill a tall glass with ice, add 150 ml of chilled tonic water, and slowly pour a double shot of espresso over the back of a spoon so it floats on top.",
-    serve: "Finish with a slice of orange or a sprig of fynbos rosemary. A fruity natural espresso is spectacular here."
+    key: "button",
+    name: "Button",
+    api: "`Button.Root` for actions and `Button.Link` for navigation, sharing one visual system",
+    behavior: "they render different elements — a `<button>` or an `<a>` — so keyboard behaviour and screen readers get the right semantics automatically",
+    tip: "reach for `Button.Link` any time the destination is a URL, even if it looks identical to `Button.Root` — the difference matters for middle-click and screen readers",
+    product: "wireframe-theme"
   },
   {
-    key: "affogato",
-    drink: "Affogato",
-    lede: "Half dessert, half coffee and entirely the reason our team meetings run long, affogato is the easiest impressive thing you can make with an espresso machine.",
-    method: "Put one generous scoop of good vanilla ice cream into a small, chilled glass and pour a freshly pulled double espresso directly over it.",
-    serve: "Serve immediately with a spoon. A crumbled Romany Cream on top is not traditional, but it is correct."
+    key: "card",
+    name: "Card",
+    api: "`Card.Root`, `Card.Marketing` and a handful of slot components for media, title and body",
+    behavior: "it's deliberately unopinionated about layout — `Card.Marketing` is a preset, not the only way to compose one",
+    tip: "before adding a one-off card variant, check whether `Card.Root` plus existing slots already gets you there",
+    product: "wireframe-theme"
   },
   {
-    key: "flat-white",
-    drink: "Flat white",
-    lede: "The flat white is a small, strong milk coffee with a thin layer of silky microfoam — and it is the drink that separates good baristas from great ones.",
-    method: "Pull a double ristretto of about 30 g into a 160 ml cup. Steam 120 ml of cold milk to 60 °C, stretching it only briefly so the foam stays thin and glossy, then pour steadily from close to the surface.",
-    serve: "It should be velvety rather than frothy, with the coffee still clearly in charge."
+    key: "typography",
+    name: "Typography",
+    api: "`Typography.Eyebrow`, `Typography.Heading`, `Typography.Body` and friends, one component per role rather than one component with a `variant` prop",
+    behavior: "each one maps to a single semantic HTML element, so swapping the visual style never changes the document outline",
+    tip: "resist the urge to reach for a raw `<p>` or `<h2>` inside a template page — the moment you do, theming stops working for that text",
+    product: "wireframe-theme"
   },
   {
-    key: "irish-coffee",
-    drink: "Irish coffee",
-    lede: "When the Cape winter sets in and the rain comes sideways off the mountain, nothing competes with a properly made Irish coffee.",
-    method: "Warm a glass, add two teaspoons of brown sugar and 150 ml of hot, strong filter coffee, and stir until dissolved. Add 40 ml of Irish whiskey, then float lightly whipped cream over the back of a spoon.",
-    serve: "Don't stir — drink the hot coffee through the cold cream. That contrast is the whole point."
+    key: "field",
+    name: "Field",
+    api: "`Field.Root`, `Field.Label`, `Field.Input`, `Field.Error`, composed rather than configured through props",
+    behavior: "every input in the storefront and account flows — sign-up, checkout, the contact form — shares this one component, so an accessibility fix in one place fixes it everywhere",
+    tip: "always pair `Field.Label` with `Field.Input` through the built-in `htmlFor` wiring rather than a manual `aria-label`",
+    product: "wireframe-theme"
   },
   {
-    key: "iced-oat-latte",
-    drink: "Iced oat latte",
-    lede: "Our wholesale partners tell us the iced oat latte now outsells the hot version from October to March, and we are not surprised.",
-    method: "Pull a double shot over a handful of ice to chill it quickly, then pour in 180 ml of cold barista-style oat milk and top up with more ice.",
-    serve: "A dash of vanilla or a teaspoon of honey syrup works well; stir before drinking."
+    key: "section",
+    name: "Section",
+    api: "`Section.Root` and `Section.Container`, the two primitives almost every page composes from",
+    behavior: "`Section.Root` owns vertical rhythm between page blocks; `Section.Container` owns the horizontal max-width and gutters — mixing them up is the most common layout bug we see in forks",
+    tip: "if a page section looks too wide or too narrow, check whether it's missing its `Section.Container`, not whether the design tokens are wrong",
+    product: "wireframe-theme"
   }
 ];
 
-function drinkTopic(item: DrinkItem): GeneratedTopic {
-  // Proper nouns (Irish) keep their capital when the drink name is used mid-sentence.
-  const lower = item.drink.replace(/^[A-Z][a-z]+/, (word) => (word === "Irish" ? word : word.toLowerCase()));
+function componentTopic(item: ComponentSpotlight): GeneratedTopic {
   return {
-    key: `recipe-${item.key}`,
-    category: "recipes",
-    authors: ["fatima-patel", "ama-mensah"],
-    titles: [`How to make ${/^[aeiouAEIOU]/.test(lower) ? "an" : "a"} ${lower} at home`, `${item.drink}: the recipe from our Saturday bar`, `The ${lower}, done properly`],
-    excerpt: `Our barista team's ${lower} recipe, adapted for a home kitchen, with the details that make the difference.`,
-    body: paragraphs(
-      item.lede,
-      item.method,
-      item.serve,
-      pick([
-        `We use our ${shopLink("house-espresso-blend")} for this, but any coffee you enjoy as espresso will work.`,
-        `No espresso machine? A concentrated AeroPress or moka pot brew gets you most of the way there — our ${shopLink("aeropress-go")} is perfect for it.`,
-        `For a caffeine-free evening version, the ${shopLink("swiss-water-decaf-peru")} holds up beautifully.`
-      ])
-    ),
-    tags: `${item.drink.toLowerCase()}, recipe, coffee drinks`,
-    coverAlt: `${item.drink} in a glass on a marble counter`
-  };
-}
-
-type GearItem = { key: string; gear: string; product: ProductSlug; good: string; bad: string; verdict: string };
-
-const gear: GearItem[] = [
-  {
-    key: "chemex",
-    gear: "Chemex six-cup",
-    product: "chemex-six-cup",
-    good: "It makes a remarkably clean, tea-like cup and brews enough for four people at once. It also looks beautiful on the counter, which matters more than reviewers like to admit.",
-    bad: "The proprietary filters are expensive locally and the narrow neck makes it annoying to clean without a bottle brush.",
-    verdict: "Buy it if you regularly brew for more than one person and love light, delicate coffees."
-  },
-  {
-    key: "gooseneck-kettle",
-    gear: "900 ml gooseneck kettle",
-    product: "gooseneck-kettle-900ml",
-    good: "Pour control is excellent, the temperature hold is accurate to within a degree, and it reaches 94 °C from cold in under three minutes.",
-    bad: "The 900 ml capacity is tight if you brew a large Chemex, and the base is bulky on a small counter.",
-    verdict: "The single biggest upgrade for pour-over after a grinder and a scale."
-  },
-  {
-    key: "brew-scale",
-    gear: "digital brew scale",
-    product: "digital-brew-scale",
-    good: "It reads to 0.1 g, has a built-in timer, and the auto-tare mode means one less button to press while pouring.",
-    bad: "The rechargeable battery lasts about three weeks of daily use, and the USB-C flap feels fragile.",
-    verdict: "Every home brewer should own a scale; this one is a solid, affordable choice."
-  },
-  {
-    key: "aeropress-go",
-    gear: "AeroPress Go",
-    product: "aeropress-go",
-    good: "Everything packs into its own mug, it survives being dropped off a tailgate, and it brews just as well as the original.",
-    bad: "The smaller chamber limits you to about 250 ml per brew, and the included mug lid is flimsy.",
-    verdict: "The best travel brewer we know. We have taken one up Kilimanjaro and to a Karoo campsite."
-  }
-];
-
-function gearTopic(item: GearItem): GeneratedTopic {
-  return {
-    key: `review-${item.key}`,
-    category: "gear-reviews",
-    authors: ["jordan-le-roux", "jordan-le-roux", "ama-mensah"],
-    titles: [`${item.gear}: six months later`, `Is the ${item.gear} worth it? An honest review`, `Long-term review: the ${item.gear}`],
-    excerpt: `We used the ${item.gear} every day for months. Here's what we loved, what annoyed us, and who should buy one.`,
+    key: `design-${item.key}`,
+    category: "design-system",
+    authors: ["kabelo-sithole", "kabelo-sithole", "lena-fischer"],
+    titles: [`${item.name}: the component, explained`, `Getting the most out of ${item.name}`, `${item.name} in the wireframe design system`],
+    excerpt: `How ${item.name} is composed, why it's built that way, and the one thing worth knowing before you customize it.`,
     body: paragraphs(
       pick([
-        `We only review gear we have used daily for at least a month. The ${item.gear} has been on our training bar for considerably longer.`,
-        `Long-term reviews tell you things launch reviews can't. After months of daily use, here is where we landed on the ${item.gear}.`,
-        `A lot of customers ask about the ${item.gear} at the counter, so we put one through a proper long-term test.`
+        `${item.name} is one of the more reached-for primitives in the wireframe design system, and one of the ones we get the most customization questions about.`,
+        `Every template page eventually touches ${item.name} somewhere, so it's worth understanding how it's put together before you reach for a one-off override.`,
+        `${item.name} looks simple from the outside. The API underneath is deliberately narrow, and that's on purpose.`
       ]),
-      `What's good. ${item.good}`,
-      `What's not. ${item.bad}`,
-      `Verdict. ${item.verdict} It is available at ${shopLink(item.product)}. Disclosure: we sell it, and we bought our test unit from our own stock.`
+      `The API: ${item.api}.`,
+      `Why it's built that way: ${item.behavior}.`,
+      `The tip that saves the most time: ${item.tip}.${item.product ? ` The full source, including every subcomponent, ships in ${shopLink(item.product)}.` : ""}`
     ),
-    tags: `${item.gear.toLowerCase()}, review, gear`,
-    coverAlt: `The ${item.gear} photographed on a wooden counter`
+    tags: `design system, ${item.name.toLowerCase()}, components, tokens`,
+    coverAlt: `The ${item.name} component shown in several states on a design canvas`
   };
 }
 
-type NewsItem = { key: string; title: string; excerpt: string; body: string[]; coverAlt: string | null; tags: string };
+type ArchRetro = { key: string; decision: string; context: string; tradeoff: string; verdict: string };
 
-const news: NewsItem[] = [
+const archRetros: ArchRetro[] = [
   {
-    key: "saturday-cuppings",
-    title: "Saturday public cuppings are back at the roastery",
-    excerpt: "Free, walk-in cuppings every Saturday at 10:00 in Woodstock. No experience needed, just bring your nose.",
-    body: [
-      `After a long winter break, our public cuppings are back. Every Saturday at 10:00, our roasting team sets out six coffees on the long table and walks you through tasting them the way professionals do — slurping included.`,
-      `It is free, it takes about 45 minutes, and there is no need to book for groups smaller than six. Children are welcome, though they tend to enjoy the slurping more than the coffee.`,
-      `You'll find us at the roastery in Woodstock. Park on the street and follow the smell.`
-    ],
-    coverAlt: "People tasting coffee around a long cupping table",
-    tags: "events, cupping, woodstock"
+    key: "no-orm",
+    decision: "not adding an ORM",
+    context:
+      "apps/api talks to whichever Data Store is configured through a small, explicit interface, and the file-backed store, an in-process memory store and Supabase all implement it directly against SQL or JSON.",
+    tradeoff:
+      "we write a little more boilerplate per Data Store implementation, but a fork can add plain Postgres or another provider by implementing one interface, with no ORM dialect to fight.",
+    verdict: "we'd make the same call again — the registry is already the single source of truth for shape; an ORM's schema-from-models would just be a second one."
   },
   {
-    key: "stellenbosch-popup",
-    title: "Find us at the Stellenbosch Slow Market this summer",
-    excerpt: "Our espresso cart will be at the Stellenbosch Slow Market every Saturday from December to February.",
-    body: [
-      `We're taking the espresso cart on the road. From the first Saturday in December until the end of February, you'll find us at the Stellenbosch Slow Market from 09:00 to 14:00.`,
-      `Expect the full espresso menu, espresso tonics, cold brew on tap and retail bags of every coffee we roast. Subscription members get 10% off at the cart.`
-    ],
-    coverAlt: "An espresso cart under oak trees at an outdoor market",
-    tags: "events, stellenbosch, market"
+    key: "no-relation-field",
+    decision: "shipping without a relation field type",
+    context: "an article's `author` field is a plain text slug with helpText pointing at `authors.slug`, not a foreign key the editor resolves for you.",
+    tradeoff:
+      "editors can, in theory, type a slug that doesn't exist; in exchange, the field model stays simple enough that adding a new collection never means touching a relation-resolution layer.",
+    verdict: "seed and integration tests catch the broken-reference case today; a real relation field type is the most-requested addition we haven't shipped yet."
   },
   {
-    key: "holiday-shipping",
-    title: "Festive season roasting and shipping schedule",
-    excerpt: "Our last roast day before the holidays, courier cut-offs, and when subscriptions resume in January.",
-    body: [
-      `Our last roast day of the year is Friday 19 December. Orders placed before 12:00 on Thursday 18 December will be roasted and dispatched before we close.`,
-      `The courier cut-off for delivery before Christmas is Monday 15 December for main centres and Friday 12 December for outlying areas.`,
-      `We reopen on Monday 5 January. Subscriptions due over the break will be paused automatically and resume on your next scheduled date. Enjoy the break — and stock up.`
-    ],
-    coverAlt: "Kraft coffee bags stacked on the packing bench with courier labels, ready for festive-season dispatch",
-    tags: ""
+    key: "static-first",
+    decision: "keeping apps/web static-first instead of full SSR",
+    context: "every public page prerenders to HTML at build time, and only isolated islands hydrate — cart, checkout, sign-in and account are the only client routes.",
+    tradeoff:
+      "content changes need a rebuild rather than being instant, but almost every page ships zero JavaScript, and the ones that do ship only exactly what that page's islands need.",
+    verdict:
+      "the publish flow's two-step CMS-then-deploy model exists specifically to keep this trade-off honest — a client always knows a build is what makes a change live."
   },
   {
-    key: "subscription-update",
-    title: "Changes to our coffee subscription, explained",
-    excerpt: "More flexible delivery intervals, a new 500 g size and a small price change from next month.",
-    body: [
-      `From next month you'll be able to choose a delivery every one, two, three or four weeks, and a new 500 g bag size sits between our 250 g and 1 kg options.`,
-      `We are also increasing subscription prices by R10 per 250 g bag, the first change in two years, to reflect higher green coffee and courier costs. Subscribers still save 15% on the shop price and get free delivery.`,
-      `Nothing changes until your next billing date, and you can pause or cancel at any time from your account.`
-    ],
-    coverAlt: "A subscription box of coffee bags on a doorstep",
-    tags: "subscriptions, announcement"
+    key: "no-transactions",
+    decision: "not modeling checkout as a database transaction",
+    context: "Checkout prices the cart, charges through the configured payment provider, then writes the order and upserts the customer — three steps, not one atomic write.",
+    tradeoff:
+      "a crash between the charge and the order write is a real, if rare, failure mode we have to reason about explicitly, in exchange for keeping the Data Store interface provider-agnostic — some backends the template targets don't support cross-table transactions at all.",
+    verdict: "we log and can manually reconcile a stuck charge today; idempotency keys on the payment call are the next hardening step, not yet shipped."
   }
 ];
 
-function newsTopic(item: NewsItem): GeneratedTopic {
+function archTopic(item: ArchRetro): GeneratedTopic {
   return {
-    key: `news-${item.key}`,
-    category: "roastery-news",
-    authors: ["lindiwe-khumalo", "jordan-le-roux", "fatima-patel"],
+    key: `architecture-${item.key}`,
+    category: "architecture",
+    authors: ["nico-de-wet", "sarah-lindqvist", "nico-de-wet"],
+    titles: [`Why we're ${item.decision}`, `${item.decision[0].toUpperCase()}${item.decision.slice(1)}: a retrospective`, `The trade-off behind ${item.decision}`],
+    excerpt: `A candid look at ${item.decision} — what it costs, what it buys, and whether we'd choose it again.`,
+    body: paragraphs(
+      `We keep a running decision log for calls like this, and ${item.decision} comes up often enough to write down properly.`,
+      `The context: ${item.context}`,
+      `The trade-off: ${item.tradeoff}`,
+      `The verdict, revisited: ${item.verdict}`
+    ),
+    tags: `architecture, decisions, trade-offs`,
+    coverAlt: "A whiteboard covered in boxes and arrows sketching out a system boundary"
+  };
+}
+
+type ReleaseNote = { key: string; title: string; body: string[]; tags: string };
+
+const releases: ReleaseNote[] = [
+  {
+    key: "storefront-module",
+    title: "Storefront module 1.0",
+    body: [
+      "The storefront module — product listing, product detail, cart and checkout pages, all built on the ecommerce domain package — is now stable and out of preview.",
+      "Nothing about the underlying `@three-acts/ecommerce` package changed; this release is the page-level template on top of it: gallery, price, availability, add-to-cart island, reviews and related products, wired to shopConfig.",
+      "If you forked an earlier preview build, the only breaking change is the review-form island's prop name for the product slug, from `slug` to `productSlug`."
+    ],
+    tags: "release notes, storefront, ecommerce"
+  },
+  {
+    key: "auth-package",
+    title: "Auth package 1.0",
+    body: [
+      "`@three-acts/auth` is now 1.0: session and user models, a storage-agnostic session store, a sign-up/sign-in/sign-out client, and server-only token signing and password hashing behind a `./server` subpath.",
+      "The package is shared unchanged by apps/api and apps/cms — a session scoped to \"shop\" and one scoped to \"cms\" use exactly the same token format, just a different `scope` claim.",
+      "New in 1.0: configurable token TTL via `AUTH_TOKEN_TTL_SECONDS`, and an `open` auth mode for local development so a fork can sign in as any editor before wiring up `CMS_EDITORS`."
+    ],
+    tags: "release notes, auth, packages"
+  },
+  {
+    key: "forms-module",
+    title: "Forms module 1.1",
+    body: [
+      "The contact, newsletter and inquiry form islands now share one submission hook from `@three-acts/forms`, replacing three separate implementations that had quietly drifted apart.",
+      "1.1 adds lead scoring to every submission and a honeypot field the API silently discards, both from the forms domain package — no template page changed its markup.",
+      "`POST /api/contact` is now fully retired in favour of `POST /api/forms/submit`; the old route has been returning 410 since 1.0 and is removed in this release."
+    ],
+    tags: "release notes, forms"
+  },
+  {
+    key: "account-module",
+    title: "Account module 1.2",
+    body: [
+      "The account module's order-history view now shows tracking numbers and payment status inline, reading straight from the read-only order fields instead of a second API call.",
+      "Sign-in, sign-up and account pages all moved to the same static-shell-plus-client:load pattern as /dashboard, so their SEO head renders before any JavaScript runs.",
+      "A small fix: an existing customer record created by checkout with no identity yet now links up correctly on sign-up instead of creating a duplicate — see the auth package's changelog for the underlying fix."
+    ],
+    tags: "release notes, account, auth"
+  }
+];
+
+function releaseTopic(item: ReleaseNote): GeneratedTopic {
+  return {
+    key: `release-${item.key}`,
+    category: "release-notes",
+    authors: ["nico-de-wet", "sarah-lindqvist", "thandi-mokoena"],
     titles: [item.title],
-    excerpt: item.excerpt,
+    excerpt: item.body[0],
     body: paragraphs(...item.body),
     tags: item.tags,
-    coverAlt: item.coverAlt
+    coverAlt: `A changelog entry for ${item.title} open in the docs`
   };
 }
 
-type SustainItem = { key: string; titles: string[]; excerpt: string; body: string[]; tags: string; coverAlt: string };
+type CaseStudy = { key: string; client: string; changed: string; keptDefault: string; lesson: string; product?: ProductSlug };
 
-const sustainability: SustainItem[] = [
+const caseStudies: CaseStudy[] = [
   {
-    key: "chaff-compost",
-    titles: ["Where our coffee chaff goes: a partnership with an urban farm", "From roaster to garden bed: composting our chaff"],
-    excerpt: "Every week we send around 40 kg of roasting chaff to an urban farm in Philippi. Here's why it's so useful.",
-    body: [
-      `Roasting coffee produces chaff — the papery silver skin that flakes off the bean as it expands. We generate around 40 kg of it a week, and until last year most of it went to landfill.`,
-      `Now it goes to an urban farm in Philippi, where it is mixed into compost and used as mulch. Chaff is high in nitrogen and carbon, breaks down quickly and helps sandy Cape Flats soil hold water.`,
-      `If you run a community garden and want some, email us. We have plenty.`
-    ],
-    tags: "compost, waste, community",
-    coverAlt: "Handfuls of silver coffee chaff over a vegetable bed"
+    key: "roastery",
+    client: "a two-location specialty coffee roastery",
+    changed: "the shop and product pages, to support bean weight variants and a subscription add-on the ecommerce package doesn't model out of the box",
+    keptDefault: "the CMS, the auth flow and the journal template were used as-is — the agency's only registry change was adding a `roastLevel` select field to Products",
+    lesson: "most of the build time went into content and photography, not plumbing — the template's job is to make that the case",
+    product: "ecommerce-package"
   },
   {
-    key: "water-use",
-    titles: ["How much water is in your cup of coffee?", "The hidden water footprint of coffee"],
-    excerpt: "From farm to cup, a single cup of coffee uses around 130 litres of water. Here's where it goes, and what we're doing about it.",
-    body: [
-      `Cape Town learned the hard way, during the 2018 drought, to count every litre. So here is a number that surprised us: producing the coffee for a single cup uses around 130 litres of water, most of it at the farm.`,
-      `Washed processing is especially thirsty. Several of the stations we buy from now recirculate fermentation water and treat wastewater in settling ponds before it returns to rivers, and we pay a premium that helps fund it.`,
-      `At the roastery, we've cut our own water use by 30% by switching to a closed-loop quench system and harvesting rainwater for cleaning.`
-    ],
-    tags: "water, drought, processing",
-    coverAlt: "Water channels at a coffee washing station"
+    key: "law-firm",
+    client: "a five-partner corporate law firm",
+    changed: "the shop and account modules were deleted entirely — the firm needed a marketing site, a team directory built from a new custom collection, and the contact form, nothing else",
+    keptDefault: "the publish model, the SEO settings screens and the wireframe design system's typography scale all shipped unmodified",
+    lesson: "deleting unused registry collections and routes took under an hour, and the deploy pipeline didn't need to change at all",
+    product: "content-package"
   },
   {
-    key: "courier-emissions",
-    titles: ["Shipping coffee with a lower carbon footprint", "What we changed about how your coffee is delivered"],
-    excerpt: "Cape Town deliveries now go out by e-bike, and national parcels are consolidated to cut emissions per order.",
-    body: [
-      `Shipping is the second biggest source of emissions in our business after green coffee freight. This year we made two changes.`,
-      `Orders within the Cape Town city bowl and Atlantic Seaboard are now delivered by an electric cargo-bike courier, usually on the same day they are roasted. National orders are consolidated into fewer, larger courier collections instead of daily pickups.`,
-      `Together, we estimate these changes have reduced delivery emissions per order by about 35%. We'll publish the measured figure in our next transparency report.`
-    ],
-    tags: "shipping, carbon, delivery",
-    coverAlt: "A courier loading coffee parcels onto an electric cargo bike"
+    key: "clinic",
+    client: "a small dental clinic with four practitioners",
+    changed: "the forms module grew a fourth form type, `booking`, alongside contact/newsletter/inquiry, with its own lead-scoring rule in the forms package",
+    keptDefault: "everything else — the agency reused none of the storefront module's cart/account plumbing, since the clinic doesn't sell anything, and just deleted the shop routes",
+    lesson: "the forms package's shared validation and scoring meant the new booking form only needed a new schema, not new server code",
+    product: "forms-package"
   }
 ];
 
-function sustainTopic(item: SustainItem): GeneratedTopic {
+function caseStudyTopic(item: CaseStudy): GeneratedTopic {
+  const angle = item.key === "roastery" ? "product variants" : item.key === "law-firm" ? "deleting what you don't need" : "extending the forms package";
   return {
-    key: `impact-${item.key}`,
-    category: "sustainability",
-    authors: ["zanele-ndlovu"],
-    titles: item.titles,
-    excerpt: item.excerpt,
-    body: paragraphs(...item.body),
-    tags: item.tags,
-    coverAlt: item.coverAlt
+    key: `case-${item.key}`,
+    category: "case-studies",
+    authors: ["maya-rosenberg", "daniel-okoye"],
+    titles: [`Case study: ${item.client}`, `What an agency actually changed for ${item.client}`, `Forking Three Acts for ${item.client}`],
+    excerpt: `What the agency changed, what they kept as the template default, and what it taught us about ${angle}.`,
+    body: paragraphs(
+      `An agency partner brought us this build after launch, and it's a good example of how little of the template most client sites actually replace.`,
+      `What changed: ${item.changed}.`,
+      `What stayed default: ${item.keptDefault}.`,
+      `The lesson: ${item.lesson}.${item.product ? ` If you're planning something similar, start with ${shopLink(item.product)}.` : ""}`
+    ),
+    tags: `case study, agencies, ${item.key}`,
+    coverAlt: `A laptop showing a client site homepage next to the Three Acts docs`
   };
 }
 
 const generatedTopics: GeneratedTopic[] = [
-  ...origins.map(originTopic),
-  ...methods.map(methodTopic),
-  ...drinks.map(drinkTopic),
-  ...gear.map(gearTopic),
-  ...news.map(newsTopic),
-  ...sustainability.map(sustainTopic)
+  ...collectionSpotlights.map(collectionTopic),
+  ...guideTasks.map(guideTopic),
+  ...componentSpotlights.map(componentTopic),
+  ...archRetros.map(archTopic),
+  ...releases.map(releaseTopic),
+  ...caseStudies.map(caseStudyTopic)
 ];
 
 /** Status overrides for generated articles, keyed by topic key. */
 const generatedStatus: Record<string, Partial<Pick<ArticleSpec, "status" | "liveOverrides" | "modifiedDays" | "publishedDays" | "author" | "excerpt" | "coverAlt">>> = {
-  "brew-french-press": { status: "draft", modifiedDays: 6, liveOverrides: { tags: "french press, brew guide" } },
-  "recipe-affogato": { status: "queued_to_publish", modifiedDays: 2, liveOverrides: { excerpt: "Vanilla ice cream, hot espresso, a spoon. That's it." } },
-  "impact-courier-emissions": { status: "queued_to_publish", publishedDays: -2, modifiedDays: 0 },
+  "guide-add-field": { status: "draft", modifiedDays: 6, liveOverrides: { tags: "guide, registry, migration" } },
+  "design-card": { status: "queued_to_publish", modifiedDays: 2, liveOverrides: { excerpt: "A short version of this guide, while we finish the long one." } },
+  "case-roastery": { status: "queued_to_publish", publishedDays: -2, modifiedDays: 0 },
   // A brand-new draft the editor has not finished: no excerpt and no cover yet (covers are required to publish).
-  "review-aeropress-go": { status: "draft", publishedDays: -14, modifiedDays: 3, author: "sam-okafor", excerpt: "", coverAlt: null },
-  "origin-guatemala-huehuetenango": { status: "not_published", modifiedDays: 90 },
-  "news-stellenbosch-popup": { status: "not_published", modifiedDays: 140 },
-  "brew-kalita-wave": { status: "draft", publishedDays: -20, modifiedDays: 9 }
+  "case-law-firm": { status: "draft", publishedDays: -14, modifiedDays: 3, author: "ruben-adams", excerpt: "", coverAlt: null },
+  "cms-faqs": { status: "not_published", modifiedDays: 90 },
+  "release-account-module": { status: "not_published", modifiedDays: 140 },
+  "guide-write-island": { status: "draft", publishedDays: -20, modifiedDays: 9 }
 };
 
 const generatedArticles: ArticleSpec[] = generatedTopics.map((topic, index) => {
@@ -1110,28 +1093,37 @@ const articleRecords: CmsRecord[] = [...flagshipArticles, ...generatedArticles].
 type FaqSpec = { key: string; topic: "general" | "orders" | "shipping" | "returns" | "products" | "account"; question: string; answer: string; status?: PublishStatus; live?: Values };
 
 const faqSpecs: FaqSpec[] = [
-  { key: "where-roastery", topic: "general", question: "Where is the roastery, and can I visit?", answer: "We roast at 84 Albert Road, Woodstock, Cape Town. The roastery bar is open Monday to Friday 07:00–15:00 and Saturday 08:00–13:00, with free public cuppings every Saturday at 10:00." },
-  { key: "how-fresh", topic: "general", question: "How fresh is the coffee when it arrives?", answer: "We roast to order from Monday to Thursday and ship within two working days of roasting. Every bag is stamped with its roast date." },
-  { key: "wholesale", topic: "general", question: "Do you supply cafés, restaurants and offices?", answer: "Yes. We supply more than 60 wholesale partners across the Western Cape and Gauteng, including equipment, barista training and ongoing technical support. Tell us about your business on our wholesale page and Fatima will be in touch within two working days." },
-  { key: "gift-cards", topic: "general", question: "Do you sell gift cards?", answer: "Digital gift cards from R200 to R2,000 are available in the shop and are delivered by email. They never expire and can be used on subscriptions too." },
-  { key: "payment-methods", topic: "orders", question: "Which payment methods do you accept?", answer: "We accept Visa, Mastercard and American Express, Instant EFT, PayPal, Apple Pay and Fynbos & Fire gift cards. All payments are processed securely; we never store your card details." },
-  { key: "change-order", topic: "orders", question: "Can I change or cancel my order after placing it?", answer: "If your coffee hasn't been roasted yet, yes — email hello@fynbosandfire.co.za with your order number as soon as possible. Once an order has been roasted or dispatched we can't cancel it, but you can return unopened equipment." },
-  { key: "ground-coffee", topic: "orders", question: "Can you grind the coffee for me?", answer: "Yes. Choose a grind at checkout: espresso, moka pot, AeroPress, pour-over, plunger or cold brew. We recommend whole beans if you have a grinder — ground coffee goes stale much faster." },
-  { key: "vat-invoice", topic: "orders", question: "Can I get a VAT invoice?", answer: "Every order confirmation email includes a VAT invoice. If you need your company name or VAT number on it, add them in the 'Company' field at checkout or email us after ordering." },
-  { key: "delivery-times", topic: "shipping", question: "How long does delivery take?", answer: "Cape Town city bowl and Atlantic Seaboard orders are delivered by e-bike within one working day of dispatch. Other main centres take two to three working days, and outlying areas three to five." },
-  { key: "shipping-cost", topic: "shipping", question: "How much does shipping cost?", answer: "Shipping is R80 per order nationwide and free on orders over R650. Subscriptions always ship free." },
-  { key: "international", topic: "shipping", question: "Do you ship outside South Africa?", answer: "We currently ship to Namibia, Botswana, Lesotho and Eswatini. Customs duties and import VAT are the recipient's responsibility. We're working on wider international shipping.", status: "draft", live: { answer: "We currently ship within South Africa only." } },
-  { key: "tracking", topic: "shipping", question: "How do I track my order?", answer: "You'll receive a tracking link by email and SMS as soon as your parcel is collected by the courier. You can also find it under Orders in your account." },
-  { key: "returns-coffee", topic: "returns", question: "Can I return coffee I don't like?", answer: "Coffee is a food product, so we can't resell returned bags. But if you genuinely don't enjoy a coffee, tell us within 14 days and we'll send you a different one free of charge. We'd rather you love what you drink." },
-  { key: "returns-equipment", topic: "returns", question: "What is your returns policy on equipment?", answer: "Unused equipment in its original packaging can be returned within 30 days for a full refund. Email us for a returns number; return shipping is at your cost unless the item arrived faulty." },
-  { key: "damaged", topic: "returns", question: "My order arrived damaged. What now?", answer: "We're sorry! Send a photo of the damage and your order number to hello@fynbosandfire.co.za within 7 days and we'll send a replacement straight away — no need to return the damaged item." },
-  { key: "storage", topic: "products", question: "How should I store my coffee?", answer: "Keep it in the resealable bag it came in, pressed flat to remove air, in a cool, dark cupboard. Don't store it in the fridge. For longer storage, freeze whole beans in airtight portions and grind straight from frozen." },
-  { key: "best-before", topic: "products", question: "How long does coffee stay fresh?", answer: "Our coffee is at its best between one and six weeks after the roast date. Espresso often tastes best after ten days of resting; filter coffee from about five days." },
-  { key: "decaf", topic: "products", question: "How is your decaf decaffeinated?", answer: "Our decaf uses the Swiss Water Process, which removes 99.9% of caffeine using only water, temperature and time — no chemical solvents." },
-  { key: "subscription-manage", topic: "account", question: "How do I pause, skip or cancel my subscription?", answer: "Log in to your account and open Subscriptions. You can skip a delivery, change your coffee, grind or frequency, pause for up to three months, or cancel — there are no lock-ins or cancellation fees." },
-  { key: "reset-password", topic: "account", question: "I've forgotten my password. How do I reset it?", answer: "Click 'Forgot password' on the login page and we'll email you a reset link, valid for one hour. If it doesn't arrive, check your spam folder or contact us." },
-  { key: "delete-account", topic: "account", question: "How do I delete my account and data?", answer: "Email privacy@fynbosandfire.co.za from the address linked to your account and we'll delete your account and personal data within 30 days, as required by POPIA. Order records we must keep for tax purposes are retained for five years.", status: "queued_to_publish" },
-  { key: "loyalty", topic: "account", question: "Do you have a loyalty programme?", answer: "Not yet — we're working on one for next year.", status: "not_published" }
+  { key: "what-is-three-acts", topic: "general", question: "What is Three Acts?", answer: "Three Acts is a reusable foundation for client websites: a static Astro public site that can optionally add a private CMS, a Vercel API, persistent data, auth and payments — without changing how the public pages render." },
+  { key: "who-is-it-for", topic: "general", question: "Who is Three Acts for?", answer: "Agencies and freelancers who rebuild the same client-site plumbing on every project: a marketing site, a blog, a small shop, a contact form and a sign-in flow. Fork it once, then swap in each client's content and configuration." },
+  { key: "need-the-cms", topic: "general", question: "Do I need the CMS to use the template?", answer: "No. The lightweight path runs apps/web alone with mock or file-backed content — no CMS, API, database or third-party provider required. Add the Editorial App and the API only when a client needs editable content or server-side behaviour." },
+  { key: "try-before-buying", topic: "general", question: "Is there a way to try Three Acts before buying?", answer: "Yes — clone the public repository and run the lightweight path locally with zero configuration. A licence unlocks the private CMS, the API app and the domain packages for a real client build." },
+  { key: "payment-methods", topic: "orders", question: "Which payment methods do you accept?", answer: "Card, Instant EFT and PayPal at checkout, all processed through the API's payment provider bridge — never a client-side integration. We don't store card details." },
+  { key: "change-order", topic: "orders", question: "Can I change or cancel an order after buying?", answer: "Digital pieces are delivered instantly, so we can't cancel once the download link is issued. If you bought the wrong licence tier, email us within 24 hours and we'll swap it at no charge." },
+  { key: "currency", topic: "orders", question: "Do you invoice in a currency other than USD?", answer: "Every price in the shop is in USD. Your card issuer or PayPal converts at checkout; we don't offer multi-currency invoicing today." },
+  { key: "invoice", topic: "orders", question: "Can I get an invoice for my company?", answer: "Yes — every order confirmation email includes an invoice. Add your company name at checkout and we'll put it on the invoice automatically." },
+  { key: "instant-access", topic: "shipping", question: "How do I get access after buying?", answer: "Apps and packages unlock instantly: you'll get a download link and, for licensed repositories, an invite to a private GitHub repo within a few minutes of payment clearing." },
+  { key: "updates-included", topic: "shipping", question: "Do purchases include future updates?", answer: "Yes. A single-site licence includes updates to that piece for 12 months; an agency licence includes updates for as long as it's active. After that you keep what you have and can renew for continued updates." },
+  { key: "available-everywhere", topic: "shipping", question: "Is Three Acts available everywhere?", answer: "Yes — everything is delivered digitally, so there's no regional restriction. Support hours are Cape Town business hours (UTC+2)." },
+  { key: "confirm-purchase", topic: "shipping", question: "How do I know my purchase went through?", answer: "You'll get an email receipt immediately and the CMS or repo invite follows within a few minutes. If either hasn't arrived after 30 minutes, check spam, then contact us with your order number." },
+  { key: "refund-policy", topic: "returns", question: "Can I get a refund?", answer: "Yes — if you haven't used the licence (no repo forked, no build deployed), we'll refund it in full within 14 days of purchase. Email us with your order number." },
+  { key: "already-forked", topic: "returns", question: "What if I already forked the repo and started building?", answer: "Once the licence has been used — a repo has been forked or a build deployed — it's no longer eligible for a refund, since the code and any support time are already delivered." },
+  { key: "broken-download", topic: "returns", question: "My download link doesn't work. What now?", answer: "Email us your order number and we'll resend it. If the piece itself has a bug, tell us what broke and we'll fix it or refund you, whichever you'd rather have." },
+  { key: "licence-difference", topic: "products", question: "What's the difference between a single-site licence and an agency licence?", answer: "A single-site licence covers one client deployment. An agency licence covers unlimited client deployments under your agency, plus priority support — see /licenses for the full comparison." },
+  { key: "whats-included", topic: "products", question: "What does each product page actually include?", answer: "Every product page lists exactly what ships: source files, the relevant domain package(s), setup docs and, where relevant, a preview link. Apps and modules include their tests." },
+  { key: "support", topic: "products", question: "Do you offer support if something breaks?", answer: "Yes — every licence includes email support for setup issues and bugs in the piece itself. Agency licences get priority response times; custom client work is available through the Setup Service." },
+  {
+    key: "white-label",
+    topic: "products",
+    question: "Do you offer white-label reseller licensing?",
+    answer: "We're finalising a white-label reseller tier for hosting partners — reach out and we'll let you know when it's ready, including preview pricing.",
+    status: "draft",
+    live: { answer: "Not yet — reseller licensing isn't available today." }
+  },
+  { key: "sign-in", topic: "account", question: "How do I sign in?", answer: "Use the email you purchased with at /sign-in. If you don't have a password yet — for example your licence was set up for you — request a reset link and set one on first sign-in." },
+  { key: "licence-keys", topic: "account", question: "Where do I find my licence keys?", answer: "Sign in and open /account — every purchase and its licence key or repo invite link is listed under Order history." },
+  { key: "transfer-licence", topic: "account", question: "Can I transfer a single-site licence to a different client?", answer: "Yes, once — email us the old and new client details and we'll reissue the licence. After the first transfer, further changes need an agency licence." },
+  { key: "delete-account", topic: "account", question: "How do I delete my account?", answer: "Email privacy@threeacts.dev from the address on your account and we'll delete your account and personal data within 30 days. Order records we're required to keep for tax purposes are retained for five years.", status: "queued_to_publish" },
+  { key: "referral-program", topic: "account", question: "Do you have a referral or affiliate programme?", answer: "Not yet — we're planning one for next year.", status: "not_published" }
 ];
 
 const faqRecords: CmsRecord[] = faqSpecs.map((spec, index) => {
@@ -1141,7 +1133,7 @@ const faqRecords: CmsRecord[] = faqSpecs.map((spec, index) => {
     id: `faq-${spec.key}`,
     publishStatus: spec.status ?? "published",
     createdAt: daysAgo(560 - index * 7),
-    modifiedAt: daysAgo(spec.status ? 3 + index % 4 : 200 - index * 5),
+    modifiedAt: daysAgo(spec.status ? 3 + (index % 4) : 200 - index * 5),
     values,
     liveValues: spec.live ? { ...values, ...spec.live } : undefined
   });

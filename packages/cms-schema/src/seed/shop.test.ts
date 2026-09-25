@@ -140,13 +140,14 @@ describe("shop seed — references", () => {
       assert.ok(record, `product ${slug} exists`);
       assert.ok(record.liveValues, `product ${slug} has a live snapshot`);
     }
-    assert.ok(productBySlug.size >= 55, "catalogue has ~60 products");
+    assert.ok(productBySlug.size >= 40, "catalogue has ~40+ products");
   });
 
   it("products reference real categories and respect stock rules", () => {
     for (const r of records("products")) {
       assert.ok((productCategorySlugs as readonly string[]).includes(String(r.values.category)), `${r.id}: category exists`);
       if (r.values.availability === "out_of_stock") assert.equal(r.values.inventory, 0, `${r.id}: out of stock ⇒ inventory 0`);
+      assert.equal(r.values.weightGrams, 0, `${r.id}: digital products have no shipping weight`);
       const compare = Number(r.values.compareAtPrice);
       if (compare > 0) assert.ok(compare > Number(r.values.price), `${r.id}: compare-at price is above price`);
     }
@@ -174,7 +175,7 @@ describe("shop seed — references", () => {
         const product = productBySlug.get(item.slug);
         assert.ok(product, `${r.id}: item ${item.slug} is a real product`);
         assert.equal(item.sku, product.values.sku, `${r.id}: item sku matches the product`);
-        assert.equal(item.currency, "ZAR", `${r.id}: item currency`);
+        assert.equal(item.currency, "USD", `${r.id}: item currency`);
         assert.equal(cents(item.lineTotal), Math.round(cents(item.unitPrice) * item.quantity), `${r.id}: item lineTotal = unitPrice × quantity`);
       }
       assert.equal(
@@ -202,9 +203,9 @@ describe("shop seed — references", () => {
     assert.ok(manualCount < reviews.length, "most reviews came from the site");
   });
 
-  it("customers who have ordered have a shipping address on file", () => {
+  it("customers who have ordered have a billing address on file", () => {
     for (const r of records("customers")) {
-      if (Number(r.values.totalOrders) > 0 && r.values.country === "ZA") {
+      if (Number(r.values.totalOrders) > 0) {
         assert.ok(String(r.values.address).trim().length > 0, `${r.id}: address is filled`);
         assert.ok(String(r.values.postalCode).trim().length > 0, `${r.id}: postalCode is filled`);
       }
@@ -217,24 +218,20 @@ describe("shop seed — orders, customers and discounts agree", () => {
   const orders = records("orders");
   const codes = new Map(records("discount-codes").map((r) => [String(r.values.code), r]));
 
-  it("order money adds up to the cent", () => {
+  it("order money adds up to the cent, with tax and shipping always $0 — every product is a digital download", () => {
     for (const r of orders) {
       const v = r.values;
       const subtotal = cents(v.subtotal);
       const discount = cents(v.discountTotal);
       const tax = cents(v.taxTotal);
       const shipping = cents(v.shippingTotal);
+      assert.equal(tax, 0, `${r.id}: no VAT is charged on this demo`);
+      assert.equal(shipping, 0, `${r.id}: shipping is always $0 — nothing physically ships`);
       assert.equal(cents(v.total), subtotal - discount + tax + shipping, `${r.id}: total`);
+      assert.equal(cents(v.total), subtotal - discount, `${r.id}: total = subtotal − discount, since tax and shipping are 0`);
       assert.ok(discount >= 0 && discount <= subtotal, `${r.id}: discount within subtotal`);
-      if (v.shippingCountry === "ZA") {
-        assert.equal(tax, Math.round((subtotal - discount) * 0.15), `${r.id}: 15% VAT`);
-        if (subtotal - discount + tax >= 60_000) assert.equal(shipping, 0, `${r.id}: free shipping over R600`);
-        else assert.ok(shipping === 0 || shipping === 9_500, `${r.id}: R95 shipping (or free via code/collection)`);
-      } else {
-        assert.equal(tax, 0, `${r.id}: exports are zero-rated`);
-      }
       assert.ok(Number(v.itemCount) >= 1, `${r.id}: has items`);
-      assert.equal(v.currency, "ZAR");
+      assert.equal(v.currency, "USD");
     }
     assert.ok(orders.some((r) => r.values.total === 0), "a 100%-off order exists");
   });
@@ -247,7 +244,7 @@ describe("shop seed — orders, customers and discounts agree", () => {
       if (status === "pending") assert.ok(paymentStatus === "awaiting" || paymentStatus === "authorized", `${r.id}: pending ⇒ unpaid`);
       if (status === "paid" || status === "fulfilled" || status === "shipped") assert.equal(paymentStatus, "paid", `${r.id}: ${String(status)} ⇒ paid`);
       if (status === "cancelled") assert.ok(paymentStatus === "failed" || paymentStatus === "awaiting", `${r.id}: cancelled never captured`);
-      if (status === "shipped") assert.ok(!isEmpty(trackingNumber), `${r.id}: shipped has tracking`);
+      if (status === "shipped") assert.ok(!isEmpty(trackingNumber), `${r.id}: shipped (delivery link sent) has a delivery reference`);
     }
   });
 
@@ -255,7 +252,7 @@ describe("shop seed — orders, customers and discounts agree", () => {
     const sorted = [...orders].sort((a, b) => String(a.values.placedAt).localeCompare(String(b.values.placedAt)));
     let previous = 0;
     for (const r of sorted) {
-      const match = /^FF-(\d+)$/.exec(String(r.values.orderNumber));
+      const match = /^TA-(\d+)$/.exec(String(r.values.orderNumber));
       assert.ok(match, `${r.id}: order number format`);
       assert.equal(r.id, `order-${String(r.values.orderNumber)}`);
       const n = Number(match[1]);

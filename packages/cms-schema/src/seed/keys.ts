@@ -3,26 +3,30 @@
  * (articles.author → authors.slug, orders.customerEmail → customers.email, …)
  * always resolve. Seed files must only reference keys listed here.
  *
- * Demo brand: "Fynbos & Fire" — a Cape Town specialty coffee roaster that sells
- * beans, brewing gear and merch online and publishes a brewing journal.
+ * Demo brand: "Three Acts" — the template selling itself. The public site is
+ * the template's own site: the shop sells the template's pieces (apps,
+ * packages, page modules, themes, integrations, licences, services), the
+ * journal is engineering and design notes about building client sites with
+ * it, and the FAQs, testimonials and forms are about buying and using it.
+ * Nothing here is a fictitious third-party business.
  */
 
 export const seedBrand = {
-  name: "Fynbos & Fire",
-  domain: "fynbosandfire.co.za",
+  name: "Three Acts",
+  domain: "threeacts.dev",
   city: "Cape Town",
   country: "South Africa",
-  currency: "ZAR"
+  currency: "USD"
 } as const;
 
-/** authors.slug (owned by content seed). */
-export const authorSlugs = ["lindiwe-khumalo", "pieter-van-wyk", "ama-mensah", "jordan-le-roux", "zanele-ndlovu", "marco-ferreira", "fatima-patel", "sam-okafor"] as const;
+/** authors.slug (owned by content seed): the team that builds the template. */
+export const authorSlugs = ["nico-de-wet", "thandi-mokoena", "sarah-lindqvist", "kabelo-sithole", "maya-rosenberg", "daniel-okoye", "lena-fischer", "ruben-adams"] as const;
 
 /** article-categories.slug (owned by content seed). */
-export const articleCategorySlugs = ["brew-guides", "origins", "gear-reviews", "recipes", "roastery-news", "sustainability"] as const;
+export const articleCategorySlugs = ["guides", "architecture", "design-system", "cms", "release-notes", "case-studies"] as const;
 
 /** product-categories.slug (owned by shop seed). */
-export const productCategorySlugs = ["single-origin", "blends", "decaf", "brewers", "grinders", "accessories", "merch", "gift-sets"] as const;
+export const productCategorySlugs = ["apps", "packages", "modules", "themes", "integrations", "licenses", "services", "bundles"] as const;
 
 /**
  * products.slug (owned by shop seed). Content (articles/testimonials) and site
@@ -30,25 +34,25 @@ export const productCategorySlugs = ["single-origin", "blends", "decaf", "brewer
  * more generated products but must include every slug listed here.
  */
 export const productSlugs = [
-  "ethiopia-yirgacheffe-kochere",
-  "kenya-nyeri-gatomboya",
-  "colombia-huila-la-esperanza",
-  "rwanda-huye-mountain",
-  "brazil-cerrado-natural",
-  "house-espresso-blend",
-  "table-mountain-filter-blend",
-  "swiss-water-decaf-peru",
-  "v60-ceramic-dripper",
-  "chemex-six-cup",
-  "aeropress-go",
-  "comandante-c40-grinder",
-  "baratza-encore-esp",
-  "gooseneck-kettle-900ml",
-  "digital-brew-scale",
-  "enamel-camp-mug",
-  "roastery-tote-bag",
-  "brew-at-home-gift-set"
+  "web-app",
+  "cms-app",
+  "api-app",
+  "content-package",
+  "ecommerce-package",
+  "auth-package",
+  "forms-package",
+  "storefront-module",
+  "journal-module",
+  "forms-module",
+  "account-module",
+  "wireframe-theme",
+  "supabase-data-store",
+  "vercel-deploy-integration",
+  "single-site-license",
+  "agency-license",
+  "complete-template-bundle",
+  "setup-service"
 ] as const;
 
 /** Static site routes (owned by site seed via page-settings). */
-export const staticPagePaths = ["/", "/about", "/shop", "/blog", "/contact", "/faq", "/wholesale", "/subscriptions", "/shipping", "/returns", "/terms", "/privacy", "/careers", "/visit-the-roastery"] as const;
+export const staticPagePaths = ["/", "/about", "/shop", "/blog", "/contact", "/faq", "/agencies", "/docs", "/licenses", "/refunds", "/terms", "/privacy", "/careers", "/changelog"] as const;

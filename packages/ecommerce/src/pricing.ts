@@ -105,8 +105,8 @@ export function priceCart(
   };
 }
 
-/** Formats a money amount for display, e.g. `formatMoney(1234, "ZAR")` -> "R1 234,00" (exact spacing/decimal glyphs depend on the ICU data available). */
-export function formatMoney(amount: number, currency: string, locale = "en-ZA"): string {
+/** Formats a money amount for display, e.g. `formatMoney(1234, "USD")` -> "$1,234.00" (exact grouping/decimal glyphs depend on the ICU data available). */
+export function formatMoney(amount: number, currency: string, locale = "en-US"): string {
   return new Intl.NumberFormat(locale, { style: "currency", currency }).format(amount);
 }
 
