@@ -124,14 +124,7 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
                   </Button>
                 </>
               ) : null}
-              {publishable && editable ? (
-                <>
-                  <StatusPill status={draft.publishStatus} />
-                  <Button disabled={isSaving} onClick={() => void handleSave("queued_to_publish")}>
-                    {isSaving ? "Saving…" : "Save"}
-                  </Button>
-                </>
-              ) : null}
+              {publishable ? <StatusPill status={draft.publishStatus} /> : null}
               {editable ? (
                 <Button disabled={isSaving || !isDirty} onClick={() => void handleSave()} variant={publishable ? "normal" : "primary"}>
                   {isSaving ? "Saving…" : "Save"}
@@ -282,10 +275,15 @@ function PageSettingsForm({
           required
         />
         {pagePath && !pathError ? (
-          <div className="-mt-2 mb-4 flex min-h-6 items-center gap-1.5 overflow-hidden rounded-cms bg-cms-surface px-2 font-mono text-ui text-cms-subtle last:mb-0">
+          <a
+            className="-mt-2 mb-4 flex min-h-6 items-center gap-1.5 overflow-hidden rounded-cms bg-cms-surface px-2 font-mono text-ui text-cms-subtle transition-colors hover:bg-cms-raised hover:text-cms-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-cms-focus last:mb-0"
+            href={canonicalFor(pagePath)}
+            rel="noreferrer"
+            target="_blank"
+          >
             <ExternalLink aria-hidden="true" size={12} />
             <span className="truncate">{canonicalFor(pagePath)}</span>
-          </div>
+          </a>
         ) : null}
       </EditorSection>
 
