@@ -1,12 +1,35 @@
 import { ExternalLink } from "lucide-react";
 import { cn } from "@three-acts/utils";
-import type { AssetField, CmsField, CmsRecord, CmsRecordValue, SelectField, SlugField } from "../../cms/types";
-import { AssetControl, FormField, Input, inputVariants, NumberInput, Select, Textarea, Toggle } from "../atoms";
+import type {
+  AssetField,
+  CmsField,
+  CmsRecord,
+  CmsRecordValue,
+  ImageField,
+  ImageGalleryField,
+  SelectField,
+  SlugField
+} from "../../cms/types";
+import { moveImageItem, parseImageGallery, parseImageValue, serializeImageGallery, serializeImageValue } from "../../cms/types";
+import {
+  AssetControl,
+  FormField,
+  ImageControl,
+  ImageGalleryControl,
+  Input,
+  inputVariants,
+  NumberInput,
+  Select,
+  Textarea,
+  Toggle
+} from "../atoms";
 import { formatDateTime, fromDateTimeLocal, toDateTimeLocal } from "../../lib/format";
 
 type FieldControlProps = {
   field: CmsField;
-  onAssetUpload: (field: AssetField, file: File) => void;
+  onAssetUpload: (field: AssetField | ImageField, file: File) => void;
+  onGalleryUpload: (field: ImageGalleryField, files: File[]) => void;
+  onGalleryItemUpload: (field: ImageGalleryField, index: number, file: File) => void;
   onUpdateValue: (fieldKey: string, value: CmsRecordValue) => void;
   /** Render the value as a plain display instead of an editable control. */
   readOnly?: boolean;
@@ -41,7 +64,7 @@ function toNumberValue(value: CmsRecordValue): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-export function FieldControl({ field, onAssetUpload, onUpdateValue, readOnly, record, uploadingField }: FieldControlProps) {
+export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryItemUpload, onUpdateValue, readOnly, record, uploadingField }: FieldControlProps) {
   const value = record.values[field.key] ?? "";
   // Base UI Field wires labels to its own control parts; only the raw file input needs an id.
   const uploadId = `${record.id}-${field.key}`;
@@ -58,6 +81,64 @@ export function FieldControl({ field, onAssetUpload, onUpdateValue, readOnly, re
     return (
       <FormField description={field.helpText} label={field.label}>
         <div className={cn(inputVariants({ tone: "display" }), isIdentifier && "font-mono tabular-nums")}>{shown}</div>
+      </FormField>
+    );
+  }
+
+  if (field.type === "image" || field.type === "image-gallery") {
+    // Image controls render their own read-only state (card with alt text, no
+    // inputs), so they branch before the generic read-only display — a JSON
+    // string would be meaningless there.
+    const isGallery = field.type === "image-gallery";
+    const galleryField = field as ImageGalleryField;
+    const imageField = field as ImageField;
+
+    return (
+      <FormField
+        description={field.helpText}
+        label={field.label}
+        required={readOnly ? undefined : field.required}
+      >
+        {isGallery ? (
+          <ImageGalleryControl
+            field={galleryField}
+            inputIdBase={uploadId}
+            isUploading={uploadingField === field.key}
+            onAddFiles={(files) => onGalleryUpload(galleryField, files)}
+            onAltChange={(index, alt) => {
+              const items = parseImageGallery(record.values[field.key]);
+              if (items[index]) {
+                const next = [...items];
+                next[index] = { ...next[index], alt };
+                onUpdateValue(field.key, serializeImageGallery(next));
+              }
+            }}
+            onRemoveItem={(index) => {
+              const items = parseImageGallery(record.values[field.key]);
+              onUpdateValue(field.key, serializeImageGallery(items.filter((_, itemIndex) => itemIndex !== index)));
+            }}
+            onReorder={(fromIndex, toIndex) =>
+              onUpdateValue(field.key, serializeImageGallery(moveImageItem(parseImageGallery(record.values[field.key]), fromIndex, toIndex)))
+            }
+            onReplaceItem={(index, file) => onGalleryItemUpload(galleryField, index, file)}
+            readOnly={readOnly}
+            value={String(value ?? "")}
+          />
+        ) : (
+          <ImageControl
+            field={imageField}
+            inputId={uploadId}
+            isUploading={uploadingField === field.key}
+            onAltChange={(alt) => {
+              const current = parseImageValue(record.values[field.key]);
+              onUpdateValue(field.key, current ? serializeImageValue({ ...current, alt }) : "");
+            }}
+            onClear={() => onUpdateValue(field.key, "")}
+            onFile={(file) => onAssetUpload(imageField, file)}
+            readOnly={readOnly}
+            value={String(value ?? "")}
+          />
+        )}
       </FormField>
     );
   }
@@ -120,7 +201,7 @@ export function FieldControl({ field, onAssetUpload, onUpdateValue, readOnly, re
     const assetField = field as AssetField;
 
     return (
-      <FormField description={field.helpText} htmlFor={uploadId} label={field.label} required={field.required}>
+      <FormField description={field.helpText} label={field.label} required={field.required}>
         <AssetControl
           accept={assetField.accept}
           inputId={uploadId}

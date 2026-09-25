@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCmsBackend } from "../cms/backend-context";
 import { describeCmsError } from "../cms/errors";
-import type { AssetField, CmsCollectionSummary, CmsRecord, CmsRecordValue, PublishStatus } from "../cms/types";
+import type {
+  AssetField,
+  CmsCollectionSummary,
+  CmsRecord,
+  CmsRecordValue,
+  ImageField,
+  ImageGalleryField,
+  ImageValue,
+  PublishStatus
+} from "../cms/types";
+import { parseImageGallery, parseImageValue, serializeImageGallery, serializeImageValue } from "../cms/types";
 import { rememberAssetMeta } from "../components/atoms";
 import type { CollectionGroup } from "../components/workspace";
 import { getRecordTitle } from "../lib/records";
 import { exportRecords } from "../lib/export-records";
+import { getImageDimensions } from "../lib/image-dimensions";
 
 /** Shallow-compares two records' editable surface: field values plus publish status. */
 function areValuesEqual(a: Record<string, CmsRecordValue>, b: Record<string, CmsRecordValue>): boolean {
@@ -569,7 +580,7 @@ export function useCmsWorkspace() {
     });
   }
 
-  async function handleAssetUpload(field: AssetField, file: File) {
+  async function handleAssetUpload(field: AssetField | ImageField, file: File) {
     if (!activeCollection || !draftRecord) {
       return;
     }
@@ -581,7 +592,10 @@ export function useCmsWorkspace() {
     setError(null);
 
     try {
-      const result = await storage.uploadAsset(activeCollection.id, field.key, file);
+      const [result, dimensions] = await Promise.all([
+        storage.uploadAsset(activeCollection.id, field.key, file),
+        field.type === "image" ? getImageDimensions(file) : Promise.resolve(null)
+      ]);
 
       // The record only ever stores the URL, so the real file name/size must
       // be captured now — nothing about the URL itself carries them, and a
@@ -593,11 +607,138 @@ export function useCmsWorkspace() {
           return current;
         }
 
+        const nextValue =
+          field.type === "image"
+            ? serializeImageValue({
+                src: result.url,
+                fileName: result.fileName,
+                size: result.size,
+                ...(dimensions ? { width: dimensions.width, height: dimensions.height } : {}),
+                // Replacing the file keeps the editor's alt text.
+                alt: parseImageValue(current.values[field.key])?.alt
+              })
+            : result.url;
+
         return {
           ...current,
           values: {
             ...current.values,
-            [field.key]: result.url
+            [field.key]: nextValue
+          }
+        };
+      });
+    } catch (nextError) {
+      setError(describeCmsError(nextError));
+    } finally {
+      setUploadingField(null);
+    }
+  }
+
+  /** Appends every successfully uploaded file to a gallery, in input order; failures keep the rest. */
+  async function handleGalleryUpload(field: ImageGalleryField, files: File[]) {
+    if (!activeCollection || !draftRecord || files.length === 0) {
+      return;
+    }
+
+    const uploadRecordId = draftRecord.id;
+    const currentCount = parseImageGallery(draftRecord.values[field.key]).length;
+    const availableSlots = field.maxItems === undefined ? files.length : Math.max(0, field.maxItems - currentCount);
+    const filesToUpload = files.slice(0, availableSlots);
+    const skippedCount = files.length - filesToUpload.length;
+    if (filesToUpload.length === 0) {
+      setError(`Maximum of ${field.maxItems} images reached.`);
+      return;
+    }
+    setUploadingField(field.key);
+    setError(null);
+
+    try {
+      const outcomes = await Promise.allSettled(
+        filesToUpload.map(async (file): Promise<ImageValue> => {
+          const [result, dimensions] = await Promise.all([
+            storage.uploadAsset(activeCollection.id, field.key, file),
+            getImageDimensions(file)
+          ]);
+          rememberAssetMeta(result.url, { fileName: result.fileName, size: result.size });
+          return {
+            src: result.url,
+            fileName: result.fileName,
+            size: result.size,
+            ...(dimensions ? { width: dimensions.width, height: dimensions.height } : {})
+          };
+        })
+      );
+
+      const succeeded = outcomes.flatMap((outcome) => (outcome.status === "fulfilled" ? [outcome.value] : []));
+      const failedCount = outcomes.length - succeeded.length;
+
+      setDraftRecordState((current) => {
+        if (!current || current.id !== uploadRecordId) {
+          return current;
+        }
+
+        return {
+          ...current,
+          values: {
+            ...current.values,
+            [field.key]: serializeImageGallery([...parseImageGallery(current.values[field.key]), ...succeeded])
+          }
+        };
+      });
+
+      if (failedCount > 0 || skippedCount > 0) {
+        const rejectedCount = failedCount + skippedCount;
+        setError(
+          succeeded.length === 0
+            ? `Unable to add ${rejectedCount} file${rejectedCount === 1 ? "" : "s"}.`
+            : `Unable to add ${rejectedCount} of ${files.length} files — kept the rest.`
+        );
+      }
+    } catch (nextError) {
+      setError(describeCmsError(nextError));
+    } finally {
+      setUploadingField(null);
+    }
+  }
+
+  /** Replaces one gallery item in place, preserving its position and alt text. */
+  async function handleGalleryItemUpload(field: ImageGalleryField, index: number, file: File) {
+    if (!activeCollection || !draftRecord) {
+      return;
+    }
+
+    const uploadRecordId = draftRecord.id;
+    setUploadingField(field.key);
+    setError(null);
+
+    try {
+      const [result, dimensions] = await Promise.all([storage.uploadAsset(activeCollection.id, field.key, file), getImageDimensions(file)]);
+      rememberAssetMeta(result.url, { fileName: result.fileName, size: result.size });
+
+      setDraftRecordState((current) => {
+        if (!current || current.id !== uploadRecordId) {
+          return current;
+        }
+
+        const items = parseImageGallery(current.values[field.key]);
+        if (index < 0 || index >= items.length) {
+          return current;
+        }
+
+        const nextItems = [...items];
+        nextItems[index] = {
+          src: result.url,
+          fileName: result.fileName,
+          size: result.size,
+          ...(dimensions ? { width: dimensions.width, height: dimensions.height } : {}),
+          alt: items[index].alt
+        };
+
+        return {
+          ...current,
+          values: {
+            ...current.values,
+            [field.key]: serializeImageGallery(nextItems)
           }
         };
       });
@@ -625,6 +766,8 @@ export function useCmsWorkspace() {
     handleDeleteRecords,
     handleDuplicateRecord,
     handleExport,
+    handleGalleryItemUpload,
+    handleGalleryUpload,
     handleImportRecords,
     handleSaveRecord,
     handleSelectCollection,

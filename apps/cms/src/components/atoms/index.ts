@@ -1,7 +1,11 @@
 export { Button } from "./button";
 export { IconButton } from "./icon-button";
 export { BareIconButton } from "./bare-icon-button";
-export { AssetControl, getAssetMeta, rememberAssetMeta } from "./asset-field";
+export { AssetControl } from "./asset-field";
+export { getAssetMeta, rememberAssetMeta } from "./asset-meta";
+export { FileDropZone } from "./file-drop-zone";
+export { ImageCard } from "./image-card";
+export { ImageControl, ImageGalleryControl } from "./image-controls";
 export { Checkbox } from "./checkbox";
 export { ConfirmDialog } from "./confirm-dialog";
 export { FormField } from "./form-field";

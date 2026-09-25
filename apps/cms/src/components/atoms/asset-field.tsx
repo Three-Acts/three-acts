@@ -1,29 +1,15 @@
 import { useState } from "react";
-import type { DragEvent } from "react";
-import { ArrowUpRight, FileText, Film, Image as ImageIcon, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowUpRight, FileText, Film, Image as ImageIcon, RefreshCw, Trash2 } from "lucide-react";
 import { cn } from "@three-acts/utils";
 import { BareIconButton } from "./bare-icon-button";
+import { getAssetMeta } from "./asset-meta";
 import { Button } from "./button";
+import { FileDropZone } from "./file-drop-zone";
+import { matchesAccept } from "./file-utils";
 import { Tooltip } from "./tooltip";
 import { buttonVariants, fileLabelFocusRing } from "./styles";
 
 type AssetKind = "image" | "video" | "file";
-
-type AssetMeta = { fileName: string; size: number };
-
-// The upload response is the only place a fresh file's real name/size live —
-// the record only ever stores the URL. Keyed by URL so the card can recover
-// them right after upload, even though nothing about the URL itself carries
-// that information (and a `/mock-storage/...` URL never will).
-const assetMetaByUrl = new Map<string, AssetMeta>();
-
-export function rememberAssetMeta(url: string, meta: AssetMeta): void {
-  assetMetaByUrl.set(url, meta);
-}
-
-export function getAssetMeta(url: string): AssetMeta | undefined {
-  return assetMetaByUrl.get(url);
-}
 
 const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "avif", "svg"]);
 const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "mov", "m4v"]);
@@ -114,31 +100,6 @@ function fileNameFromUrl(url: string): string {
   }
 }
 
-function matchesAccept(file: File, accept?: string): boolean {
-  const patterns = accept
-    ? accept
-        .split(",")
-        .map((pattern) => pattern.trim())
-        .filter(Boolean)
-    : [];
-
-  if (patterns.length === 0) {
-    return true;
-  }
-
-  return patterns.some((pattern) => {
-    if (pattern.startsWith(".")) {
-      return file.name.toLowerCase().endsWith(pattern.toLowerCase());
-    }
-
-    if (pattern.endsWith("/*")) {
-      return file.type.startsWith(pattern.slice(0, -1));
-    }
-
-    return file.type === pattern;
-  });
-}
-
 type AssetControlProps = {
   accept?: string;
   /** Id of whichever file input is currently mounted, so `FormField`'s label stays wired to it. */
@@ -151,7 +112,6 @@ type AssetControlProps = {
 
 /** Webflow-style asset picker: a drop zone when empty, a preview card with actions once a file is set. */
 export function AssetControl({ accept, inputId, isUploading, onClear, onFile, value }: AssetControlProps) {
-  const [isDragging, setIsDragging] = useState(false);
   const [hasRejectedFile, setHasRejectedFile] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
@@ -168,41 +128,13 @@ export function AssetControl({ accept, inputId, isUploading, onClear, onFile, va
     setNaturalSize(null);
   }
 
-  function acceptFiles(files: FileList | null) {
-    const file = files?.[0];
-
-    if (!file) {
-      return;
-    }
-
+  function acceptFile(file: File) {
     if (!matchesAccept(file, accept)) {
       setHasRejectedFile(true);
       return;
     }
-
     setHasRejectedFile(false);
     onFile(file);
-  }
-
-  function handleDragOver(event: DragEvent<HTMLLabelElement>) {
-    event.preventDefault();
-    if (!isUploading) {
-      setIsDragging(true);
-    }
-  }
-
-  function handleDragLeave(event: DragEvent<HTMLLabelElement>) {
-    event.preventDefault();
-    setIsDragging(false);
-  }
-
-  function handleDrop(event: DragEvent<HTMLLabelElement>) {
-    event.preventDefault();
-    setIsDragging(false);
-
-    if (!isUploading) {
-      acceptFiles(event.dataTransfer.files);
-    }
   }
 
   const errorMessage = hasRejectedFile ? <p className="m-0 text-ui text-cms-danger">That file type isn&apos;t accepted here.</p> : null;
@@ -212,41 +144,21 @@ export function AssetControl({ accept, inputId, isUploading, onClear, onFile, va
 
     return (
       <div className="grid gap-1.5">
-        <label
-          className={cn(
-            "flex min-h-24 flex-col items-center justify-center gap-1 rounded-cms border border-dashed border-cms-track bg-cms-surface px-4 py-4 text-center transition-colors",
-            isUploading ? "cursor-not-allowed opacity-60" : "cursor-pointer",
-            isDragging && "border-cms-accent bg-cms-raised",
-            fileLabelFocusRing
-          )}
-          onDragLeave={handleDragLeave}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-        >
-          {isUploading ? (
-            <>
-              <Loader2 aria-hidden="true" className="animate-spin text-cms-muted" size={20} />
-              <span className="text-ui font-medium text-cms-text">Uploading…</span>
-            </>
-          ) : (
-            <>
-              {renderKindIcon(kind, 20)}
-              <span className="text-ui font-medium text-cms-text">Drag your {kindNoun(kind)} here</span>
-              <span className="text-ui text-cms-subtle">or click to browse for a file</span>
-            </>
-          )}
-          <input
-            accept={accept}
-            className="sr-only"
-            disabled={isUploading}
-            id={inputId}
-            onChange={(event) => {
-              acceptFiles(event.target.files);
-              event.target.value = "";
-            }}
-            type="file"
-          />
-        </label>
+        <FileDropZone
+          accept={accept}
+          icon={renderKindIcon(kind, 20)}
+          inputId={inputId}
+          isUploading={isUploading}
+          onFiles={(files) => {
+            const file = files[0];
+            if (file) {
+              acceptFile(file);
+            }
+          }}
+          onRejected={() => setHasRejectedFile(true)}
+          subtitle="or click to browse for a file"
+          title={`Drag your ${kindNoun(kind)} here`}
+        />
         {errorMessage}
       </div>
     );
@@ -313,7 +225,10 @@ export function AssetControl({ accept, inputId, isUploading, onClear, onFile, va
             disabled={isUploading}
             id={inputId}
             onChange={(event) => {
-              acceptFiles(event.target.files);
+              const file = event.target.files?.[0];
+              if (file) {
+                acceptFile(file);
+              }
               event.target.value = "";
             }}
             type="file"

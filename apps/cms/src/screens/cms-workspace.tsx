@@ -24,6 +24,8 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
     handleDeleteRecords,
     handleDuplicateRecord,
     handleExport,
+    handleGalleryItemUpload,
+    handleGalleryUpload,
     handleImportRecords,
     handleSaveRecord,
     handleSelectCollection,
@@ -202,6 +204,8 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
                   isDirty={isDirty}
                   isSaving={isSaving}
                   onAssetUpload={handleAssetUpload}
+                  onGalleryItemUpload={handleGalleryItemUpload}
+                  onGalleryUpload={handleGalleryUpload}
                   onBack={handleGuardedBack}
                   onChangeStatus={(status) => handleSaveRecord(status)}
                   onDelete={() => handleDeleteRecords([draftRecord.id])}

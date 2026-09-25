@@ -1,13 +1,13 @@
 import { collectionRegistry } from "./registry";
-import { CmsError } from "./types";
+import { CmsError, serializeImageGallery, serializeImageValue } from "./types";
 import type {
-  AssetField,
   AssetUploadResult,
   CmsBackend,
   CmsCollection,
   CmsField,
   CmsRecord,
   CmsRecordValue,
+  ImageValue,
   ListRecordsOptions,
   PublishStatus,
   SaveRecordOptions,
@@ -305,15 +305,15 @@ export const mockCmsBackend: CmsBackend = {
       const collection = assertWritable(getCollection(collectionId));
       const field = collection.fields.find((item) => item.key === fieldKey);
 
-      if (!field || field.type !== "asset") {
+      if (!field || (field.type !== "asset" && field.type !== "image" && field.type !== "image-gallery")) {
         throw new CmsError("validation", `Field is not an asset field: ${fieldKey}`);
       }
 
-      const assetField = field as AssetField;
+      const bucket = (field as { bucket: string }).bucket;
       const safeName = file.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
       const result: AssetUploadResult = {
-        path: `${assetField.bucket}/${collection.tableName}/${Date.now()}-${safeName}`,
-        url: `/mock-storage/${assetField.bucket}/${collection.tableName}/${safeName}`,
+        path: `${bucket}/${collection.tableName}/${Date.now()}-${safeName}`,
+        url: `/mock-storage/${bucket}/${collection.tableName}/${safeName}`,
         fileName: file.name,
         size: file.size
       };
@@ -432,7 +432,7 @@ function valuesForCollection(collection: CmsCollection, index: number, id: strin
         slug: slugify(`${name} notes from the field`),
         excerpt: makeParagraph(index, "post"),
         body: `${makeParagraph(index, "post")}\n\n${makeParagraph(index + 1, "follow-up")}`,
-        coverImage: assetOrEmpty(index, collection.tableName, "cover", "png"),
+        coverImage: imageOrEmpty(index, collection.tableName, "cover", "png"),
         author: people[index % people.length],
         tags: ["performance", "seo", "workflow", "cms", "astro"].filter((_, tagIndex) => (index + tagIndex) % 3 !== 0).join(", "),
         publishedAt: isoFromSeed(-index * 2, index * 7)
@@ -445,7 +445,8 @@ function valuesForCollection(collection: CmsCollection, index: number, id: strin
         template: pickOption(collection, "template", index),
         priority: (index % 12) + 1,
         featured: index % 5 === 0,
-        heroImage: assetOrEmpty(index, collection.tableName, "hero", "jpg"),
+        heroImage: imageOrEmpty(index, collection.tableName, "hero", "jpg"),
+        imageGallery: galleryOrEmpty(index, collection.tableName),
         publishAt: index % 4 === 0 ? "" : isoFromSeed(index % 10, index * 3),
         recordId: id
       };
@@ -688,6 +689,42 @@ function assetOrEmpty(index: number, tableName: string, prefix: string, extensio
   }
 
   return `/mock-storage/cms-assets/${tableName}/${prefix}-${String(index + 1).padStart(3, "0")}.${extension}`;
+}
+
+/** Typed single-image JSON for realistic editor fixtures (empty every 7th record). */
+function imageOrEmpty(index: number, tableName: string, prefix: string, extension: string): string {
+  const src = assetOrEmpty(index, tableName, prefix, extension);
+  if (!src) {
+    return "";
+  }
+
+  const fileName = `${prefix}-${String(index + 1).padStart(3, "0")}.${extension}`;
+  return serializeImageValue({
+    src,
+    fileName,
+    size: 180000 + index * 2500,
+    width: 1600,
+    height: 900,
+    alt: index % 3 === 0 ? "" : `${makeName(index)} ${prefix} image`
+  });
+}
+
+/** Typed gallery JSON for the launch-pages Test Collection Set (empty every 5th record). */
+function galleryOrEmpty(index: number, tableName: string): string {
+  if (index % 5 === 0) {
+    return "[]";
+  }
+
+  const items: ImageValue[] = [1, 2].map((n) => ({
+    src: `/mock-storage/cms-assets/${tableName}/gallery-${String(index + 1).padStart(3, "0")}-${n}.jpg`,
+    fileName: `gallery-${String(index + 1).padStart(3, "0")}-${n}.jpg`,
+    size: 120000 + index * 1000 + n,
+    width: 1600,
+    height: 900,
+    alt: n === 1 ? `Gallery image ${index + 1}a` : ""
+  }));
+
+  return serializeImageGallery(items);
 }
 
 function isoFromSeed(dayOffset: number, minuteOffset: number) {

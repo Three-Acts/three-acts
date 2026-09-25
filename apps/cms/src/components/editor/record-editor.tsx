@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Copy, Lock, Trash2 } from "lucide-react";
-import type { AssetField, CmsCollectionSummary, CmsRecord, CmsRecordValue, PublishStatus } from "../../cms/types";
+import type { AssetField, CmsCollectionSummary, CmsRecord, CmsRecordValue, ImageField, ImageGalleryField, PublishStatus } from "../../cms/types";
 import { formatDateTime } from "../../lib/format";
 import { getRecordTitle, hasPublishWorkflow, isEditable } from "../../lib/records";
 import { BareIconButton, Button, ConfirmDialog, PanelHeader, ScrollArea, SplitButton, StatusPill, Tooltip } from "../atoms";
@@ -15,7 +15,9 @@ type RecordEditorProps = {
   draftRecord: CmsRecord;
   isDirty: boolean;
   isSaving: boolean;
-  onAssetUpload: (field: AssetField, file: File) => void;
+  onAssetUpload: (field: AssetField | ImageField, file: File) => void;
+  onGalleryUpload: (field: ImageGalleryField, files: File[]) => void;
+  onGalleryItemUpload: (field: ImageGalleryField, index: number, file: File) => void;
   onBack: () => void;
   onChangeStatus: (status: Exclude<PublishStatus, "published">) => void;
   onDelete: () => void;
@@ -33,6 +35,8 @@ export function RecordEditor({
   isDirty,
   isSaving,
   onAssetUpload,
+  onGalleryUpload,
+  onGalleryItemUpload,
   onBack,
   onChangeStatus,
   onDelete,
@@ -108,13 +112,15 @@ export function RecordEditor({
         </div>
       </PanelHeader>
 
-      <ScrollArea className="min-h-0 flex-1">
+      <ScrollArea className="min-h-0 flex-1" viewportClassName="[overflow-anchor:none]">
         <EditorSection title="Basic info">
           {collection.fields.slice(0, 3).map((field) => (
             <FieldControl
               field={field}
               key={field.key}
               onAssetUpload={onAssetUpload}
+              onGalleryItemUpload={onGalleryItemUpload}
+              onGalleryUpload={onGalleryUpload}
               onUpdateValue={onUpdateValue}
               readOnly={!editable}
               record={draftRecord}
@@ -129,6 +135,8 @@ export function RecordEditor({
               field={field}
               key={field.key}
               onAssetUpload={onAssetUpload}
+              onGalleryItemUpload={onGalleryItemUpload}
+              onGalleryUpload={onGalleryUpload}
               onUpdateValue={onUpdateValue}
               readOnly={!editable}
               record={draftRecord}
