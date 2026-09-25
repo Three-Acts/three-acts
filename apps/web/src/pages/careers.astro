@@ -5,30 +5,30 @@ import { site } from "../site";
 import { InfoPage } from "../views/info/InfoPage";
 
 const meta = await infoPageMeta("/careers", {
-  title: "Work with us",
-  description: "Open roles at the Fynbos & Fire roastery in Observatory, Cape Town — see current openings and how to apply."
+  title: "Careers",
+  description: "Open roles at Three Acts — a DX engineer and a design-system engineer — and how to apply."
 });
 
 const sections = [
   {
-    heading: "Working at the roastery",
-    body: "We're a small team that roasts, cups and ships every order out of one room in Observatory — everyone here has pulled shots, packed bags and answered the phone at some point, whatever's on their job title. If you care about coffee and don't mind an early start, you'll fit right in."
+    heading: "Working here",
+    body: "We build and maintain the template itself — everyone here reads support email, ships template updates and helps agency partners get unstuck, whatever's on their job title."
   },
   {
-    heading: "Barista trainer",
-    body: "Part-time, based at the roastery espresso bar and travelling to wholesale accounts across the Western Cape. You'll run onboarding for new café partners, host our Saturday cupping sessions, and keep our own bar dialled in. Espresso and latte-art experience essential; a WBC or SCA barista qualification is a plus, not a requirement."
+    heading: "DX engineer",
+    body: "Full-time, remote. You'll work on the CLI, the collection registry tooling and the schema migration scripts — the parts of Three Acts that make forking the template for a new client fast instead of fiddly. Comfortable in TypeScript across a monorepo; you care about error messages and docs as much as code."
   },
   {
-    heading: "Roastery assistant",
-    body: "Full-time, Monday to Friday at the roastery. Green bean handling, packing and labelling, roast-day cleanup, and general support for the head roaster — a hands-on role for someone who wants to learn the craft from the ground up. No experience required; a reliable, early-morning work ethic is."
+    heading: "Design-system engineer",
+    body: "Full-time, remote. You'll own the component kit in apps/web/src/components/ui and apps/cms — tokens, primitives, accessibility, and keeping the two themes (public site, editorial workspace) consistent without merging them. A strong eye for type, spacing and interaction detail."
   },
   {
     heading: "How to apply",
-    body: `Send a short note about yourself and a CV to ${site.email} with the role name in the subject line. No cover letter template needed — just tell us why you want to work with coffee, and why here.`
+    body: `Send a short note about yourself and a CV or portfolio to ${site.email} with the role name in the subject line. No cover letter template needed — just tell us why you want to work on this, and why here.`
   }
 ];
 ---
 
 <BaseLayout seo={meta.seo}>
-  <InfoPage title="Work with us" lede="We're hiring at the roastery in Observatory — see what's open below." sections={sections} />
+  <InfoPage eyebrow="Team" title="Careers" lede="We're a small team building the template full-time — see what's open below." sections={sections} />
 </BaseLayout>

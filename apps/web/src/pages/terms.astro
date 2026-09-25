@@ -6,29 +6,29 @@ import { InfoPage } from "../views/info/InfoPage";
 
 const meta = await infoPageMeta("/terms", {
   title: "Terms & conditions",
-  description: "The terms that apply when you shop with Fynbos & Fire, including orders, pricing, delivery and subscriptions."
+  description: `The terms that apply when you buy a licence or use ${site.name}, including orders, pricing, delivery and licence scope.`
 });
 
 const sections = [
   {
     heading: "Orders",
-    body: "Placing an order is an offer to buy at the price shown at checkout; we accept it by confirming and roasting. We may cancel and refund an order we can't fulfil — most often because an item sold out between browsing and checkout — and we'll always tell you why."
+    body: "Buying a licence is an offer to buy at the price shown at checkout; we accept it by granting access to the repository. We may cancel and refund an order we can't fulfil, and we'll always tell you why."
   },
   {
     heading: "Pricing & payment",
-    body: "All prices are shown in South African Rand and include VAT unless stated otherwise. We take reasonable care to keep prices accurate, but if one is wrong we'll contact you before processing an order at the incorrect price. Payment is taken when you place your order."
+    body: "All prices are shown in US Dollars. We take reasonable care to keep prices accurate, but if one is wrong we'll contact you before processing an order at the incorrect price. Payment is taken when you place your order."
   },
   {
     heading: "Delivery",
-    body: "Delivery timeframes on our shipping page are estimates, not guarantees — once an order leaves the roastery with our courier, delivery timing is outside our control. Current rates and dispatch times are always kept up to date there."
+    body: "There's no physical delivery — buying a licence grants access to the private GitHub repository and any assets listed on the product page, usually within a few minutes of payment clearing."
   },
   {
-    heading: "Subscriptions",
-    body: "A coffee subscription renews automatically on the schedule you choose until you pause or cancel it. You can pause, skip or cancel any time from your account, up to two days before the next roast date — after that, that round has already gone into production."
+    heading: "Licence scope",
+    body: "What a licence covers is set out on /licenses. Using the template outside the scope of the licence you bought — on more sites, for more clients — requires upgrading first."
   },
   {
     heading: "Website use",
-    body: "This site and its content belong to Fynbos & Fire (Pty) Ltd. You're welcome to link to it or share it, but reproducing our photography, recipes or copy elsewhere needs our written permission first."
+    body: `This site and its content belong to ${site.name}. You're welcome to link to it or share it, but reproducing our copy, screenshots or documentation elsewhere needs our written permission first.`
   },
   {
     heading: "Changes to these terms",
@@ -38,5 +38,5 @@ const sections = [
 ---
 
 <BaseLayout seo={meta.seo}>
-  <InfoPage title="Terms & conditions" lede="The terms that apply whenever you order from Fynbos & Fire." sections={sections} />
+  <InfoPage eyebrow="Legal" title="Terms & conditions" lede={`The terms that apply whenever you buy a licence from ${site.name}.`} sections={sections} />
 </BaseLayout>

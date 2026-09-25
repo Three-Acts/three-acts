@@ -1,0 +1,46 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { infoPageMeta } from "../page-meta";
+import { InfoPage } from "../views/info/InfoPage";
+
+const meta = await infoPageMeta("/docs", {
+  title: "Docs",
+  description: "How to clone, run and deploy Three Acts — the three apps, the collection registry, content sources and guides."
+});
+
+const sections = [
+  {
+    heading: "Getting started",
+    body: "Clone the repository, then install once from the repo root.\n\n- Clone the repo and cd into it\n- npm install — installs every app and package in the workspace\n- npm run dev — runs the web app on mock content with zero configuration; add npm run dev:api and npm run dev:cms when you need the CMS and API too"
+  },
+  {
+    heading: "The three apps",
+    body: "Three Acts is three apps in one repo. apps/web is the public Astro site — pages, sections and the storefront. apps/cms is the private editorial workspace where articles, products and pages get written. apps/api is the server-side bridge every write and every auth call goes through — the only app that touches a database, a payment provider or a secret."
+  },
+  {
+    heading: "The registry",
+    body: "Every editable collection — products, articles, authors, FAQs, testimonials, page settings — is defined once in packages/cms-schema's collection registry. Add a field there, run the schema diff, and the CMS, the API and the site's content types all pick it up together."
+  },
+  {
+    heading: "Content sources",
+    body: "The site builds against CONTENT_SOURCE=api by default, reading published content from the API's public content route. Set CONTENT_SOURCE=mock and the same build runs against a seed-backed fetch with zero servers and zero credentials — useful for a quick clone-and-preview."
+  },
+  {
+    heading: "Deploying",
+    body: "apps/web, apps/cms and apps/api each deploy as their own Vercel project. Publishing from the CMS calls the API's deploy hook and rebuilds the static site from whatever's published at that moment."
+  },
+  {
+    heading: "Guides",
+    body: "Longer walkthroughs — forking the registry for a new client, swapping the CMS backend, wiring a payment provider — live in the journal's guides category.\n\n/blog/category/guides"
+  }
+];
+---
+
+<BaseLayout seo={meta.seo}>
+  <InfoPage
+    eyebrow="Documentation"
+    title="Docs"
+    lede="How to clone, run and deploy the template — start here, then dig into the journal's guides for anything deeper."
+    sections={sections}
+  />
+</BaseLayout>

@@ -6,25 +6,25 @@ import { InfoPage } from "../views/info/InfoPage";
 
 const meta = await infoPageMeta("/privacy", {
   title: "Privacy policy",
-  description: "How Fynbos & Fire collects, uses and protects your personal information in line with POPIA."
+  description: `How ${site.name} collects, uses and protects your personal information.`
 });
 
 const sections = [
   {
     heading: "What we collect",
-    body: "When you order, sign up, subscribe to our newsletter or contact us, we collect what's needed to act on it — your name, email, phone number, delivery address and order history. We never collect card details ourselves; payment is handled by our payment provider directly."
+    body: "When you buy a licence, sign up, subscribe to updates or contact us, we collect what's needed to act on it — your name, email and order history. We never collect card details ourselves; payment is handled by our payment provider directly."
   },
   {
     heading: "Why we collect it",
-    body: "- To take and deliver an order, and to support you if something goes wrong\n- To run your account, including order history and saved details\n- To send order and delivery updates you can't opt out of while you have an open order\n- To send marketing emails, only if you've opted in, and only until you unsubscribe\n- To respond to a message sent through our contact, wholesale or newsletter forms"
+    body: "- To process an order and grant repository access\n- To run your account, including order history and licence records\n- To send order and update emails you can't opt out of while you have an active licence\n- To send marketing emails, only if you've opted in, and only until you unsubscribe\n- To respond to a message sent through our contact or agency enquiry forms"
   },
   {
     heading: "How we protect it",
-    body: "Your information is stored with providers that meet current security standards, accessed only by the people who need it to run the roastery and fulfil your order. We don't sell your personal information to anyone."
+    body: "Your information is stored with providers that meet current security standards, accessed only by the people who need it to run the business and support your order. We don't sell your personal information to anyone."
   },
   {
-    heading: "Your rights under POPIA",
-    body: `Under South Africa's Protection of Personal Information Act, you can ask us what we hold about you, ask us to correct or delete it, and withdraw marketing consent at any time. Email ${site.email} and we'll respond within a reasonable time.`
+    heading: "Your rights",
+    body: `Wherever you're based, you can ask us what we hold about you, ask us to correct or delete it, and withdraw marketing consent at any time — including under South Africa's POPIA and the EU/UK GDPR, where they apply. Email ${site.email} and we'll respond within a reasonable time.`
   },
   {
     heading: "Cookies",
@@ -32,11 +32,11 @@ const sections = [
   },
   {
     heading: "Changes to this policy",
-    body: `We'll update this page if how we handle your information changes materially. Questions in the meantime? Email ${site.email} or write to us at ${site.address.street}, ${site.address.locality}, ${site.address.postalCode}.`
+    body: `We'll update this page if how we handle your information changes materially. Questions in the meantime? Email ${site.email}.`
   }
 ];
 ---
 
 <BaseLayout seo={meta.seo}>
-  <InfoPage title="Privacy policy" lede="How we collect, use and protect your personal information." sections={sections} />
+  <InfoPage eyebrow="Legal" title="Privacy policy" lede="How we collect, use and protect your personal information." sections={sections} />
 </BaseLayout>

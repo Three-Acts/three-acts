@@ -1,6 +1,7 @@
 import { useState, type SubmitEvent } from "react";
 import { useFormSubmission } from "@three-acts/forms/react";
 import { apiFetch } from "../../lib/api-client";
+import { site } from "../../site";
 import { Button } from "../ui/button";
 import { Field } from "../ui/field";
 import { Notice } from "../ui/notice";
@@ -8,9 +9,9 @@ import { Notice } from "../ui/notice";
 /**
  * `/contact` page's one island (`form: "contact"` — see `@three-acts/forms`'s
  * `validateSubmission`, which requires `name`/`email`/`message` for this
- * form type and leaves `phone`/`consent` optional). Styled for the light
- * "paper" surface, unlike the footer `NewsletterForm` which is styled for
- * the dark footer.
+ * form type and leaves `phone`/`consent` optional). The `<form>` itself is
+ * the bordered module — a 1px black border on white, matching every other
+ * card/tile in the system.
  */
 export function ContactForm() {
   const { status, errors, message, submit } = useFormSubmission({ apiFetch });
@@ -45,7 +46,7 @@ export function ContactForm() {
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="flex flex-col gap-5 border border-line bg-surface-raised p-6 desktop:p-8"
+      className="flex flex-col gap-5 border border-line-strong bg-surface p-6 desktop:p-8"
     >
       <Field.Root label="Name" error={errors.name} required>
         <Field.Input
@@ -101,7 +102,7 @@ export function ContactForm() {
       />
 
       <Field.Checkbox
-        label="I consent to Fynbos & Fire storing these details to respond to my enquiry."
+        label={`I consent to ${site.name} storing these details to respond to my enquiry.`}
         checked={consent}
         onChange={(event) => setConsent(event.target.checked)}
       />

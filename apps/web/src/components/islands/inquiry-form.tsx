@@ -1,16 +1,17 @@
 import { useState, type SubmitEvent } from "react";
 import { useFormSubmission } from "@three-acts/forms/react";
 import { apiFetch } from "../../lib/api-client";
+import { site } from "../../site";
 import { Button } from "../ui/button";
 import { Field } from "../ui/field";
 import { Notice } from "../ui/notice";
 
 /**
- * `/wholesale` page's one island (`form: "inquiry"` — see
+ * `/agencies` page's one island (`form: "inquiry"` — see
  * `@three-acts/forms`'s `validateSubmission`, which requires
  * `name`/`email`/`message` for this form type and leaves `company`/`phone`/
- * `consent` optional, though every wholesale lead worth following up on will
- * have a company).
+ * `consent` optional, though every agency lead worth following up on will
+ * have a company). The `<form>` itself is the bordered module.
  */
 export function InquiryForm() {
   const { status, errors, message, submit } = useFormSubmission({ apiFetch });
@@ -38,7 +39,7 @@ export function InquiryForm() {
   if (status === "success") {
     return (
       <Notice.Root tone="success" title="Enquiry sent">
-        Thanks — our wholesale team replies within two working days.
+        Thanks — we reply within two working days.
       </Notice.Root>
     );
   }
@@ -47,9 +48,9 @@ export function InquiryForm() {
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="flex flex-col gap-5 border border-line bg-surface-raised p-6 desktop:p-8"
+      className="flex flex-col gap-5 border border-line-strong bg-surface p-6 desktop:p-8"
     >
-      <Field.Root label="Company" hint="Café, office or restaurant name" error={errors.company}>
+      <Field.Root label="Company" hint="Your agency or studio name" error={errors.company}>
         <Field.Input
           name="company"
           autoComplete="organization"
@@ -94,7 +95,7 @@ export function InquiryForm() {
           name="message"
           rows={5}
           required
-          placeholder="Roughly how many kilos a month, and where you're based — the more detail, the faster we can quote."
+          placeholder="Roughly how many client sites a year, and what you're building today — the more detail, the faster we can reply."
           value={body}
           onChange={(event) => setBody(event.target.value)}
         />
@@ -113,7 +114,7 @@ export function InquiryForm() {
       />
 
       <Field.Checkbox
-        label="I consent to Fynbos & Fire storing these details to respond to this enquiry."
+        label={`I consent to ${site.name} storing these details to respond to this enquiry.`}
         checked={consent}
         onChange={(event) => setConsent(event.target.checked)}
       />

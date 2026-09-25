@@ -1,0 +1,39 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { infoPageMeta } from "../page-meta";
+import { site } from "../site";
+import { InfoPage } from "../views/info/InfoPage";
+
+const meta = await infoPageMeta("/refunds", {
+  title: "Refunds",
+  description: "14 days on unused licences; no refunds once repo access is granted, except for defects."
+});
+
+const sections = [
+  {
+    heading: "Unused licences",
+    body: `If you haven't been given repo access yet, you can cancel within 14 days of purchase for a full refund — email ${site.email} with your order number and we'll process it within a few working days.`
+  },
+  {
+    heading: "After repo access",
+    body: "Once we've added you to the private GitHub repo for a licence, that licence is no longer refundable — you've received the thing you paid for. This is the same policy most software and template vendors run, for the same reason: a repo invite can't be un-sent."
+  },
+  {
+    heading: "Defects",
+    body: "The one exception: if what you received doesn't match its listing — the wrong tier, a broken invite, a template that genuinely doesn't run — tell us and we'll fix it or refund it, no time limit."
+  },
+  {
+    heading: "How to request a refund",
+    body: `Email ${site.email} with your order number and the reason. We reply within one working day and process an approved refund to your original payment method within 5–7 working days.`
+  }
+];
+---
+
+<BaseLayout seo={meta.seo}>
+  <InfoPage
+    eyebrow="Support"
+    title="Refunds"
+    lede="14 days on an unused licence, no questions asked. Here's exactly how it works."
+    sections={sections}
+  />
+</BaseLayout>

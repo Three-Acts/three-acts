@@ -1,6 +1,6 @@
+import type { ReactNode } from "react";
 import { Section } from "../../components/layout/section";
 import { Prose } from "../../components/ui/prose";
-import { Typography } from "../../components/ui/typography";
 
 export type InfoPageSection = {
   heading: string;
@@ -8,38 +8,39 @@ export type InfoPageSection = {
 };
 
 export type InfoPageProps = {
+  eyebrow?: string;
   title: string;
   lede?: string;
   sections: InfoPageSection[];
+  /** Extra content rendered between the header and the heading/body rows — the pricing tiles on `/licenses`, the "coming soon" Notice on `/changelog`. */
+  children?: ReactNode;
 };
 
 /**
  * Shared layout for the storefront's plain, mostly-static info pages
- * (`/visit-the-roastery`, `/shipping`, `/returns`, `/terms`, `/privacy`,
- * `/careers`, `/subscriptions`): a single `<h1>` + optional lede, then a
- * stack of heading/body sections. Every info page composes this from plain
- * data rather than hand-rolled markup, so the pages stay visually
- * consistent. `body` is plain text rendered through `Prose.Root` (supports
- * `\n\n`-separated paragraphs, `- ` lists, and autolinks bare `/shop`,
- * `/blog` paths and `https://` URLs) — write real sentences, not markdown
- * headings; the section's own `heading` already covers that.
+ * (`/docs`, `/licenses`, `/refunds`, `/terms`, `/privacy`, `/careers`,
+ * `/changelog`): a `Section.Header` (eyebrow/title/lede), then a stack of
+ * heading/body rows, each `border-t border-line-strong py-8`, the heading
+ * in a fixed-width label column on landscape+ and the body — plain text
+ * through `Prose.Root` (supports `\n\n`-separated paragraphs, `- ` lists,
+ * and autolinks bare `/shop`, `/blog` paths and `https://` URLs) — filling
+ * the rest. Every info page composes this from plain data rather than
+ * hand-rolled markup, so the pages stay visually consistent.
  */
-export function InfoPage({ title, lede, sections }: InfoPageProps) {
+export function InfoPage({ eyebrow, title, lede, sections, children }: InfoPageProps) {
   return (
-    <Section.Root className="py-16 desktop:py-24">
-      <Section.Container className="max-w-3xl">
-        <Typography.Eyebrow>Fynbos &amp; Fire</Typography.Eyebrow>
-        <Typography.Display className="mt-5 text-5xl landscape:text-6xl">{title}</Typography.Display>
-        {lede && <Typography.Lede className="mt-6 max-w-2xl">{lede}</Typography.Lede>}
-
-        <div className="mt-14 flex flex-col gap-10">
+    <Section.Root>
+      <Section.Container className="max-w-4xl">
+        <Section.Header eyebrow={eyebrow} title={title} lede={lede} />
+        {children}
+        <div className="flex flex-col">
           {sections.map((section) => (
             <section
               key={section.heading}
-              className="flex flex-col gap-3 border-t border-line pt-8 first:border-t-0 first:pt-0"
+              className="grid gap-4 border-t border-line-strong py-8 landscape:grid-cols-[16rem_1fr] landscape:gap-x-gap"
             >
-              <h2 className="text-2xl font-semibold tracking-tight text-ink font-serif">{section.heading}</h2>
-              <Prose.Root body={section.body} className="gap-3 text-base leading-7 text-ink" />
+              <h3 className="text-h3 font-medium text-ink">{section.heading}</h3>
+              <Prose.Root body={section.body} />
             </section>
           ))}
         </div>
