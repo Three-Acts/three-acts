@@ -1,6 +1,12 @@
 import { createServer } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { URL } from "node:url";
+import { URL, fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
+
+// Match the documented per-app setup; explicitly exported test/deploy variables win.
+const envFile = fileURLToPath(new URL("../.env", import.meta.url));
+if (existsSync(envFile)) loadEnvFile(envFile);
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const port = Number(process.env.PORT ?? 5175);
@@ -13,6 +19,8 @@ type RouteLoader = () => Promise<{ default: (request: VercelRequest, response: V
 // and landing in `request.query`. This map stays explicit (no fs scanning) so
 // `tsx` can statically resolve every dynamic import below.
 const routes = {
+  "/api/editor/content": () => import("../api/editor/content"),
+  "/api/editor/push": () => import("../api/editor/push"),
   "/api/health": () => import("../api/health"),
   "/api/meta": () => import("../api/meta"),
   "/api/deploy": () => import("../api/deploy"),
