@@ -1,3 +1,4 @@
+import copy from "@three-acts/static-content/documents/home.json";
 import type { Testimonial } from "@three-acts/content";
 import { Grid } from "../layout/grid";
 import { Section } from "../layout/section";
@@ -17,7 +18,7 @@ export function TestimonialsSection({ testimonials }: TestimonialsSectionProps) 
   return (
     <Section.Root>
       <Section.Container>
-        <Section.Header align="center" eyebrow="Agencies" title="What agencies are saying" />
+        <Section.Header align="center" eyebrow={<span data-static-field="home.testimonials_section.eyebrow_1">{copy.testimonials_section.eyebrow_1}</span>} title={<span data-static-field="home.testimonials_section.title_2">{copy.testimonials_section.title_2}</span>} />
         <Grid.Root cols={testimonials.length >= 4 ? 4 : 3}>
           {testimonials.map((testimonial) => (
             <Card.Testimonial

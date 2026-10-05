@@ -31,7 +31,7 @@ function Container({ children, className, ...props }: ContainerProps) {
   );
 }
 
-type HeaderProps = HTMLAttributes<HTMLDivElement> & {
+type HeaderProps = Omit<HTMLAttributes<HTMLDivElement>, "title"> & {
   className?: string;
   eyebrow?: ReactNode;
   title: ReactNode;

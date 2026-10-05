@@ -1,3 +1,4 @@
+import copy from "@three-acts/static-content/documents/about.json";
 import type { Author, Testimonial } from "@three-acts/content";
 import { Grid } from "../../components/layout/grid";
 import { Section } from "../../components/layout/section";
@@ -12,30 +13,11 @@ type AboutPageProps = {
   testimonials: Testimonial[];
 };
 
-const STORY = [
-  "We built Three Acts after the same brief showed up for the fourth time: a marketing site, somewhere non-technical for an editor to make changes, and no budget to rebuild the plumbing from scratch each time. Three Acts is that shape, built once and left open to configure rather than rewrite.",
-  "The public site renders to static HTML by default. React only ships where a page actually needs it — cart, checkout, sign-in, a form — as an isolated island, not a framework wrapped around every route.",
-  "Every collection, field and constraint is declared once in the collection registry. The editor, the API's validation and the generated Postgres schema all read the same file, so the three never drift apart.",
-  "Neither the public site nor the editorial app ever holds a database credential or a payment key. Every write and every auth call goes through the API app — the one place secrets live, and the one place to audit.",
-  "A client fork edits the registry, the seed data, the shop config and the theme tokens — not the plumbing underneath. Swap the backend, keep the site."
-];
+const STORY = copy.about.story_1;
 
-const VALUE_TILES = [
-  { mark: "01", title: "Static-first", description: "Every route pre-renders to HTML; islands hydrate only what needs to be interactive." },
-  { mark: "02", title: "One registry", description: "Collections, fields and constraints declared once, shared by the editor, the API and the schema." },
-  { mark: "03", title: "Swap the backend", description: "File-backed storage today, Postgres or Supabase tomorrow — the same interface either way." },
-  { mark: "04", title: "Everything through the API", description: "Every browser write and every auth call goes through one app. No app holds a provider credential." },
-  { mark: "05", title: "Fork in an afternoon", description: "Rename the brand, edit the registry, swap the seed data — the plumbing stays put." },
-  { mark: "06", title: "Wireframe design system", description: "Black, white and one gray. Hierarchy comes from size and space, not colour." }
-];
+const VALUE_TILES = copy.about.value_tiles_2;
 
-const PROCESS_STEPS = [
-  { number: "01", title: "Fork", description: "Clone the repo, then rename the brand in site.ts and the design tokens in theme.css." },
-  { number: "02", title: "Configure the registry", description: "Add, remove or retype collections and fields in the collection registry for the client's real content and product model." },
-  { number: "03", title: "Seed and design", description: "Replace the example seed data, swap in the client's real copy and imagery, and adjust the theme tokens to the client's brand." },
-  { number: "04", title: "Connect a store", description: "Point the data and storage backends at Postgres or Supabase — or keep the zero-configuration file-backed store for a lightweight site with no shop." },
-  { number: "05", title: "Deploy", description: "Set the client's own secrets, deploy the web, CMS and API apps, and run the first publish." }
-];
+const PROCESS_STEPS = copy.about.process_steps_3;
 
 /**
  * The `/about` route: a two-column story + value-tile intro, the "how a
@@ -49,13 +31,13 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
       <Section.Root>
         <Section.Container>
           <Section.Header
-            eyebrow="About"
-            title="One template, three apps, no re-plumbing"
-            lede="Three Acts is a static-first Astro site, a private CMS and a typed API bridge, versioned together in one repo. Here's why we built it that way, and what forking it actually looks like."
+            eyebrow={<span data-static-field="about.about.eyebrow_4">{copy.about.eyebrow_4}</span>}
+            title={<span data-static-field="about.about.title_5">{copy.about.title_5}</span>}
+            lede={<span data-static-field="about.about.lede_6">{copy.about.lede_6}</span>}
           />
           <div className="grid gap-x-gap gap-y-gap-y landscape:grid-cols-split">
             <div className="flex flex-col justify-between gap-8">
-              <Typography.Eyebrow>The short version</Typography.Eyebrow>
+              <Typography.Eyebrow><span data-static-field="about.about.eyebrow_7">{copy.about.eyebrow_7}</span></Typography.Eyebrow>
               <div className="flex max-w-[640px] flex-col gap-6">
                 {STORY.map((paragraph, index) => (
                   <p key={index} className="text-body text-ink">
@@ -75,7 +57,7 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
 
       <Section.Root>
         <Section.Container>
-          <Section.Header eyebrow="Process" title="How a client site ships" />
+          <Section.Header eyebrow={<span data-static-field="about.about.eyebrow_8">{copy.about.eyebrow_8}</span>} title={<span data-static-field="about.about.title_9">{copy.about.title_9}</span>} />
           <div>
             {PROCESS_STEPS.map((step) => (
               <div key={step.number} className="grid gap-x-4 gap-y-2 border-t border-line-strong py-8 landscape:grid-cols-[120px_1fr]">
@@ -93,10 +75,10 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
       {authors.length > 0 && (
         <Section.Root className="bg-ink text-surface">
           <Section.Container>
-            <Typography.Title className="mb-10 text-surface">The team</Typography.Title>
+            <Typography.Title className="mb-10 text-surface"><span data-static-field="about.about.title_10">{copy.about.title_10}</span></Typography.Title>
             <div className="grid gap-x-gap gap-y-gap-y landscape:grid-cols-label-grid">
               <div className="flex items-baseline gap-2">
-                <h3 className="text-h3 font-medium text-surface">Team</h3>
+                <h3 className="text-h3 font-medium text-surface"><span data-static-field="about.about.h3_11">{copy.about.h3_11}</span></h3>
                 <span className="text-small text-surface">({authors.length})</span>
               </div>
               <div className="grid grid-cols-1 gap-x-gap gap-y-gap-y landscape:grid-cols-2 tablet:grid-cols-3">
@@ -122,7 +104,7 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
       {testimonials.length > 0 && (
         <Section.Root>
           <Section.Container>
-            <Section.Header align="center" eyebrow="Agencies" title="What agencies say" />
+            <Section.Header align="center" eyebrow={<span data-static-field="about.about.eyebrow_12">{copy.about.eyebrow_12}</span>} title={<span data-static-field="about.about.title_13">{copy.about.title_13}</span>} />
             <Grid.Root cols={testimonials.length >= 4 ? 4 : 3}>
               {testimonials.map((testimonial) => (
                 <Card.Testimonial
@@ -143,10 +125,9 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
       <Section.Root className="pt-0">
         <Section.Container>
           <div className="flex flex-col gap-6 border border-line p-[30px] landscape:flex-row landscape:items-center landscape:justify-between">
-            <Typography.Title as="h2">Talk to us about an agency licence</Typography.Title>
-            <Button.Link href="/agencies" icon="arrow">
-              See agency licensing
-            </Button.Link>
+            <Typography.Title as="h2"><span data-static-field="about.about.title_14">{copy.about.title_14}</span></Typography.Title>
+            <Button.Link data-static-field="about.about.href_15" data-static-attribute="href" href={copy.about.href_15} icon="arrow">
+              <span data-static-field="about.about.link_16">{copy.about.link_16}</span></Button.Link>
           </div>
         </Section.Container>
       </Section.Root>

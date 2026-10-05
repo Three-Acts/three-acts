@@ -1,0 +1,206 @@
+{
+  "contact_details": {
+    "h2_1": "Email",
+    "h2_2": "Support hours",
+    "h2_3": "Address",
+    "h2_4": "Elsewhere"
+  },
+  "site": {
+    "name": "Three Acts",
+    "description": "A static-first client website template: an Astro site, a private CMS and an API bridge, with a storefront, journal, forms and accounts built in. Fork it, configure the registry, ship.",
+    "defaultImage": "/og-default.png",
+    "locale": "en_US",
+    "twitter": "@threeacts",
+    "email": "hello@threeacts.dev",
+    "phone": "+27 21 000 0000",
+    "phoneHref": "+27210000000",
+    "address": {
+      "street": "Woodstock Exchange, 66 Albert Road",
+      "locality": "Woodstock, Cape Town",
+      "postalCode": "7925",
+      "region": "Western Cape",
+      "country": "South Africa"
+    },
+    "hours": [
+      {
+        "days": "Monday – Friday",
+        "hours": "9:00 – 17:00 SAST"
+      },
+      {
+        "days": "Weekends",
+        "hours": "Email only"
+      }
+    ],
+    "social": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/Three-Acts"
+      },
+      {
+        "label": "X",
+        "href": "https://x.com/threeacts"
+      },
+      {
+        "label": "LinkedIn",
+        "href": "https://www.linkedin.com/company/threeacts"
+      }
+    ]
+  },
+  "navLinks": [
+    {
+      "label": "Shop",
+      "href": "/shop"
+    },
+    {
+      "label": "Journal",
+      "href": "/blog"
+    },
+    {
+      "label": "Docs",
+      "href": "/docs"
+    },
+    {
+      "label": "About",
+      "href": "/about"
+    },
+    {
+      "label": "FAQ",
+      "href": "/faq"
+    },
+    {
+      "label": "Agencies",
+      "href": "/agencies"
+    },
+    {
+      "label": "Contact",
+      "href": "/contact"
+    }
+  ],
+  "footerNav": [
+    {
+      "title": "Shop",
+      "links": [
+        {
+          "label": "Everything",
+          "href": "/shop"
+        },
+        {
+          "label": "Apps",
+          "href": "/shop/category/apps"
+        },
+        {
+          "label": "Packages",
+          "href": "/shop/category/packages"
+        },
+        {
+          "label": "Modules",
+          "href": "/shop/category/modules"
+        },
+        {
+          "label": "Themes",
+          "href": "/shop/category/themes"
+        },
+        {
+          "label": "Integrations",
+          "href": "/shop/category/integrations"
+        },
+        {
+          "label": "Licences",
+          "href": "/shop/category/licenses"
+        },
+        {
+          "label": "Services",
+          "href": "/shop/category/services"
+        },
+        {
+          "label": "Bundles",
+          "href": "/shop/category/bundles"
+        }
+      ]
+    },
+    {
+      "title": "Journal",
+      "links": [
+        {
+          "label": "All posts",
+          "href": "/blog"
+        },
+        {
+          "label": "Guides",
+          "href": "/blog/category/guides"
+        },
+        {
+          "label": "Architecture",
+          "href": "/blog/category/architecture"
+        },
+        {
+          "label": "Release notes",
+          "href": "/blog/category/release-notes"
+        }
+      ]
+    },
+    {
+      "title": "Company",
+      "links": [
+        {
+          "label": "About",
+          "href": "/about"
+        },
+        {
+          "label": "Docs",
+          "href": "/docs"
+        },
+        {
+          "label": "Changelog",
+          "href": "/changelog"
+        },
+        {
+          "label": "Careers",
+          "href": "/careers"
+        },
+        {
+          "label": "Agencies",
+          "href": "/agencies"
+        }
+      ]
+    },
+    {
+      "title": "Help",
+      "links": [
+        {
+          "label": "FAQ",
+          "href": "/faq"
+        },
+        {
+          "label": "Licences",
+          "href": "/licenses"
+        },
+        {
+          "label": "Refunds",
+          "href": "/refunds"
+        },
+        {
+          "label": "Contact",
+          "href": "/contact"
+        },
+        {
+          "label": "Terms",
+          "href": "/terms"
+        },
+        {
+          "label": "Privacy",
+          "href": "/privacy"
+        }
+      ]
+    }
+  ],
+  "chrome": {
+    "announcement": "Every purchase includes 12 months of updates and access to the private repo",
+    "shop": "Shop",
+    "menu": "Menu",
+    "skip": "Skip to content",
+    "copyright": "All rights reserved.",
+    "terms": "Terms",
+    "privacy": "Privacy"
+  }
+}

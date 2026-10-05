@@ -1,4 +1,5 @@
 ---
+import copy from "@three-acts/static-content/documents/contact.json";
 import ContactDetails from "../components/info/contact-details";
 import ContactForm from "../components/islands/contact-form";
 import { Section } from "../components/layout/section";
@@ -14,9 +15,9 @@ const meta = await contactMeta();
       <div class="grid gap-x-gap gap-y-gap-y landscape:grid-cols-2">
         <div class="flex flex-col">
           <Section.Header
-            eyebrow="Contact"
-            title="Get in touch"
-            lede="Questions about the template, a licence or an order — we reply within one working day."
+            eyebrow={copy.contact.eyebrow_1}
+            title={copy.contact.title_2}
+            lede={copy.contact.lede_3}
           />
           <ContactDetails />
         </div>

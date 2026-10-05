@@ -1,3 +1,4 @@
+import copy from "@three-acts/static-content/documents/home.json";
 import type { ProductCategory } from "@three-acts/ecommerce";
 import { Grid } from "../layout/grid";
 import { Section } from "../layout/section";
@@ -20,8 +21,8 @@ export function ShopByCategorySection({ categories }: ShopByCategorySectionProps
     <Section.Root>
       <Section.Container>
         <div className="mb-10 flex flex-col gap-4">
-          <Typography.Eyebrow mark="01">Shop</Typography.Eyebrow>
-          <Typography.Title className="max-w-[700px]">What&apos;s in the box</Typography.Title>
+          <Typography.Eyebrow mark="01"><span data-static-field="home.shop_by_category_section.eyebrow_1">{copy.shop_by_category_section.eyebrow_1}</span></Typography.Eyebrow>
+          <Typography.Title className="max-w-[700px]"><span data-static-field="home.shop_by_category_section.title_2">{copy.shop_by_category_section.title_2}</span></Typography.Title>
         </div>
         <Grid.Root cols={4}>
           {shown.map((category, index) => (

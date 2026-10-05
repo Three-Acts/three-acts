@@ -1,0 +1,37 @@
+{
+  "terms": {
+    "metadata_1": {
+      "title": "Terms & conditions",
+      "description": "The terms that apply when you buy a licence or use {{site.name}}, including orders, pricing, delivery and licence scope."
+    },
+    "sections_2": [
+      {
+        "heading": "Orders",
+        "body": "Buying a licence is an offer to buy at the price shown at checkout; we accept it by granting access to the repository. We may cancel and refund an order we can't fulfil, and we'll always tell you why."
+      },
+      {
+        "heading": "Pricing & payment",
+        "body": "All prices are shown in US Dollars. We take reasonable care to keep prices accurate, but if one is wrong we'll contact you before processing an order at the incorrect price. Payment is taken when you place your order."
+      },
+      {
+        "heading": "Delivery",
+        "body": "There's no physical delivery — buying a licence grants access to the private GitHub repository and any assets listed on the product page, usually within a few minutes of payment clearing."
+      },
+      {
+        "heading": "Licence scope",
+        "body": "What a licence covers is set out on /licenses. Using the template outside the scope of the licence you bought — on more sites, for more clients — requires upgrading first."
+      },
+      {
+        "heading": "Website use",
+        "body": "This site and its content belong to {{site.name}}. You're welcome to link to it or share it, but reproducing our copy, screenshots or documentation elsewhere needs our written permission first."
+      },
+      {
+        "heading": "Changes to these terms",
+        "body": "We may update these terms from time to time; the version live on this page at the time of your order applies. Questions? Email {{site.email}}."
+      }
+    ],
+    "eyebrow_3": "Legal",
+    "title_4": "Terms & conditions",
+    "lede_5": "The terms that apply whenever you buy a licence from {{site.name}}."
+  }
+}

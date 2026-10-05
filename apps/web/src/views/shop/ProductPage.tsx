@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { Faq } from "@three-acts/content";
 import type { Product, ProductCategory } from "@three-acts/ecommerce";
+import copy from "@three-acts/static-content/documents/product-template.json";
 import { ProductGrid } from "../../components/shop/product-grid";
 import { AvailabilityBadge } from "../../components/shop/availability-badge";
 import { Badge } from "../../components/ui/badge";
@@ -28,11 +29,11 @@ function Header({ product, category }: HeaderProps) {
   return (
     <div className="flex flex-col gap-3">
       {category && (
-        <a href={`/shop/category/${category.slug}`} className="focus-ring w-fit text-small uppercase tracking-eyebrow text-ink hover:underline">
-          {category.name}
+        <a href={`/shop/category/${category.slug}`} data-cms-bound="productCategories.slug" className="focus-ring w-fit text-small uppercase tracking-eyebrow text-ink hover:underline">
+          <span data-cms-bound="productCategories.name">{category.name}</span>
         </a>
       )}
-      <Typography.Title as="h1">{product.title}</Typography.Title>
+      <Typography.Title as="h1" data-cms-bound="products.title">{product.title}</Typography.Title>
     </div>
   );
 }
@@ -42,11 +43,13 @@ function Pricing({ product }: { product: Product }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <Price.Root amount={product.price} compareAtPrice={product.compareAtPrice} currency={product.currency} />
-        <AvailabilityBadge product={product} />
+        <Price.Root data-cms-bound="products.price" amount={product.price} compareAtPrice={product.compareAtPrice} currency={product.currency} />
+        <span data-cms-bound="products.availability">
+          <AvailabilityBadge product={product} />
+        </span>
       </div>
-      <p className="text-small uppercase tracking-eyebrow text-ink">SKU: {product.sku}</p>
-      <p className="text-body text-ink">{product.shortDescription}</p>
+      <p className="text-small uppercase tracking-eyebrow text-ink"><span data-static-field="product-template.sku_label">{copy.sku_label}</span> <span data-cms-bound="products.sku">{product.sku}</span></p>
+      <p className="text-body text-ink" data-cms-bound="products.shortDescription">{product.shortDescription}</p>
     </div>
   );
 }
@@ -80,7 +83,7 @@ function WhatYouGet({ product, category }: { product: Product; category?: Produc
   const rows = whatYouGetRows(product, category);
   return (
     <div className="flex flex-col gap-3 border border-line-strong bg-surface p-6">
-      <p className="text-small font-medium uppercase tracking-eyebrow text-ink">What you get</p>
+      <p className="text-small font-medium uppercase tracking-eyebrow text-ink" data-static-field="product-template.what_you_get">{copy.what_you_get}</p>
       <ul className="flex flex-col gap-2">
         {rows.map((row) => (
           <li key={row} className="grid grid-cols-check items-start gap-3 text-body text-ink">
@@ -104,25 +107,26 @@ function Details({ product, category }: { product: Product; category?: ProductCa
       {product.specSheet && (
         <a
           href={product.specSheet.src}
+          data-cms-bound="products.specSheet.src"
           download={product.specSheet.fileName || ""}
           className="focus-ring inline-flex w-fit items-center gap-2 text-body text-ink underline decoration-1 underline-offset-2 hover:no-underline"
         >
-          Download spec sheet
+          <span data-static-field="product-template.download_spec_sheet">{copy.download_spec_sheet}</span>
         </a>
       )}
 
       {product.video && (
-        <video controls preload="metadata" className="aspect-video w-full border border-line-strong bg-block">
+        <video controls preload="metadata" className="aspect-video w-full border border-line-strong bg-block" data-cms-bound="products.video">
           <source src={product.video.src} type={product.video.contentType || undefined} />
         </video>
       )}
 
-      <Prose.Root body={product.description} />
+      <Prose.Root body={product.description} data-cms-bound="products.description" />
 
       {product.tags.length > 0 && (
         <ul className="flex flex-wrap gap-2">
           {product.tags.map((tag) => (
-            <li key={tag}>
+            <li key={tag} data-cms-bound="products.tags">
               <Badge.Root>{tag}</Badge.Root>
             </li>
           ))}
@@ -142,10 +146,10 @@ function Questions({ faqs }: { faqs: Faq[] }) {
     <Section.Root>
       <Section.Container className="max-w-3xl">
         <Section.Header
-          title="Questions"
+          title={<span data-static-field="product-template.questions">{copy.questions}</span>}
           action={
-            <Button.Link href="/faq" variant="ghost" icon="arrow">
-              See all FAQs
+            <Button.Link data-static-field="product-template.see_all_faqs_href" data-static-attribute="href" href={copy.see_all_faqs_href} variant="ghost" icon="arrow">
+              <span data-static-field="product-template.see_all_faqs">{copy.see_all_faqs}</span>
             </Button.Link>
           }
         />
@@ -153,12 +157,12 @@ function Questions({ faqs }: { faqs: Faq[] }) {
           {items.map((faq) => (
             <details key={faq.id} className="group border-b border-line-strong py-5">
               <summary className="focus-ring flex cursor-pointer list-none items-center justify-between gap-4 text-body font-medium text-ink [&::-webkit-details-marker]:hidden">
-                {faq.question}
+                <span data-cms-bound="faqs.question">{faq.question}</span>
                 <span aria-hidden="true" className="shrink-0 text-h3 leading-none text-ink">
                   +
                 </span>
               </summary>
-              <div className="mt-4">
+              <div className="mt-4" data-cms-bound="faqs.answer">
                 <Prose.Root body={faq.answer} />
               </div>
             </details>
@@ -177,8 +181,10 @@ function Related({ products }: { products: Product[] }) {
   return (
     <Section.Root>
       <Section.Container>
-        <Section.Header title="Related pieces" />
-        <ProductGrid products={products} />
+        <Section.Header title={<span data-static-field="product-template.related_pieces">{copy.related_pieces}</span>} />
+        <div data-cms-bound="products.related">
+          <ProductGrid products={products} />
+        </div>
       </Section.Container>
     </Section.Root>
   );

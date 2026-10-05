@@ -1,8 +1,30 @@
 import type { Product, ProductCategory } from "@three-acts/ecommerce";
+import copy from "@three-acts/static-content/documents/product-category-template.json";
 import { Section } from "../../components/layout/section";
 import { ProductGrid, sortProductsForGrid } from "../../components/shop/product-grid";
-import { Breadcrumb } from "../../components/ui/breadcrumb";
 import { Button } from "../../components/ui/button";
+import { EmptyState } from "../../components/ui/empty-state";
+
+function CategoryBreadcrumb({ category }: { category: ProductCategory }) {
+  return (
+    <nav aria-label="Breadcrumb" className="mb-8 text-small text-ink">
+      <ol className="flex flex-wrap items-center gap-2">
+        <li className="flex items-center gap-2">
+          <a
+            data-static-field="product-category-template.shop_breadcrumb_href"
+            data-static-attribute="href"
+            href={copy.shop_breadcrumb_href}
+            className="focus-ring hover:underline"
+          >
+            <span data-static-field="product-category-template.shop_breadcrumb">{copy.shop_breadcrumb}</span>
+          </a>
+          <span aria-hidden="true" className="text-block">/</span>
+        </li>
+        <li aria-current="page" className="font-medium text-ink" data-cms-bound="productCategories.name">{category.name}</li>
+      </ol>
+    </nav>
+  );
+}
 
 export type ShopCategoryPageProps = {
   category: ProductCategory;
@@ -16,14 +38,29 @@ export function ShopCategoryPage({ category, products }: ShopCategoryPageProps) 
   return (
     <Section.Root>
       <Section.Container>
-        <Breadcrumb.Root items={[{ label: "Shop", href: "/shop" }, { label: category.name }]} className="mb-8" />
-        <Section.Header eyebrow="Shop" title={category.name} lede={category.description} />
-        <ProductGrid
-          products={sorted}
-          emptyTitle="No pieces in this category yet"
-          emptyDescription="Check back soon, or browse the full shop."
-          emptyAction={<Button.Link href="/shop">Browse all pieces</Button.Link>}
+        <CategoryBreadcrumb category={category} />
+        <Section.Header
+          eyebrow={<span data-static-field="product-category-template.shop_eyebrow">{copy.shop_eyebrow}</span>}
+          title={<span data-cms-bound="productCategories.name">{category.name}</span>}
+          lede={category.description ? <span data-cms-bound="productCategories.description">{category.description}</span> : undefined}
         />
+        {sorted.length > 0 ? (
+          <div data-cms-bound="products.inCategory"><ProductGrid products={sorted} /></div>
+        ) : (
+          <EmptyState.Root
+            title={<span data-static-field="product-category-template.empty_title">{copy.empty_title}</span>}
+            description={<span data-static-field="product-category-template.empty_description">{copy.empty_description}</span>}
+            action={
+              <Button.Link
+                data-static-field="product-category-template.empty_action_href"
+                data-static-attribute="href"
+                href={copy.empty_action_href}
+              >
+                <span data-static-field="product-category-template.empty_action">{copy.empty_action}</span>
+              </Button.Link>
+            }
+          />
+        )}
       </Section.Container>
     </Section.Root>
   );

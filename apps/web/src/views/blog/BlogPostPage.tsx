@@ -1,5 +1,6 @@
 import type { Article, ArticleCategory, Author } from "@three-acts/content";
 import type { Product } from "@three-acts/ecommerce";
+import copy from "@three-acts/static-content/documents/article-template.json";
 import { articleMetaLine } from "../../components/blog/article-meta-line";
 import { AuthorCard } from "../../components/blog/author-card";
 import { Byline } from "../../components/blog/byline";
@@ -7,11 +8,43 @@ import { PiecesMentioned } from "../../components/blog/pieces-mentioned";
 import { Grid } from "../../components/layout/grid";
 import { Section } from "../../components/layout/section";
 import { Badge } from "../../components/ui/badge";
-import { Breadcrumb, type BreadcrumbItem } from "../../components/ui/breadcrumb";
 import { Card } from "../../components/ui/card";
 import { Image } from "../../components/ui/image";
 import { Prose } from "../../components/ui/prose";
 import { Typography } from "../../components/ui/typography";
+
+function PostBreadcrumb({ article, category }: { article: Article; category?: ArticleCategory }) {
+  return (
+    <nav aria-label="Breadcrumb" className="mb-8 text-small text-ink">
+      <ol className="flex flex-wrap items-center gap-2">
+        <li className="flex items-center gap-2">
+          <a
+            data-static-field="article-template.journal_breadcrumb_href"
+            data-static-attribute="href"
+            href={copy.journal_breadcrumb_href}
+            className="focus-ring hover:underline"
+          >
+            <span data-static-field="article-template.journal_breadcrumb">{copy.journal_breadcrumb}</span>
+          </a>
+          <span aria-hidden="true" className="text-block">/</span>
+        </li>
+        {category && (
+          <li className="flex items-center gap-2">
+            <a
+              href={`/blog/category/${category.slug}`}
+              data-cms-bound="articleCategories.slug"
+              className="focus-ring hover:underline"
+            >
+              <span data-cms-bound="articleCategories.name">{category.name}</span>
+            </a>
+            <span aria-hidden="true" className="text-block">/</span>
+          </li>
+        )}
+        <li aria-current="page" className="font-medium text-ink" data-cms-bound="articles.title">{article.title}</li>
+      </ol>
+    </nav>
+  );
+}
 
 type BlogPostPageProps = {
   article: Article;
@@ -32,24 +65,18 @@ type BlogPostPageProps = {
  * reading".
  */
 export function BlogPostPage({ article, author, category, categories, related, shopProducts }: BlogPostPageProps) {
-  const breadcrumbItems: BreadcrumbItem[] = [{ label: "Journal", href: "/blog" }];
-  if (category) {
-    breadcrumbItems.push({ label: category.name, href: `/blog/category/${category.slug}` });
-  }
-  breadcrumbItems.push({ label: article.title });
-
   return (
     <>
       <article className="pb-16 pt-14 desktop:pb-20 desktop:pt-20">
         <Section.Container className="max-w-3xl">
-          <Breadcrumb.Root items={breadcrumbItems} className="mb-8" />
+          <PostBreadcrumb article={article} category={category} />
           <header className="flex flex-col gap-6">
-            {category && <Badge.Root variant="outline">{category.name}</Badge.Root>}
-            <Typography.Display as="h1" className="max-w-3xl">
+            {category && <Badge.Root variant="outline"><span data-cms-bound="articleCategories.name">{category.name}</span></Badge.Root>}
+            <Typography.Display as="h1" className="max-w-3xl" data-cms-bound="articles.title">
               {article.title}
             </Typography.Display>
-            <Typography.Lede className="max-w-none">{article.excerpt}</Typography.Lede>
-            <Byline author={author} publishedAt={article.publishedAt} readingTime={article.readingTime} avatarSize="md" />
+            <Typography.Lede className="max-w-none" data-cms-bound="articles.excerpt">{article.excerpt}</Typography.Lede>
+            <Byline data-cms-bound="articles.byline" author={author} publishedAt={article.publishedAt} readingTime={article.readingTime} avatarSize="md" />
           </header>
         </Section.Container>
 
@@ -59,6 +86,7 @@ export function BlogPostPage({ article, author, category, categories, related, s
               <Image
                 src={article.coverImage.src}
                 alt={article.coverImage.alt || article.title}
+                data-cms-bound="articles.coverImage"
                 width={article.coverImage.width ?? 1318}
                 height={article.coverImage.height ?? 608}
                 loading="eager"
@@ -69,9 +97,9 @@ export function BlogPostPage({ article, author, category, categories, related, s
         )}
 
         <Section.Container className="mt-12 max-w-3xl desktop:mt-16">
-          <Prose.Root body={article.body} />
+          <Prose.Root body={article.body} data-cms-bound="articles.body" />
           {article.tags.length > 0 && (
-            <ul className="mt-10 flex flex-wrap gap-2">
+            <ul className="mt-10 flex flex-wrap gap-2" data-cms-bound="articles.tags">
               {article.tags.map((tag) => (
                 <li key={tag}>
                   <Badge.Root variant="outline">{tag}</Badge.Root>
@@ -84,14 +112,16 @@ export function BlogPostPage({ article, author, category, categories, related, s
 
       {author && (
         <Section.Container className="max-w-3xl pb-16 desktop:pb-20">
-          <AuthorCard.Root author={author} />
+          <AuthorCard.Root data-cms-bound="authors.profile" author={author} />
         </Section.Container>
       )}
 
       {shopProducts.length > 0 && (
         <Section.Root className="border-t border-line-strong">
           <Section.Container>
-            <PiecesMentioned products={shopProducts} />
+            <div data-cms-bound="products.mentioned">
+              <PiecesMentioned products={shopProducts} />
+            </div>
           </Section.Container>
         </Section.Root>
       )}
@@ -99,8 +129,11 @@ export function BlogPostPage({ article, author, category, categories, related, s
       {related.length > 0 && (
         <Section.Root>
           <Section.Container>
-            <Section.Header eyebrow="Keep reading" title="More from the journal" />
-            <Grid.Root cols={3}>
+            <Section.Header
+              eyebrow={<span data-static-field="article-template.keep_reading">{copy.keep_reading}</span>}
+              title={<span data-static-field="article-template.more_from_journal">{copy.more_from_journal}</span>}
+            />
+            <Grid.Root cols={3} data-cms-bound="articles.related">
               {related.map((relatedArticle) => (
                 <Card.Article
                   key={relatedArticle.slug}

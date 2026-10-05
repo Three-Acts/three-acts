@@ -1,4 +1,5 @@
 ---
+import copy from "@three-acts/static-content/documents/agencies.json";
 import InquiryForm from "../components/islands/inquiry-form";
 import { Grid } from "../components/layout/grid";
 import { Section } from "../components/layout/section";
@@ -8,59 +9,18 @@ import { agenciesMeta } from "../page-meta";
 
 const meta = await agenciesMeta();
 
-const VALUE_CARDS = [
-  {
-    title: "White-label",
-    body: "Ship it under your own brand — every client-facing page, email and CMS login carries your name, not ours.",
-    bullets: [
-      "No Three Acts branding on any client-facing page",
-      "Your logo and domain on the CMS login",
-      "Client-ready docs you can reskin"
-    ]
-  },
-  {
-    title: "Agency licence",
-    body: "One licence covers unlimited client sites — no per-site fee, ever, and it pays for itself after two or three builds for most studios.",
-    bullets: ["Unlimited client sites under one licence", "No recurring per-project cost", "Upgrade to Unlimited any time for the price difference"]
-  },
-  {
-    title: "Partner support",
-    body: "A direct line to the people who build the template, for the questions a support ticket can't answer.",
-    bullets: [
-      "Priority email support, one working day reply",
-      "Architecture guidance for non-standard requirements",
-      "Early access to new releases"
-    ]
-  }
-];
+const VALUE_CARDS = copy.agencies.value_cards_1;
 
-const STEPS = [
-  {
-    title: "Apply for an agency licence",
-    description: "Tell us about your studio and the kind of client work you do through the form below. We reply within two working days."
-  },
-  {
-    title: "Get repo access",
-    description: "We add you to the private GitHub repo under the agency licence — clone it for every client project from there."
-  },
-  {
-    title: "Fork per client",
-    description: "Rename the brand, configure the registry, and ship — the same steps as the docs, once per client site."
-  },
-  {
-    title: "Lean on partner support",
-    description: "Email us when something's non-standard for a client build. We reply within one working day."
-  }
-];
+const STEPS = copy.agencies.steps_2;
 ---
 
 <BaseLayout seo={meta.seo}>
   <Section.Root>
     <Section.Container>
       <Section.Header
-        eyebrow="Agencies"
-        title="Build client sites on Three Acts"
-        lede="An agency licence covers unlimited client sites under your own brand, with a direct line to the people who build the template."
+        eyebrow={copy.agencies.eyebrow_3}
+        title={copy.agencies.title_4}
+        lede={copy.agencies.lede_5}
       />
       <Grid.Root cols={3}>
         {
@@ -82,7 +42,7 @@ const STEPS = [
 
   <Section.Root className="pt-0">
     <Section.Container>
-      <Typography.Title className="mb-10 desktop:mb-12">How it works</Typography.Title>
+      <Typography.Title className="mb-10 desktop:mb-12"><span data-static-field="agencies.agencies.title_6">{copy.agencies.title_6}</span></Typography.Title>
       <div class="flex flex-col">
         {
           STEPS.map((step, index) => (
@@ -103,7 +63,7 @@ const STEPS = [
 
   <Section.Root className="pt-0">
     <Section.Container className="max-w-3xl">
-      <Typography.Title className="mb-10 desktop:mb-12">Tell us about the project</Typography.Title>
+      <Typography.Title className="mb-10 desktop:mb-12"><span data-static-field="agencies.agencies.title_7">{copy.agencies.title_7}</span></Typography.Title>
       <InquiryForm client:visible />
     </Section.Container>
   </Section.Root>

@@ -25,6 +25,7 @@
     "@three-acts/auth": "*",
     "@three-acts/cms-schema": "*",
     "@three-acts/ecommerce": "*",
-    "@three-acts/forms": "*"
+    "@three-acts/forms": "*",
+    "@three-acts/static-content": "*"
   }
 }

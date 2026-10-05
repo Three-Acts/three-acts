@@ -12,6 +12,8 @@ export type InfoPageProps = {
   title: string;
   lede?: string;
   sections: InfoPageSection[];
+  staticContentPrefix?: string;
+  staticHeaderFields?: { eyebrow?: string; title?: string; lede?: string };
   /** Extra content rendered between the header and the heading/body rows — the pricing tiles on `/licenses`, the "coming soon" Notice on `/changelog`. */
   children?: ReactNode;
 };
@@ -27,20 +29,20 @@ export type InfoPageProps = {
  * the rest. Every info page composes this from plain data rather than
  * hand-rolled markup, so the pages stay visually consistent.
  */
-export function InfoPage({ eyebrow, title, lede, sections, children }: InfoPageProps) {
+export function InfoPage({ eyebrow, title, lede, sections, children, staticContentPrefix, staticHeaderFields }: InfoPageProps) {
   return (
     <Section.Root>
       <Section.Container className="max-w-4xl">
-        <Section.Header eyebrow={eyebrow} title={title} lede={lede} />
+        <Section.Header eyebrow={eyebrow && <span data-static-field={staticHeaderFields?.eyebrow}>{eyebrow}</span>} title={<span data-static-field={staticHeaderFields?.title}>{title}</span>} lede={lede && <span data-static-field={staticHeaderFields?.lede}>{lede}</span>} />
         {children}
         <div className="flex flex-col">
-          {sections.map((section) => (
+          {sections.map((section, index) => (
             <section
               key={section.heading}
               className="grid gap-4 border-t border-line-strong py-8 landscape:grid-cols-[16rem_1fr] landscape:gap-x-gap"
             >
-              <h3 className="text-h3 font-medium text-ink">{section.heading}</h3>
-              <Prose.Root body={section.body} />
+              <h3 data-static-field={staticContentPrefix ? `${staticContentPrefix}.${index}.heading` : undefined} className="text-h3 font-medium text-ink">{section.heading}</h3>
+              <Prose.Root body={section.body} data-static-field={staticContentPrefix ? `${staticContentPrefix}.${index}.body` : undefined} data-static-format="prose" />
             </section>
           ))}
         </div>

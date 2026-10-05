@@ -1,3 +1,4 @@
+import copy from "@three-acts/static-content/documents/home.json";
 import { Section } from "../layout/section";
 import { Button } from "../ui/button";
 import { Image } from "../ui/image";
@@ -19,15 +20,12 @@ export function HeroSection({ coverImage }: HeroSectionProps) {
     <div className="pb-8 pt-[75px]">
       <Section.Container>
         <div className="mx-auto max-w-[700px] text-center">
-          <Typography.Display>The client website template that ships production-ready.</Typography.Display>
+          <Typography.Display><span data-static-field="home.hero_section.display_1">{copy.hero_section.display_1}</span></Typography.Display>
           <Typography.Lede className="mx-auto mt-6 max-w-[450px]">
-            A static-first Astro site, a private CMS and a typed API bridge in one repo — storefront, journal, forms
-            and accounts built in. Fork it, configure the registry, ship.
-          </Typography.Lede>
+            <span data-static-field="home.hero_section.lede_2">{copy.hero_section.lede_2}</span></Typography.Lede>
           <div className="mt-6">
-            <Button.Link href="/shop" size="lg" icon="arrow">
-              Shop the template
-            </Button.Link>
+            <Button.Link data-static-field="home.hero_section.href_3" data-static-attribute="href" href={copy.hero_section.href_3} size="lg" icon="arrow">
+              <span data-static-field="home.hero_section.link_4">{copy.hero_section.link_4}</span></Button.Link>
           </div>
         </div>
       </Section.Container>

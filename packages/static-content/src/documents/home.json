@@ -1,0 +1,109 @@
+{
+  "cta_section": {
+    "p_1": "Build your next client site on Three Acts.",
+    "href_2": "/shop",
+    "link_3": "Shop the template"
+  },
+  "faq_teaser_section": {
+    "eyebrow_1": "Good to know",
+    "title_2": "Common questions",
+    "href_3": "/faq",
+    "link_4": "See all FAQs"
+  },
+  "featured_products_section": {
+    "availability_label_1": {
+      "low_stock": "Low stock",
+      "preorder": "Pre-order"
+    },
+    "eyebrow_2": "Featured",
+    "title_3": "Featured pieces",
+    "lede_4": "A rotating edit of what's live in the shop right now.",
+    "href_5": "/shop",
+    "link_6": "Shop all"
+  },
+  "hero_section": {
+    "display_1": "The client website template that ships production-ready.",
+    "lede_2": "A static-first Astro site, a private CMS and a typed API bridge in one repo — storefront, journal, forms and accounts built in. Fork it, configure the registry, ship.",
+    "href_3": "/shop",
+    "link_4": "Shop the template"
+  },
+  "intro_section": {
+    "values_1": [
+      {
+        "mark": "01",
+        "title": "Static-first",
+        "description": "Every route pre-rendered; islands hydrate only what's interactive."
+      },
+      {
+        "mark": "02",
+        "title": "One registry",
+        "description": "Products, articles, pages and settings all typed against one schema."
+      },
+      {
+        "mark": "03",
+        "title": "Swap the backend",
+        "description": "Postgres today, anything tomorrow — the API bridge doesn't care."
+      },
+      {
+        "mark": "04",
+        "title": "Typed end-to-end",
+        "description": "The same types flow from the CMS to the storefront."
+      },
+      {
+        "mark": "05",
+        "title": "Self-hosted CMS",
+        "description": "No SaaS lock-in — the CMS ships in the same repo."
+      },
+      {
+        "mark": "06",
+        "title": "Fork and go",
+        "description": "Clone it, rename the brand, configure the registry."
+      }
+    ],
+    "fallback_image_2": {
+      "src": "https://picsum.photos/seed/three-acts-row/600/840",
+      "alt": ""
+    },
+    "title_3": "Why Three Acts",
+    "p_4": "We built Three Acts after forking the same starter for the fifth client in a row. Every project needed the same shape — a fast public site, a place for a non-technical editor to make changes, and a way to sell a handful of products — rebuilt from scratch each time. Three Acts is that shape, done once, done properly, and left open for you to configure rather than rebuild."
+  },
+  "journal_section": {
+    "title_1": "From the journal",
+    "h3_2": "Latest",
+    "p_3": "Read the journal",
+    "href_4": "/blog",
+    "link_5": "Read the journal"
+  },
+  "shop_by_category_section": {
+    "eyebrow_1": "Shop",
+    "title_2": "What's in the box"
+  },
+  "stat_section": {
+    "stats_1": [
+      {
+        "value": "1",
+        "label": "Repo to fork",
+        "description": "The Astro site, the CMS and the API bridge, versioned together."
+      },
+      {
+        "value": "<1 day",
+        "label": "Time to first deploy",
+        "description": "Configure the registry, connect a database, ship."
+      },
+      {
+        "value": "100%",
+        "label": "Static by default",
+        "description": "Every route pre-rendered; islands hydrate only what's interactive."
+      },
+      {
+        "value": "0",
+        "label": "Vendor lock-in",
+        "description": "Swap the backend, keep the site."
+      }
+    ]
+  },
+  "testimonials_section": {
+    "eyebrow_1": "Agencies",
+    "title_2": "What agencies are saying"
+  }
+}

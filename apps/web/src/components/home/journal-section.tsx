@@ -1,3 +1,4 @@
+import copy from "@three-acts/static-content/documents/home.json";
 import type { Article } from "@three-acts/content";
 import { Section } from "../layout/section";
 import { Button } from "../ui/button";
@@ -18,11 +19,11 @@ export function JournalSection({ articles }: JournalSectionProps) {
   return (
     <Section.Root className="bg-ink text-surface">
       <Section.Container>
-        <Typography.Title className="mb-10 text-surface">From the journal</Typography.Title>
+        <Typography.Title className="mb-10 text-surface"><span data-static-field="home.journal_section.title_1">{copy.journal_section.title_1}</span></Typography.Title>
 
         <div className="grid gap-x-gap gap-y-gap-y landscape:grid-cols-label-grid">
           <div className="flex items-baseline gap-2">
-            <h3 className="text-h3 font-medium text-surface">Latest</h3>
+            <h3 className="text-h3 font-medium text-surface"><span data-static-field="home.journal_section.h3_2">{copy.journal_section.h3_2}</span></h3>
             <span className="text-small text-surface">({articles.length})</span>
           </div>
           <div className="grid grid-cols-1 gap-x-gap gap-y-gap-y landscape:grid-cols-2 tablet:grid-cols-3">
@@ -40,10 +41,9 @@ export function JournalSection({ articles }: JournalSectionProps) {
         </div>
 
         <div className="mt-10 flex flex-col items-start gap-6 border border-line-strong bg-surface p-6 landscape:flex-row landscape:items-center landscape:justify-between">
-          <p className="text-h3 font-medium text-ink">Read the journal</p>
-          <Button.Link href="/blog" variant="primary">
-            Read the journal
-          </Button.Link>
+          <p className="text-h3 font-medium text-ink"><span data-static-field="home.journal_section.p_3">{copy.journal_section.p_3}</span></p>
+          <Button.Link data-static-field="home.journal_section.href_4" data-static-attribute="href" href={copy.journal_section.href_4} variant="primary">
+            <span data-static-field="home.journal_section.link_5">{copy.journal_section.link_5}</span></Button.Link>
         </div>
       </Section.Container>
     </Section.Root>

@@ -1,13 +1,9 @@
+import copy from "@three-acts/static-content/documents/home.json";
 import { Grid } from "../layout/grid";
 import { Section } from "../layout/section";
 import { Stat } from "../ui/stat";
 
-const STATS = [
-  { value: "1", label: "Repo to fork", description: "The Astro site, the CMS and the API bridge, versioned together." },
-  { value: "<1 day", label: "Time to first deploy", description: "Configure the registry, connect a database, ship." },
-  { value: "100%", label: "Static by default", description: "Every route pre-rendered; islands hydrate only what's interactive." },
-  { value: "0", label: "Vendor lock-in", description: "Swap the backend, keep the site." }
-];
+const STATS = copy.stat_section.stats_1;
 
 /** The trust-metric stat row directly under the hero, Thinkwise-style. */
 export function StatSection() {

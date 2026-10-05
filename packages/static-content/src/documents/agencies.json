@@ -1,0 +1,56 @@
+{
+  "agencies": {
+    "value_cards_1": [
+      {
+        "title": "White-label",
+        "body": "Ship it under your own brand — every client-facing page, email and CMS login carries your name, not ours.",
+        "bullets": [
+          "No Three Acts branding on any client-facing page",
+          "Your logo and domain on the CMS login",
+          "Client-ready docs you can reskin"
+        ]
+      },
+      {
+        "title": "Agency licence",
+        "body": "One licence covers unlimited client sites — no per-site fee, ever, and it pays for itself after two or three builds for most studios.",
+        "bullets": [
+          "Unlimited client sites under one licence",
+          "No recurring per-project cost",
+          "Upgrade to Unlimited any time for the price difference"
+        ]
+      },
+      {
+        "title": "Partner support",
+        "body": "A direct line to the people who build the template, for the questions a support ticket can't answer.",
+        "bullets": [
+          "Priority email support, one working day reply",
+          "Architecture guidance for non-standard requirements",
+          "Early access to new releases"
+        ]
+      }
+    ],
+    "steps_2": [
+      {
+        "title": "Apply for an agency licence",
+        "description": "Tell us about your studio and the kind of client work you do through the form below. We reply within two working days."
+      },
+      {
+        "title": "Get repo access",
+        "description": "We add you to the private GitHub repo under the agency licence — clone it for every client project from there."
+      },
+      {
+        "title": "Fork per client",
+        "description": "Rename the brand, configure the registry, and ship — the same steps as the docs, once per client site."
+      },
+      {
+        "title": "Lean on partner support",
+        "description": "Email us when something's non-standard for a client build. We reply within one working day."
+      }
+    ],
+    "eyebrow_3": "Agencies",
+    "title_4": "Build client sites on Three Acts",
+    "lede_5": "An agency licence covers unlimited client sites under your own brand, with a direct line to the people who build the template.",
+    "title_6": "How it works",
+    "title_7": "Tell us about the project"
+  }
+}

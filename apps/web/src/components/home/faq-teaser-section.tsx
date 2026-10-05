@@ -1,3 +1,4 @@
+import copy from "@three-acts/static-content/documents/home.json";
 import type { Faq } from "@three-acts/content";
 import { Section } from "../layout/section";
 import { Button } from "../ui/button";
@@ -19,12 +20,11 @@ export function FaqTeaserSection({ faqs }: FaqTeaserSectionProps) {
       <Section.Container className="max-w-3xl">
         <Section.Header
           align="center"
-          eyebrow="Good to know"
-          title="Common questions"
+          eyebrow={<span data-static-field="home.faq_teaser_section.eyebrow_1">{copy.faq_teaser_section.eyebrow_1}</span>}
+          title={<span data-static-field="home.faq_teaser_section.title_2">{copy.faq_teaser_section.title_2}</span>}
           action={
-            <Button.Link href="/faq" variant="ghost" icon="arrow">
-              See all FAQs
-            </Button.Link>
+            <Button.Link data-static-field="home.faq_teaser_section.href_3" data-static-attribute="href" href={copy.faq_teaser_section.href_3} variant="ghost" icon="arrow">
+              <span data-static-field="home.faq_teaser_section.link_4">{copy.faq_teaser_section.link_4}</span></Button.Link>
           }
         />
         <div className="flex flex-col border-t border-line">

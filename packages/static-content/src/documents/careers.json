@@ -1,0 +1,29 @@
+{
+  "careers": {
+    "metadata_1": {
+      "title": "Careers",
+      "description": "Open roles at Three Acts — a DX engineer and a design-system engineer — and how to apply."
+    },
+    "sections_2": [
+      {
+        "heading": "Working here",
+        "body": "We build and maintain the template itself — everyone here reads support email, ships template updates and helps agency partners get unstuck, whatever's on their job title."
+      },
+      {
+        "heading": "DX engineer",
+        "body": "Full-time, remote. You'll work on the CLI, the collection registry tooling and the schema migration scripts — the parts of Three Acts that make forking the template for a new client fast instead of fiddly. Comfortable in TypeScript across a monorepo; you care about error messages and docs as much as code."
+      },
+      {
+        "heading": "Design-system engineer",
+        "body": "Full-time, remote. You'll own the component kit in apps/web/src/components/ui and apps/cms — tokens, primitives, accessibility, and keeping the two themes (public site, editorial workspace) consistent without merging them. A strong eye for type, spacing and interaction detail."
+      },
+      {
+        "heading": "How to apply",
+        "body": "Send a short note about yourself and a CV or portfolio to {{site.email}} with the role name in the subject line. No cover letter template needed — just tell us why you want to work on this, and why here."
+      }
+    ],
+    "eyebrow_3": "Team",
+    "title_4": "Careers",
+    "lede_5": "We're a small team building the template full-time — see what's open below."
+  }
+}

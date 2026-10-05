@@ -1,0 +1,25 @@
+{
+  "licenses": {
+    "metadata_1": {
+      "title": "Licences",
+      "description": "Single-site, agency and unlimited licences for the Three Acts template — what each allows, and how updates work."
+    },
+    "sections_2": [
+      {
+        "heading": "What each licence allows",
+        "body": "A Single-Site Licence covers one production deployment — your own project, or one client's — forever, with no recurring fee for that site.\n\nAn Agency Licence covers every client project your studio ships, with no per-site fee, so it pays for itself after two or three client builds for most agencies.\n\nAn Unlimited Licence adds unlimited sites under any number of brands, unlimited team seats, and a year of priority support at no extra cost."
+      },
+      {
+        "heading": "Updates",
+        "body": "Every licence includes updates to the version line you bought for 12 months from purchase — fixes, security patches and new template capabilities as they ship. Renewing after 12 months is optional; the template keeps working, you just stop receiving new updates until you do."
+      },
+      {
+        "heading": "Moving between licences",
+        "body": "Upgrading from a Single-Site to an Agency or Unlimited Licence is a one-time top-up for the price difference — email support and we'll sort it out, no need to buy the higher tier from scratch."
+      }
+    ],
+    "eyebrow_3": "Pricing",
+    "title_4": "Licences",
+    "lede_5": "One licence per way you use the template — pick the one that matches how many sites you're shipping."
+  }
+}

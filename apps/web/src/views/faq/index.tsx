@@ -1,3 +1,4 @@
+import copy from "@three-acts/static-content/documents/faq.json";
 import type { Faq } from "@three-acts/content";
 import { Section } from "../../components/layout/section";
 import { Button } from "../../components/ui/button";
@@ -26,9 +27,9 @@ export function FaqPage({ faqs }: FaqPageProps) {
       <Section.Root>
         <Section.Container>
           <Section.Header
-            eyebrow="FAQ"
-            title="Frequently asked questions"
-            lede="Answers to what people ask before and after they fork Three Acts — orders, delivery, refunds, licensing and account questions, grouped by topic. Can't find it here? Reach out."
+            eyebrow={<span data-static-field="faq.faq.eyebrow_1">{copy.faq.eyebrow_1}</span>}
+            title={<span data-static-field="faq.faq.title_2">{copy.faq.title_2}</span>}
+            lede={<span data-static-field="faq.faq.lede_3">{copy.faq.lede_3}</span>}
           />
           <div className="grid gap-x-gap gap-y-gap-y landscape:grid-cols-[16rem_1fr]">
             {groups.length > 1 && (
@@ -79,10 +80,9 @@ export function FaqPage({ faqs }: FaqPageProps) {
       <Section.Root className="pt-0">
         <Section.Container>
           <div className="flex flex-col gap-6 border border-line p-[30px] landscape:flex-row landscape:items-center landscape:justify-between">
-            <Typography.Title as="h2">Still have a question?</Typography.Title>
-            <Button.Link href="/contact" icon="arrow">
-              Contact us
-            </Button.Link>
+            <Typography.Title as="h2"><span data-static-field="faq.faq.title_4">{copy.faq.title_4}</span></Typography.Title>
+            <Button.Link data-static-field="faq.faq.href_5" data-static-attribute="href" href={copy.faq.href_5} icon="arrow">
+              <span data-static-field="faq.faq.link_6">{copy.faq.link_6}</span></Button.Link>
           </div>
         </Section.Container>
       </Section.Root>

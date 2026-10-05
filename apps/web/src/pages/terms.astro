@@ -1,42 +1,18 @@
 ---
+import { resolveStaticContent } from "@three-acts/static-content";
+import copyData from "@three-acts/static-content/documents/terms.json";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { infoPageMeta } from "../page-meta";
 import { site } from "../site";
 import { InfoPage } from "../views/info/InfoPage";
 
-const meta = await infoPageMeta("/terms", {
-  title: "Terms & conditions",
-  description: `The terms that apply when you buy a licence or use ${site.name}, including orders, pricing, delivery and licence scope.`
-});
+const copy = resolveStaticContent(copyData, { "site.name": site.name, "site.email": site.email });
 
-const sections = [
-  {
-    heading: "Orders",
-    body: "Buying a licence is an offer to buy at the price shown at checkout; we accept it by granting access to the repository. We may cancel and refund an order we can't fulfil, and we'll always tell you why."
-  },
-  {
-    heading: "Pricing & payment",
-    body: "All prices are shown in US Dollars. We take reasonable care to keep prices accurate, but if one is wrong we'll contact you before processing an order at the incorrect price. Payment is taken when you place your order."
-  },
-  {
-    heading: "Delivery",
-    body: "There's no physical delivery — buying a licence grants access to the private GitHub repository and any assets listed on the product page, usually within a few minutes of payment clearing."
-  },
-  {
-    heading: "Licence scope",
-    body: "What a licence covers is set out on /licenses. Using the template outside the scope of the licence you bought — on more sites, for more clients — requires upgrading first."
-  },
-  {
-    heading: "Website use",
-    body: `This site and its content belong to ${site.name}. You're welcome to link to it or share it, but reproducing our copy, screenshots or documentation elsewhere needs our written permission first.`
-  },
-  {
-    heading: "Changes to these terms",
-    body: `We may update these terms from time to time; the version live on this page at the time of your order applies. Questions? Email ${site.email}.`
-  }
-];
+const meta = await infoPageMeta("/terms", copy.terms.metadata_1);
+
+const sections = copy.terms.sections_2;
 ---
 
 <BaseLayout seo={meta.seo}>
-  <InfoPage eyebrow="Legal" title="Terms & conditions" lede={`The terms that apply whenever you buy a licence from ${site.name}.`} sections={sections} />
+  <InfoPage staticHeaderFields={{"eyebrow": "terms.terms.eyebrow_3", "title": "terms.terms.title_4", "lede": "terms.terms.lede_5"}} staticContentPrefix="terms.terms.sections_2" eyebrow={copy.terms.eyebrow_3} title={copy.terms.title_4} lede={copy.terms.lede_5} sections={sections} />
 </BaseLayout>

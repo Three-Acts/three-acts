@@ -1,3 +1,4 @@
+import copy from "@three-acts/static-content/documents/home.json";
 import type { Product } from "@three-acts/ecommerce";
 import { Grid } from "../layout/grid";
 import { Section } from "../layout/section";
@@ -10,16 +11,9 @@ type IntroSectionProps = {
   images: Product["images"];
 };
 
-const VALUES = [
-  { mark: "01", title: "Static-first", description: "Every route pre-rendered; islands hydrate only what's interactive." },
-  { mark: "02", title: "One registry", description: "Products, articles, pages and settings all typed against one schema." },
-  { mark: "03", title: "Swap the backend", description: "Postgres today, anything tomorrow — the API bridge doesn't care." },
-  { mark: "04", title: "Typed end-to-end", description: "The same types flow from the CMS to the storefront." },
-  { mark: "05", title: "Self-hosted CMS", description: "No SaaS lock-in — the CMS ships in the same repo." },
-  { mark: "06", title: "Fork and go", description: "Clone it, rename the brand, configure the registry." }
-];
+const VALUES = copy.intro_section.values_1;
 
-const FALLBACK_IMAGE = { src: "https://picsum.photos/seed/three-acts-row/600/840", alt: "" };
+const FALLBACK_IMAGE = copy.intro_section.fallback_image_2;
 
 /**
  * The AlterG-style two-column intro: a left column with the heading pinned
@@ -34,13 +28,9 @@ export function IntroSection({ images }: IntroSectionProps) {
       <Section.Container>
         <div className="grid gap-x-gap gap-y-gap-y landscape:grid-cols-split">
           <div className="flex flex-col justify-between gap-8">
-            <Typography.Title className="max-w-[640px]">Why Three Acts</Typography.Title>
+            <Typography.Title className="max-w-[640px]"><span data-static-field="home.intro_section.title_3">{copy.intro_section.title_3}</span></Typography.Title>
             <p className="max-w-[640px] text-body text-ink">
-              We built Three Acts after forking the same starter for the fifth client in a row. Every project needed
-              the same shape — a fast public site, a place for a non-technical editor to make changes, and a way to
-              sell a handful of products — rebuilt from scratch each time. Three Acts is that shape, done once, done
-              properly, and left open for you to configure rather than rebuild.
-            </p>
+              <span data-static-field="home.intro_section.p_4">{copy.intro_section.p_4}</span></p>
           </div>
           <Grid.Root cols={3}>
             {VALUES.map((value) => (

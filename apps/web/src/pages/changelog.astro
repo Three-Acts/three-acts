@@ -1,4 +1,5 @@
 ---
+import copy from "@three-acts/static-content/documents/changelog.json";
 import { loadArticles } from "../content/loaders";
 import { Notice } from "../components/ui/notice";
 import { formatDate } from "../lib/format";
@@ -6,10 +7,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import { infoPageMeta, isPageLive } from "../page-meta";
 import { InfoPage } from "../views/info/InfoPage";
 
-const meta = await infoPageMeta("/changelog", {
-  title: "Changelog",
-  description: "Recent releases and what changed in each one."
-});
+const meta = await infoPageMeta("/changelog", copy.changelog.metadata_1);
 
 const [live, articles] = await Promise.all([isPageLive("/changelog"), loadArticles()]);
 
@@ -24,12 +22,11 @@ const releases = articles
 ---
 
 <BaseLayout seo={meta.seo}>
-  <InfoPage eyebrow="Changelog" title="Changelog" lede="What shipped, and when." sections={releases}>
+  <InfoPage staticHeaderFields={{"eyebrow": "changelog.changelog.eyebrow_2", "title": "changelog.changelog.title_5", "lede": "changelog.changelog.lede_4"}} eyebrow={copy.changelog.eyebrow_2} title={copy.changelog.title_3} lede={copy.changelog.lede_4} sections={releases}>
     {
       !live && (
-        <Notice.Root tone="info" title="Coming soon" className="mb-12 desktop:mb-16">
-          The full changelog isn't live yet — here are the most recent releases from the journal in the meantime.
-        </Notice.Root>
+        <Notice.Root tone="info" title={copy.changelog.title_5} className="mb-12 desktop:mb-16">
+          <span data-static-field="changelog.changelog.root_6">{copy.changelog.root_6}</span></Notice.Root>
       )
     }
   </InfoPage>

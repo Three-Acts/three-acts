@@ -1,3 +1,4 @@
+import copy from "@three-acts/static-content/documents/home.json";
 import type { Product } from "@three-acts/ecommerce";
 import { Grid } from "../layout/grid";
 import { Section } from "../layout/section";
@@ -10,10 +11,7 @@ type FeaturedProductsSectionProps = {
   products: Product[];
 };
 
-const AVAILABILITY_LABEL: Partial<Record<Product["availability"], string>> = {
-  low_stock: "Low stock",
-  preorder: "Pre-order"
-};
+const AVAILABILITY_LABEL: Partial<Record<Product["availability"], string>> = copy.featured_products_section.availability_label_1;
 
 /** "Featured pieces" — a grid of featured (then most-recent) live products. */
 export function FeaturedProductsSection({ products }: FeaturedProductsSectionProps) {
@@ -25,13 +23,12 @@ export function FeaturedProductsSection({ products }: FeaturedProductsSectionPro
     <Section.Root>
       <Section.Container>
         <Section.Header
-          eyebrow="Featured"
-          title="Featured pieces"
-          lede="A rotating edit of what's live in the shop right now."
+          eyebrow={<span data-static-field="home.featured_products_section.eyebrow_2">{copy.featured_products_section.eyebrow_2}</span>}
+          title={<span data-static-field="home.featured_products_section.title_3">{copy.featured_products_section.title_3}</span>}
+          lede={<span data-static-field="home.featured_products_section.lede_4">{copy.featured_products_section.lede_4}</span>}
           action={
-            <Button.Link href="/shop" variant="ghost" icon="arrow">
-              Shop all
-            </Button.Link>
+            <Button.Link data-static-field="home.featured_products_section.href_5" data-static-attribute="href" href={copy.featured_products_section.href_5} variant="ghost" icon="arrow">
+              <span data-static-field="home.featured_products_section.link_6">{copy.featured_products_section.link_6}</span></Button.Link>
           }
         />
         <Grid.Root cols={3}>

@@ -1,3 +1,4 @@
+import copy from "@three-acts/static-content/documents/shared.json";
 import { site } from "../../site";
 
 /**
@@ -9,14 +10,14 @@ export function ContactDetails() {
   return (
     <div className="flex flex-col gap-8 border border-line-strong bg-surface p-6 desktop:p-8">
       <div className="flex flex-col gap-2">
-        <h2 className="text-small uppercase tracking-eyebrow text-ink">Email</h2>
+        <h2 className="text-small uppercase tracking-eyebrow text-ink"><span data-static-field="shared.contact_details.h2_1">{copy.contact_details.h2_1}</span></h2>
         <a href={`mailto:${site.email}`} className="focus-ring w-fit text-body text-ink hover:underline">
           {site.email}
         </a>
       </div>
 
       <div className="flex flex-col gap-2 border-t border-line pt-6">
-        <h2 className="text-small uppercase tracking-eyebrow text-ink">Support hours</h2>
+        <h2 className="text-small uppercase tracking-eyebrow text-ink"><span data-static-field="shared.contact_details.h2_2">{copy.contact_details.h2_2}</span></h2>
         <dl className="flex flex-col gap-1">
           {site.hours.map((entry) => (
             <div key={entry.days} className="flex flex-wrap justify-between gap-4 text-body text-ink">
@@ -28,7 +29,7 @@ export function ContactDetails() {
       </div>
 
       <div className="flex flex-col gap-2 border-t border-line pt-6">
-        <h2 className="text-small uppercase tracking-eyebrow text-ink">Address</h2>
+        <h2 className="text-small uppercase tracking-eyebrow text-ink"><span data-static-field="shared.contact_details.h2_3">{copy.contact_details.h2_3}</span></h2>
         <address className="not-italic text-body text-ink">
           {site.address.street}
           <br />
@@ -39,7 +40,7 @@ export function ContactDetails() {
       </div>
 
       <div className="flex flex-col gap-2 border-t border-line pt-6">
-        <h2 className="text-small uppercase tracking-eyebrow text-ink">Elsewhere</h2>
+        <h2 className="text-small uppercase tracking-eyebrow text-ink"><span data-static-field="shared.contact_details.h2_4">{copy.contact_details.h2_4}</span></h2>
         <ul className="flex flex-wrap gap-4">
           {site.social.map((link) => (
             <li key={link.label}>
