@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { ExternalLink, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ExternalLink, FileText, X } from "lucide-react";
 import type { CmsField, ImageField, PublishStatus } from "../../cms/types";
 import { applyTitleTemplate, parseSchemaMarkup } from "../../cms/types";
 import { hasPublishWorkflow, isEditable } from "../../lib/records";
-import { Button, ConfirmDialog, PanelHeader, ScrollArea, StatusPill, useToast } from "../atoms";
+import { BareIconButton, Button, ConfirmDialog, PanelHeader, ScrollArea, StatusPill, useToast } from "../atoms";
 import { EditorSection, FieldControl } from "../editor";
 import { SchemaMarkupField, SeoTextField } from "./page-settings/fields";
 import { PageList } from "./page-settings/page-list";
@@ -31,16 +31,32 @@ const noop = () => {};
  * live search/social previews on the right, rendered through the sitewide
  * title template and default share image.
  */
-export function PageSettingsView({ collection, onDirtyChange, onSaved }: SettingsViewProps) {
-  const settings = usePageSettings(collection, { onDirtyChange, onSaved });
+type PageSettingsViewProps = SettingsViewProps & {
+  layout?: "workspace" | "panel";
+  initialPagePath?: string | null;
+  onClose?: () => void;
+  onBusyChange?: (busy: boolean) => void;
+};
+
+export function PageSettingsView({ collection, initialPagePath, layout = "workspace", onClose, onBusyChange, onDirtyChange, onSaved }: PageSettingsViewProps) {
+  const panel = layout === "panel";
+  const settings = usePageSettings(collection, { initialPagePath, requireInitialPagePath: panel, onDirtyChange, onSaved });
   const { draft, isDirty, isSaving, pages, selectedId } = settings;
   const toast = useToast();
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   // Required-but-empty errors only appear once a save has been attempted;
   // format errors (bad path, bad JSON) show as they're typed.
   const [showRequired, setShowRequired] = useState(false);
+  const busy = isSaving || settings.uploadingField !== null;
   const editable = isEditable(collection);
   const publishable = hasPublishWorkflow(collection);
+
+  // Keep the host's mode switch disabled during saves and asset uploads.
+  useEffect(() => {
+    onBusyChange?.(busy);
+  }, [busy, onBusyChange]);
+
+  useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
 
   function guard(action: () => void) {
     if (isDirty) {
@@ -96,22 +112,33 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
-      <PageList
-        isLoading={settings.isLoading}
-        onSelect={selectPage}
-        pages={pages}
-        selectedId={selectedId}
-        showStatus={publishable}
-        title={collection.label}
-      />
+      {!panel ? (
+        <PageList
+          isLoading={settings.isLoading}
+          onSelect={selectPage}
+          pages={pages}
+          selectedId={selectedId}
+          showStatus={publishable}
+          title={collection.label}
+        />
+      ) : null}
 
       {draft ? (
         <section aria-label={`${pageName || "Untitled page"} settings`} className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
-          <PanelHeader className="justify-between">
-            <div className="flex min-w-0 items-baseline gap-2">
-              <h2 className="truncate text-ui-lg font-semibold text-cms-text">{pageName || "Untitled page"}</h2>
-              <span className="truncate font-mono text-ui text-cms-subtle">{pagePath}</span>
-            </div>
+          <PanelHeader className={panel ? "h-8 min-h-8 justify-between gap-1.5 px-2" : "justify-between"}>
+            {panel ? (
+              <div className="flex min-w-0 flex-1 flex-col justify-center leading-3">
+                <h2 className="m-0 truncate text-ui font-semibold text-cms-text">Page details</h2>
+                <p className="m-0 truncate font-mono text-[10px] leading-3 text-cms-subtle" title={`${pageName || "Untitled page"} · ${pagePath}`}>
+                  {pageName || "Untitled page"}{pagePath ? ` · ${pagePath}` : ""}
+                </p>
+              </div>
+            ) : (
+              <div className="flex min-w-0 items-baseline gap-2">
+                <h2 className="truncate text-ui-lg font-semibold text-cms-text">{pageName || "Untitled page"}</h2>
+                <span className="truncate font-mono text-ui text-cms-subtle">{pagePath}</span>
+              </div>
+            )}
             <div className="flex shrink-0 items-center gap-1.5">
               <div className="grid justify-items-end gap-0.5">
                 {publishable ? <StatusPill status={draft.publishStatus} /> : null}
@@ -126,6 +153,11 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
                 <Button disabled={isSaving || !isDirty} onClick={() => void handleSave()} variant={publishable ? "normal" : "primary"}>
                   {isSaving ? "Saving…" : "Save"}
                 </Button>
+              ) : null}
+              {panel ? (
+                <BareIconButton aria-label="Close page details" disabled={busy} onClick={onClose}>
+                  <X aria-hidden="true" size={14} />
+                </BareIconButton>
               ) : null}
             </div>
           </PanelHeader>
@@ -144,6 +176,7 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
 
               <PageSettingsForm
                 canonicalError={canonicalError}
+                compact={panel}
                 editable={editable}
                 fields={collection.fields}
                 nameError={nameError}
@@ -159,14 +192,24 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
           </div>
         </section>
       ) : (
-        <div className="grid min-w-0 flex-1 place-items-center p-8 text-center">
-          <div className="grid justify-items-center gap-2">
-            <FileText aria-hidden="true" className="text-cms-subtle" size={20} />
-            <p className="m-0 text-ui text-cms-subtle">
-              {settings.isLoading ? "Loading pages…" : pages.length === 0 ? "Add a page to edit its SEO settings." : "Select a page to edit its settings."}
-            </p>
+        <section aria-label="Page details" className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
+          {panel ? (
+            <PanelHeader className="h-8 min-h-8 justify-between gap-1.5 px-2">
+              <h2 className="m-0 truncate text-ui font-semibold text-cms-text">Page details</h2>
+              <BareIconButton aria-label="Close page details" disabled={busy} onClick={onClose}>
+                <X aria-hidden="true" size={14} />
+              </BareIconButton>
+            </PanelHeader>
+          ) : null}
+          <div className="grid min-h-0 flex-1 place-items-center p-8 text-center">
+            <div className="grid justify-items-center gap-2">
+              <FileText aria-hidden="true" className="text-cms-subtle" size={20} />
+              <p className="m-0 text-ui text-cms-subtle">
+                {settings.isLoading ? "Loading pages…" : pages.length === 0 ? "Add a page to edit its SEO settings." : panel ? "This page could not be found. Select another page in the designer." : "Select a page to edit its settings."}
+              </p>
+            </div>
           </div>
-        </div>
+        </section>
       )}
 
       <ConfirmDialog
@@ -187,6 +230,7 @@ export function PageSettingsView({ collection, onDirtyChange, onSaved }: Setting
 
 type PageSettingsFormProps = {
   canonicalError: string | null;
+  compact?: boolean;
   editable: boolean;
   fields: CmsField[];
   nameError: string | null;
@@ -200,6 +244,7 @@ type PageSettingsFormProps = {
 
 function PageSettingsForm({
   canonicalError,
+  compact = false,
   editable,
   fields,
   nameError,
@@ -259,7 +304,12 @@ function PageSettingsForm({
   const siteImageHint = site.defaultOgImage ? "Leave empty to use the site’s default share image." : "Recommended 1200 × 630.";
 
   return (
-    <fieldset className="m-0 min-w-0 border-0 p-0" disabled={!editable}>
+    <fieldset
+      className={compact
+        ? "m-0 min-w-0 border-0 p-0 [&>section]:px-2 [&>section]:py-2.5 [&>section>h3]:mb-2 [&_.mb-4]:mb-2 [&_.min-h-16]:min-h-12 [&_.min-h-40]:min-h-24"
+        : "m-0 min-w-0 border-0 p-0"}
+      disabled={!editable}
+    >
       <EditorSection title="Page">
         <SeoTextField {...bind("pageName")} error={nameError} hint="Only shown in the CMS." label={label("pageName", "Page name")} required />
         <SeoTextField

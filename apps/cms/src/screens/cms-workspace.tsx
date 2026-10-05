@@ -11,14 +11,15 @@ import { CollectionSidebar, RecordListPane, RecordsToolbar, RecordTable, TopBar 
 import type { WorkspaceTab } from "../components/workspace";
 import { RecordEditor } from "../components/editor";
 import { ImportDialog } from "../components/import";
-import { PageSettingsView, SiteSettingsView } from "../components/settings";
+import { SiteSettingsView } from "../components/settings";
+import { PagesWorkspace } from "../components/designer/pages-workspace";
 
 // Tabs come from the static registry so they don't pop in once the
 // collection summaries finish loading.
 const availableTabs: WorkspaceTab[] = [
+  ...(collectionRegistry.some((collection) => collection.settingsView === "pages") ? (["page-settings"] as const) : []),
   "cms",
-  ...(collectionRegistry.some((collection) => collection.settingsView === "site") ? (["site-settings"] as const) : []),
-  ...(collectionRegistry.some((collection) => collection.settingsView === "pages") ? (["page-settings"] as const) : [])
+  ...(collectionRegistry.some((collection) => collection.settingsView === "site") ? (["site-settings"] as const) : [])
 ];
 
 export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<void>; user: AuthUser }) {
@@ -76,8 +77,9 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   // same guard covers them. Bumping the revision remounts a clean settings
   // screen so it re-reads records the publish pipeline just changed.
   const [isSettingsDirty, setIsSettingsDirty] = useState(false);
+  const [isDesignerBusy, setIsDesignerBusy] = useState(false);
   const [settingsRevision, setSettingsRevision] = useState(0);
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("cms");
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>(availableTabs[0] ?? "cms");
   const siteSettingsCollection = settingsCollections.find((collection) => collection.settingsView === "site");
   const redirectRulesCollection = settingsCollections.find((collection) => collection.settingsView === "redirects");
   const mediaCollection = settingsCollections.find((collection) => collection.settingsView === "media");
@@ -115,12 +117,13 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
     refreshRecords();
     refreshCollections();
 
-    if (!isSettingsDirty) {
+    if (!isSettingsDirty && !isDesignerBusy) {
       setSettingsRevision((revision) => revision + 1);
     }
   }
 
   function guardNavigation(action: () => void) {
+    if (isDesignerBusy) return;
     if (isDirty || isSettingsDirty) {
       setPendingAction(() => action);
     } else {
@@ -145,6 +148,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   // The CMS tab's draft lives in the workspace hook and survives a tab switch;
   // a settings screen unmounts, so only its unsaved edits need the guard.
   function handleTabChange(tab: WorkspaceTab) {
+    if (isDesignerBusy) return;
     if (tab === activeTab) {
       return;
     }
@@ -203,11 +207,13 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
           // collections sidebar belongs to the CMS tab only.
           <main className="relative flex min-h-0 min-w-0 flex-1">
             {activeTab === "page-settings" ? (
-              <PageSettingsView
+              <PagesWorkspace
                 collection={settingsCollection}
                 key={`${settingsCollection.id}-${settingsRevision}`}
                 onDirtyChange={setIsSettingsDirty}
                 onSaved={refreshCollections}
+                onBusyChange={setIsDesignerBusy}
+                user={user}
               />
             ) : (
               <SiteSettingsView

@@ -1,4 +1,4 @@
-import { Database, FileText, Settings2 } from "lucide-react";
+import { Database, PanelsTopLeft, Settings2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@three-acts/utils";
 import { focusRing } from "../atoms";
@@ -7,9 +7,9 @@ import { focusRing } from "../atoms";
 export type WorkspaceTab = "cms" | "site-settings" | "page-settings";
 
 const tabs: Array<{ id: WorkspaceTab; label: string; icon: LucideIcon }> = [
+  { id: "page-settings", label: "Designer", icon: PanelsTopLeft },
   { id: "cms", label: "CMS", icon: Database },
-  { id: "site-settings", label: "Site", icon: Settings2 },
-  { id: "page-settings", label: "Page", icon: FileText }
+  { id: "site-settings", label: "Site", icon: Settings2 }
 ];
 
 type WorkspaceTabsProps = {

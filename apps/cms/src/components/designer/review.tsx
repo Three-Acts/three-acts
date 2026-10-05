@@ -1,0 +1,66 @@
+import { GitCommitHorizontal } from "lucide-react";
+import { contentFields, type EditorWorkspace } from "@three-acts/static-content";
+import { Button, FormField, Input, Modal } from "../atoms";
+import { fieldLabel, type Drafts } from "./drafts";
+
+export function Review({ drafts, workspace, message, onMessage, busy, error, onClose, onPush }: {
+  drafts: Drafts; workspace: EditorWorkspace; message: string; onMessage: (value: string) => void;
+  busy: boolean; error: string; onClose: () => void; onPush: () => void;
+}) {
+  const requestClose = () => {
+    if (!busy) onClose();
+  };
+
+  return (
+    <Modal
+      className="w-140 max-w-viewport"
+      footer={
+        <>
+          <Button disabled={busy} onClick={requestClose}>Keep editing</Button>
+          <Button disabled={busy || !workspace.connected || !message.trim()} onClick={onPush} variant="primary">
+            <GitCommitHorizontal aria-hidden="true" size={15} />
+            {busy ? "Pushing changes…" : "Push to GitHub"}
+          </Button>
+        </>
+      }
+      onClose={requestClose}
+      open
+      title="Review changes"
+    >
+      <p className="mb-3 mt-0 text-ui leading-5 text-cms-muted">
+        One commit to <strong className="font-medium text-cms-text">{workspace.repository ?? "GitHub"}</strong> on <strong className="font-medium text-cms-text">{workspace.branch ?? "your configured branch"}</strong>.
+      </p>
+
+      <div className="mb-3 grid gap-3">
+        {Object.entries(drafts).map(([id, draft]) => {
+          const original = new Map(contentFields(draft.original).map((field) => [field.path.join("."), field.value]));
+          const changed = contentFields(draft.content).filter((field) => field.value !== original.get(field.path.join(".")));
+          return (
+            <section className="overflow-hidden rounded-cms border border-cms-line-strong bg-cms-surface" key={id}>
+              <h3 className="m-0 flex items-center justify-between gap-2 border-b border-cms-line px-2.5 py-2 text-ui font-medium text-cms-text">
+                <span className="truncate">{workspace.documents.find((doc) => doc.id === id)?.label}</span>
+                <span className="shrink-0 text-ui font-normal tabular-nums text-cms-subtle">{changed.length} changes</span>
+              </h3>
+              <div className="divide-y divide-cms-line">
+                {changed.map((field) => (
+                  <div className="grid gap-1 px-2.5 py-2" key={field.path.join(".")}>
+                    <small className="text-ui font-medium text-cms-subtle">{fieldLabel(field.path)}</small>
+                    <del className="whitespace-pre-wrap wrap-break-word rounded-cms bg-cms-bg px-2 py-1 text-ui leading-5 text-cms-subtle">{String(original.get(field.path.join("."))) || "Empty"}</del>
+                    <ins className="whitespace-pre-wrap wrap-break-word rounded-cms border border-cms-success/30 bg-cms-success/10 px-2 py-1 text-ui leading-5 text-cms-text no-underline">{String(field.value) || "Empty"}</ins>
+                  </div>
+                ))}
+                {!changed.length && <p className="m-0 px-2.5 py-2 text-ui text-cms-subtle">No field changes.</p>}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+
+      <FormField label="Commit message">
+        <Input maxLength={200} value={message} onValueChange={onMessage} disabled={busy} />
+      </FormField>
+      {error && <p className="mb-3 mt-0 rounded-cms border border-cms-danger-line bg-cms-danger-surface px-2 py-1.5 text-ui text-cms-danger" role="alert">{error}</p>}
+      {!workspace.connected && <p className="mb-0 mt-3 rounded-cms border border-cms-danger-line bg-cms-danger-surface px-2 py-1.5 text-ui leading-5 text-cms-muted">GitHub is not connected. Configure the repository, branch and token in the API to enable pushing.</p>}
+    </Modal>
+  );
+}
