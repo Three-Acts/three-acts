@@ -3,11 +3,18 @@ import { contentDefinitions, contentPath, serializeContent, validateContent, typ
 import { ApiError } from "../http";
 
 type GithubConfig = { repository: string; branch: string; token: string; base: string };
+function isProduction(): boolean {
+  return process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+}
+
 function config(): GithubConfig | null {
   const repository = process.env.EDITOR_GITHUB_REPOSITORY?.trim();
   const branch = process.env.EDITOR_GITHUB_BRANCH?.trim();
   const token = process.env.EDITOR_GITHUB_TOKEN?.trim();
-  if (!repository && !branch && !token) return null;
+  if (!repository && !branch && !token) {
+    if (isProduction()) throw new ApiError(503, "github_unconfigured", "Configure the editor's GitHub repository, branch and server token before enabling hosted editing.");
+    return null;
+  }
   if (!repository || !/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repository) || !branch || !token) {
     throw new ApiError(503, "github_unconfigured", "Set EDITOR_GITHUB_REPOSITORY, EDITOR_GITHUB_BRANCH and EDITOR_GITHUB_TOKEN in the API.");
   }
@@ -48,7 +55,7 @@ async function readDocument(settings: GithubConfig, id: string, ref: string): Pr
   let content: ContentObject;
   try { content = validateContent(id, JSON.parse(Buffer.from(file.content, "base64").toString("utf8"))); }
   catch { throw new ApiError(409, "content_schema_changed", `The fields for ${definition.label} changed. Redeploy the editor to match the repository.`); }
-  return { ...definition, content, sha: file.sha };
+  return { ...definition, content, sha: file.sha, sourcePath: contentPath(id) };
 }
 
 export async function loadEditorWorkspace(): Promise<EditorWorkspace> {
@@ -59,11 +66,19 @@ export async function loadEditorWorkspace(): Promise<EditorWorkspace> {
       const sha = createHash("sha1").update(`blob ${Buffer.byteLength(raw)}\0${raw}`).digest("hex");
       return { ...definition, sha };
     });
-    return { connected: false, repository: null, branch: null, documents };
+    return {
+      connected: false,
+      repository: null,
+      branch: null,
+      documents: documents.map((document) => ({ ...document, sourcePath: contentPath(document.id) })),
+      source: "local",
+      headSha: null,
+      connectionMode: "none"
+    };
   }
   const ref = await head(settings);
   const documents = await Promise.all(contentDefinitions.map((definition) => readDocument(settings, definition.id, ref)));
-  return { connected: true, repository: settings.repository, branch: settings.branch, documents };
+  return { connected: true, repository: settings.repository, branch: settings.branch, documents, source: "github", headSha: ref, connectionMode: "server" };
 }
 
 export async function pushEditorContent(input: unknown): Promise<EditorPushResult> {

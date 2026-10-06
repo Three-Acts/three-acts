@@ -94,8 +94,19 @@ export function contentFields(content: ContentObject): ContentField[] {
   return fields;
 }
 
-export type EditorDocument = Omit<ContentDefinition, "content"> & { content: ContentObject; sha: string };
-export type EditorWorkspace = { repository: string | null; branch: string | null; connected: boolean; documents: EditorDocument[] };
+export type EditorDocument = Omit<ContentDefinition, "content"> & { content: ContentObject; sha: string; sourcePath?: string };
+export type EditorWorkspace = {
+  repository: string | null;
+  branch: string | null;
+  connected: boolean;
+  documents: EditorDocument[];
+  /** Where the API loaded this workspace from. Older fixtures may omit provenance. */
+  source?: "github" | "local";
+  /** Git commit at which all GitHub documents were read; null for bundled local content. */
+  headSha?: string | null;
+  /** A configured server credential is shared by CMS users; there is no per-user connection yet. */
+  connectionMode?: "server" | "none";
+};
 export type EditorChange = { id: string; sha: string; content: ContentObject };
 export type EditorPushResult = { sha: string; url: string; documents: EditorDocument[] };
 

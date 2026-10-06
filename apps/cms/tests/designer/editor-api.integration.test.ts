@@ -232,6 +232,11 @@ test("content route reads all documents from the configured branch without cachi
   assert.equal(data.connected, true);
   assert.equal(data.repository, "test/site");
   assert.equal(data.branch, "content");
+  assert.equal(data.source, "github");
+  assert.equal(data.headSha, github.head);
+  assert.equal(data.connectionMode, "server");
+  assert.equal(data.documents[0].sourcePath, contentPath(data.documents[0].id));
+  assert.equal(JSON.stringify(data).includes("test-token"), false, "server credentials must never be returned to the CMS");
   assert.deepEqual(data.documents.map(({ id }) => id), contentDefinitions.map(({ id }) => id));
   assert.equal(response.headers["cache-control"], "no-store");
   assert.equal(github.calls.filter(({ method }) => method === "GET").length, contentDefinitions.length + 1);
@@ -330,7 +335,7 @@ test("content schema, unsafe URLs, duplicate documents, unknown IDs, and rejecte
   assert.notEqual(github.head, (attemptedRefUpdate?.body as { sha?: string } | undefined)?.sha);
 });
 
-test("push is disabled without GitHub configuration and malformed repository settings are rejected", async (t) => {
+test("local preview source is explicit when GitHub is unconfigured; pushes stay disabled and malformed config is rejected", async (t) => {
   const { token } = await setup(t);
   delete process.env.EDITOR_GITHUB_REPOSITORY;
   delete process.env.EDITOR_GITHUB_BRANCH;
@@ -338,7 +343,12 @@ test("push is disabled without GitHub configuration and malformed repository set
   const disconnected = await invoke(contentRoute, { method: "GET", token });
   const disabledPush = await invoke(pushRoute, { method: "POST", token, body: { message: "Update", changes: [{ id: "home", sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", content: copyDocument("home") }] } });
   assert.equal(disconnected.status, 200);
-  assert.equal(resultData<EditorWorkspace>(disconnected).connected, false);
+  const local = resultData<EditorWorkspace>(disconnected);
+  assert.equal(local.connected, false);
+  assert.equal(local.source, "local");
+  assert.equal(local.headSha, null);
+  assert.equal(local.connectionMode, "none");
+  assert.equal(local.documents[0].sourcePath, contentPath(local.documents[0].id));
   assert.equal(disabledPush.status, 503);
   assert.equal(errorCode(disabledPush), "github_unconfigured");
 
@@ -353,4 +363,29 @@ test("push is disabled without GitHub configuration and malformed repository set
   assert.equal(errorCode(response), "github_unconfigured");
   if (repository === undefined) delete process.env.EDITOR_GITHUB_REPOSITORY;
   else process.env.EDITOR_GITHUB_REPOSITORY = repository;
+});
+
+test("production fails closed when GitHub is not configured", async (t) => {
+  const { token } = await setup(t);
+  delete process.env.EDITOR_GITHUB_REPOSITORY;
+  delete process.env.EDITOR_GITHUB_BRANCH;
+  delete process.env.EDITOR_GITHUB_TOKEN;
+  process.env.VERCEL_ENV = "production";
+
+  const response = await invoke(contentRoute, { method: "GET", token });
+
+  assert.equal(response.status, 503);
+  assert.equal(errorCode(response), "github_unconfigured");
+});
+
+test("partial GitHub configuration fails closed outside production too", async (t) => {
+  const { token } = await setup(t);
+  delete process.env.EDITOR_GITHUB_REPOSITORY;
+  process.env.EDITOR_GITHUB_BRANCH = "content";
+  process.env.EDITOR_GITHUB_TOKEN = "test-token";
+
+  const response = await invoke(contentRoute, { method: "GET", token });
+
+  assert.equal(response.status, 503);
+  assert.equal(errorCode(response), "github_unconfigured");
 });
