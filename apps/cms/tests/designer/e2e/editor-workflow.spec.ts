@@ -44,6 +44,7 @@ async function openDesignerTab(page: import("@playwright/test").Page) {
 
 async function signInAndOpenDesigner(page: import("@playwright/test").Page) {
   await page.goto("/");
+  await page.evaluate(() => window.localStorage.clear());
   await expect(page.getByRole("heading", { name: "Back of house." })).toBeVisible();
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
@@ -52,6 +53,74 @@ async function signInAndOpenDesigner(page: import("@playwright/test").Page) {
   await openDesignerTab(page);
   await expect(page.getByRole("button", { name: "Choose page" })).toContainText("Home");
 }
+
+test("canvas hover previews selection types and click opens the correct docked field editor", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const hero = canvas.locator('[data-static-field="home.hero_section.display_1"]');
+  const overlay = canvas.locator("#three-acts-editor-selection");
+
+  // Hover is only a visual affordance. It should not open the field editor.
+  await hero.hover();
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toHaveAttribute("data-category", "component");
+  await expect(overlay).toHaveAttribute("data-label", /.+/);
+  await expect(overlay).toHaveCSS("--editor-selection-color", "#16a34a");
+  await expect(page.getByRole("complementary", { name: "Selected field editor" })).toHaveCount(0);
+
+  // Clicking the same registered field opens an editable docked panel and
+  // browser-saved drafts survive a reload.
+  await hero.click();
+  const panel = page.getByRole("complementary", { name: "Selected field editor" });
+  await expect(panel).toBeVisible();
+  const selectedField = panel.locator("#selected-field");
+  await expect(selectedField).toHaveValue("The client website template that ships production-ready.");
+  const edited = "An intentionally selected and browser-saved headline.";
+  await selectedField.fill(edited);
+  await expect(hero).toHaveText(edited);
+  await page.reload();
+  await openDesignerTab(page);
+  const reloadedCanvas = page.frameLocator('iframe[title="Website canvas"]');
+  const reloadedHero = reloadedCanvas.locator('[data-static-field="home.hero_section.display_1"]');
+  await expect(reloadedHero).toHaveText(edited);
+
+  // CMS-bound values receive the purple affordance and remain read-only.
+  await choosePage(page, "Product template");
+  await choosePreviewItem(page, "Web App (Astro Static Site)");
+  const productCanvas = page.frameLocator('iframe[title="Website canvas"]');
+  const productTitle = productCanvas.locator('[data-cms-bound="products.title"]');
+  const productOverlay = productCanvas.locator("#three-acts-editor-selection");
+  await productTitle.hover();
+  await expect(productOverlay).toBeVisible();
+  await expect(productOverlay).toHaveAttribute("data-category", "cms");
+  await expect(productOverlay).toHaveCSS("--editor-selection-color", "#9333ea");
+  await productTitle.click();
+  const cmsPanel = page.getByRole("complementary", { name: "Selected field editor" });
+  await expect(cmsPanel).toBeVisible();
+  await expect(cmsPanel.getByText("CMS field", { exact: true })).toBeVisible();
+  await expect(cmsPanel.locator("#selected-field")).toHaveAttribute("aria-readonly", "true");
+  await expect(cmsPanel.getByText(/managed in the CMS/i)).toBeVisible();
+
+  // A plain, unbound text element opens a clear explanation rather than an
+  // editor that cannot persist its changes.
+  await productCanvas.locator("body").evaluate((body) => {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = "Unbound text for canvas selection coverage.";
+    paragraph.dataset.testid = "unbound-canvas-text";
+    body.append(paragraph);
+  });
+  const unbound = productCanvas.locator('[data-testid="unbound-canvas-text"]');
+  await unbound.hover();
+  await expect(productOverlay).toHaveAttribute("data-category", "element");
+  await expect(productOverlay).toHaveCSS("--editor-selection-color", "#305eee");
+  await expect(cmsPanel.getByText("CMS field", { exact: true })).toBeVisible();
+  await unbound.click();
+  const elementPanel = page.getByRole("complementary", { name: "Selected field editor" });
+  await expect(elementPanel.getByText("Element", { exact: true })).toBeVisible();
+  await expect(elementPanel.locator("#selected-field")).toHaveAttribute("aria-readonly", "true");
+  await expect(elementPanel.getByText(/not set up for editing yet/i)).toBeVisible();
+});
 
 test("CMS designer edits drafts, adapts the canvas, discards safely, pushes to the stub, and renders GitHub readback", async ({ page }) => {
   const consoleErrors: string[] = [];
@@ -107,10 +176,10 @@ test("CMS designer edits drafts, adapts the canvas, discards safely, pushes to t
   await homePicker.getByRole("searchbox").fill("Home");
   await homePicker.getByRole("button", { name: "Open page Home", exact: true }).click();
   const homeHero = page.frameLocator('iframe[title="Website canvas"]').locator('[data-static-field="home.hero_section.display_1"]');
-  await homeHero.dblclick();
-  await homeHero.fill(directEdit);
-  await homeHero.press("Tab");
-  await expect(page.locator("#selected-field")).toHaveValue(directEdit);
+  await homeHero.click();
+  const directField = page.locator("#selected-field");
+  await expect(directField).toHaveValue(firstEdit);
+  await directField.fill(directEdit);
   await expect(homeHero).toHaveText(directEdit);
 
   await page.getByRole("button", { name: "Discard page draft" }).click();
@@ -157,7 +226,7 @@ test("page details stay beside the canvas and guard close and page changes until
   await expect(panel).toBeVisible();
   await expect(canvas.locator('[data-static-field="home.hero_section.display_1"]')).toBeVisible();
   await expect(page.getByRole("complementary", { name: "Content inspector" })).toBeVisible();
-  await expect.poll(() => iframe.evaluate((element) => Math.round(element.parentElement!.getBoundingClientRect().width))).toBe(initialCanvasWidth);
+  await expect.poll(() => iframe.evaluate((element) => Math.round(element.parentElement!.getBoundingClientRect().width))).toBeLessThan(initialCanvasWidth);
   const pageName = panel.getByLabel("Page name");
   await expect(pageName).toBeVisible();
   const originalName = await pageName.inputValue();
@@ -172,6 +241,7 @@ test("page details stay beside the canvas and guard close and page changes until
   await expect(page.getByText("Unsaved", { exact: true })).toHaveCount(0);
   await panel.getByRole("button", { name: "Close page details" }).click();
   await expect(panel).toHaveCount(0);
+  await expect.poll(() => iframe.evaluate((element) => Math.round(element.parentElement!.getBoundingClientRect().width))).toBe(initialCanvasWidth);
   await expect(page.getByRole("complementary", { name: "Content inspector" })).toBeVisible();
   await openCurrentPageDetails(page);
   await expect(panel.getByLabel("Page name")).toHaveValue(`${originalName} e2e draft`);
@@ -264,13 +334,15 @@ test("the canvas page picker previews CMS records and shares editable template c
 
   const boundTitle = canvas.locator('[data-cms-bound="products.title"]');
   await expect(boundTitle).toBeVisible();
-  const currentSelection = await selectedField.inputValue();
   await boundTitle.click();
   await boundTitle.dblclick();
-  await expect(selectedField).toHaveValue(currentSelection);
+  await expect(selectedField).toHaveValue("Web App (Astro Static Site)");
+  await expect(selectedField).toHaveAttribute("aria-readonly", "true");
   await expect(boundTitle).not.toHaveAttribute("contenteditable");
 
   const editedCopy = "What the product page includes (E2E draft)";
+  await templateCopy.click();
+  await expect(selectedField).toHaveValue("What you get");
   await selectedField.fill(editedCopy);
   await expect(templateCopy).toHaveText(editedCopy);
 
