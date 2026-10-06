@@ -127,11 +127,8 @@ export function PageSettingsView({ collection, initialPagePath, layout = "worksp
         <section aria-label={`${pageName || "Untitled page"} settings`} className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
           <PanelHeader className={panel ? "h-8 min-h-8 justify-between gap-1.5 px-2" : "justify-between"}>
             {panel ? (
-              <div className="flex min-w-0 flex-1 flex-col justify-center leading-3">
+              <div className="flex min-w-0 flex-1 items-center">
                 <h2 className="m-0 truncate text-ui font-semibold text-cms-text">Page details</h2>
-                <p className="m-0 truncate font-mono text-[10px] leading-3 text-cms-subtle" title={`${pageName || "Untitled page"} · ${pagePath}`}>
-                  {pageName || "Untitled page"}{pagePath ? ` · ${pagePath}` : ""}
-                </p>
               </div>
             ) : (
               <div className="flex min-w-0 items-baseline gap-2">

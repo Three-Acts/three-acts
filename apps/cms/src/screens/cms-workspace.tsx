@@ -80,6 +80,9 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   const [isDesignerBusy, setIsDesignerBusy] = useState(false);
   const [settingsRevision, setSettingsRevision] = useState(0);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(availableTabs[0] ?? "cms");
+  const [designerToolbarHost, setDesignerToolbarHost] = useState<HTMLDivElement | null>(null);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [viewSiteUrl, setViewSiteUrl] = useState<string | null>(null);
   const siteSettingsCollection = settingsCollections.find((collection) => collection.settingsView === "site");
   const redirectRulesCollection = settingsCollections.find((collection) => collection.settingsView === "redirects");
   const mediaCollection = settingsCollections.find((collection) => collection.settingsView === "media");
@@ -154,8 +157,9 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
     }
 
     if (isSettingsDirty) {
-      setPendingAction(() => () => setActiveTab(tab));
+      setPendingAction(() => () => { setPublishOpen(false); setActiveTab(tab); });
     } else {
+      setPublishOpen(false);
       setActiveTab(tab);
     }
   }
@@ -187,6 +191,11 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
         onTabChange={handleTabChange}
         queuedCount={queuedCount}
         user={user}
+        designerToolbarRef={setDesignerToolbarHost}
+        editorBusy={isDesignerBusy}
+        publishOpen={publishOpen}
+        onPublishOpenChange={setPublishOpen}
+        viewSiteUrl={viewSiteUrl}
       />
       <div className="flex min-h-0 flex-1">
         {activeTab === "cms" ? (
@@ -214,6 +223,9 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
                 onSaved={refreshCollections}
                 onBusyChange={setIsDesignerBusy}
                 user={user}
+                toolbarHost={designerToolbarHost}
+                onClosePublish={() => setPublishOpen(false)}
+                onViewSiteUrlChange={setViewSiteUrl}
               />
             ) : (
               <SiteSettingsView

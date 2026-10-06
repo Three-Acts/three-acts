@@ -23,7 +23,7 @@ export function TemplateDetailsPanel({ details, disabled, onClose }: {
     <div className="shrink-0 border-b border-cms-line px-3 py-2">
       <h2 className="m-0 text-ui font-semibold">{details.document.label}</h2>
       <p className="mb-0 mt-1 text-ui text-cms-subtle">{details.document.route}</p>
-      <p className="mb-0 mt-2 text-ui text-cms-muted">Collection fields are managed in CMS. These details apply to every page using this template.</p>
+      <p className="mb-0 mt-2 text-ui text-cms-muted">Applies to every page using this template. Collection fields are edited in CMS.</p>
     </div>
     <div className="min-h-0 flex-1 overflow-y-auto p-3">
       {contentFields(details.content).map((field) => {
@@ -35,6 +35,5 @@ export function TemplateDetailsPanel({ details, disabled, onClose }: {
         </FormField>;
       })}
     </div>
-    <p className="m-0 shrink-0 border-t border-cms-line px-3 py-2 text-ui text-cms-subtle">Changes are saved in your browser draft. Use Review &amp; push to publish to GitHub.</p>
   </div>;
 }

@@ -5,25 +5,23 @@ export type FieldPanelSelection = {
   kind: "component" | "element" | "cms";
   label: string;
   value: string;
-  valueType?: "string" | "number" | "boolean";
   id?: string;
   path?: string;
   collectionId?: string;
   field?: string;
-  readonlyMessage?: string;
 };
 
 type FieldPanelProps = {
   selection: FieldPanelSelection;
-  onChange: (value: string | boolean) => void;
+  onChange: (value: string) => void;
   onClose: () => void;
   disabled: boolean;
   editable: boolean;
 };
 
 const categoryPresentation = {
-  component: { label: "Component", Icon: Blocks, color: "text-emerald-400", helper: "Changes stay in your site draft until you push them." },
-  element: { label: "Element", Icon: MousePointer2, color: "text-sky-400", helper: "Changes stay in your site draft until you push them." },
+  component: { label: "Component", Icon: Blocks, color: "text-emerald-400", helper: "Changes apply wherever this component is used." },
+  element: { label: "Element", Icon: MousePointer2, color: "text-sky-400", helper: "Edit the selected text on this page." },
   cms: { label: "CMS field", Icon: Database, color: "text-violet-400", helper: "This value is connected to CMS content." }
 } as const;
 
@@ -34,7 +32,7 @@ export function FieldPanel({ selection, onChange, onClose, disabled, editable }:
   const label = selection?.label?.trim() || "Selected field";
   const value = typeof selection?.value === "string" ? selection.value : "";
   const canEdit = editable && !disabled;
-  const inputId = "selected-field";
+  const inputId = `designer-field-${(selection?.id || selection?.path || selection?.field || kind).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 
   return (
     <aside aria-label="Selected field editor" className="flex h-full min-h-0 w-60 shrink-0 flex-col border-r border-cms-line-strong bg-cms-bg">
@@ -54,34 +52,24 @@ export function FieldPanel({ selection, onChange, onClose, disabled, editable }:
           <span className={`text-ui font-medium ${presentation.color}`}>{presentation.label}</span>
         </div>
 
-        <label htmlFor={inputId} className="mb-1 block text-ui font-medium text-cms-text">{label}</label>
+        <label className="mb-1 block text-ui font-medium text-cms-text">{label}</label>
         {canEdit ? (
-          selection.valueType === "boolean" ? (
-            <input id={inputId} aria-label={label} type="checkbox" checked={value === "true"} onChange={(event) => onChange(event.target.checked)} className="size-4 accent-cms-accent" />
-          ) : (
-            <Textarea
-              id={inputId}
-              aria-label={label}
-              rows={4}
-              value={value}
-              onChange={(event) => onChange(event.target.value)}
-              className="min-h-24 resize-y"
-            />
-          )
-        ) : (
           <Textarea
             id={inputId}
             aria-label={label}
-            aria-readonly="true"
-            readOnly
             rows={4}
             value={value}
-            className="min-h-24 resize-y bg-cms-surface text-cms-muted"
+            onChange={(event) => onChange(event.target.value)}
+            className="min-h-24 resize-y"
           />
+        ) : (
+          <div id={inputId} aria-label={label} aria-readonly="true" className="min-h-16 whitespace-pre-wrap break-words rounded-cms border border-cms-line bg-cms-surface px-2 py-2 text-ui leading-5 text-cms-muted">
+            {value || <span className="italic text-cms-subtle">No value</span>}
+          </div>
         )}
 
         <p className="mb-0 mt-2 text-ui leading-4 text-cms-subtle">
-          {!editable ? selection.readonlyMessage ?? (selection.kind === "cms" ? "This information is managed in the CMS. Open the CMS workspace to edit it." : "This selection is read-only.") : presentation.helper}
+          {!editable ? "This CMS binding is read-only here. Edit its source in the CMS workspace." : presentation.helper}
         </p>
       </div>
     </aside>

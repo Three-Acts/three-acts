@@ -28,7 +28,7 @@ export function Review({ drafts, workspace, message, onMessage, busy, error, onC
       title="Review changes"
     >
       <p className="mb-3 mt-0 text-ui leading-5 text-cms-muted">
-        One commit to <strong className="font-medium text-cms-text">{workspace.repository ?? "GitHub"}</strong> on <strong className="font-medium text-cms-text">{workspace.branch ?? "your configured branch"}</strong>.
+        {workspace.connected ? <>One commit to <strong className="font-medium text-cms-text">{workspace.repository}</strong> on <strong className="font-medium text-cms-text">{workspace.branch}</strong>.</> : "These drafts use bundled demo content. Connect a repository to push them."}
       </p>
 
       <div className="mb-3 grid gap-3">
@@ -60,7 +60,7 @@ export function Review({ drafts, workspace, message, onMessage, busy, error, onC
         <Input maxLength={200} value={message} onValueChange={onMessage} disabled={busy} />
       </FormField>
       {error && <p className="mb-3 mt-0 rounded-cms border border-cms-danger-line bg-cms-danger-surface px-2 py-1.5 text-ui text-cms-danger" role="alert">{error}</p>}
-      {!workspace.connected && <p className="mb-0 mt-3 rounded-cms border border-cms-danger-line bg-cms-danger-surface px-2 py-1.5 text-ui leading-5 text-cms-muted">GitHub is not connected. Configure the repository, branch and token in the API to enable pushing.</p>}
+      {!workspace.connected && <p className="mb-0 mt-3 rounded-cms border border-cms-danger-line bg-cms-danger-surface px-2 py-1.5 text-ui leading-5 text-cms-muted">GitHub is not connected. Your drafts stay in this browser. Open Connection details in Publish for setup information.</p>}
     </Modal>
   );
 }
