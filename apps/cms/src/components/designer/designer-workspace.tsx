@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { ArrowUpRight, Check, FileText, Globe, Layers, Monitor, RefreshCw, Settings2, Smartphone, Tablet, Undo2 } from "lucide-react";
 import { contentFields, validateContent, type ContentField, type ContentObject, type EditorChange, type EditorDocument, type EditorPushResult, type EditorWorkspace } from "@three-acts/static-content";
 import type { AuthUser } from "@three-acts/auth";
 import { Button, ConfirmDialog, IconButton, PanelHeader, SearchInput } from "../atoms";
 import { loadDesignerWorkspace, pushDesignerChanges } from "./client";
-import { draftKey, readDrafts, sameContent, updateField, type Drafts } from "./drafts";
+import { draftKey, fieldLabel, readDrafts, sameContent, updateField, type Drafts } from "./drafts";
 import { Inspector } from "./inspector";
 import { Review } from "./review";
 import { useCmsPagePreviews } from "./use-cms-page-previews";
 import { PagePicker } from "./page-picker";
+import { FieldPanel, type FieldPanelSelection } from "./field-panel";
 
 export type TemplateDetailsChange = { document: EditorDocument; content: ContentObject; onChange: (path: string[], value: string | number | boolean) => void } | null;
 
@@ -22,7 +24,7 @@ function siteUrl(): URL | null {
 const publicSite = siteUrl();
 const widths = { desktop: "100%", tablet: "768px", mobile: "390px" };
 
-export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsavedChange, onOpenPageDetails, onSelectPage, pageDetailsPath, onTemplateDetailsChange }: {
+export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsavedChange, onOpenPageDetails, onSelectPage, pageDetailsPath, pageDetailsPanel, onTemplateDetailsChange }: {
   user: AuthUser;
   onPagePathChange?: (path: string) => void;
   onBusyChange?: (busy: boolean) => void;
@@ -30,6 +32,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   onOpenPageDetails?: (route: string, select: () => void) => void;
   onSelectPage?: (route: string | null, select: () => void) => void;
   pageDetailsPath?: string | null;
+  pageDetailsPanel?: ReactNode;
   onTemplateDetailsChange?: (details: TemplateDetailsChange) => void;
 }) {
   const [workspace, setWorkspace] = useState<EditorWorkspace | null>(null);
@@ -40,6 +43,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   const [query, setQuery] = useState("");
   const [fieldQuery, setFieldQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [canvasSelection, setCanvasSelection] = useState<FieldPanelSelection | null>(null);
   const [device, setDevice] = useState<keyof typeof widths>("desktop");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -138,6 +142,11 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     persist(next);
   }
 
+  function openCanvasSelection(action: () => void) {
+    if (onSelectPage) onSelectPage(null, action);
+    else action();
+  }
+
   const sendPreview = useCallback(() => {
     // A newly mounted iframe starts at about:blank on the CMS origin. Wait
     // for the origin-checked ready message before sending site content.
@@ -157,13 +166,59 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
         const doc = workspace?.documents.find((item) => item.id === event.data.id);
         const path = event.data.path;
         if (!doc || typeof path !== "string" || !contentFields(drafts[doc.id]?.content ?? doc.content).some((field) => field.path.join(".") === path)) return;
-        setPage(doc.id);
-        if (!doc.collectionId && doc.id !== "shared" && doc.route !== canvasRoute) {
-          setPreviewReady(false);
-          setCanvasRoute(doc.route);
-        }
-        setSelected(path);
-        setFieldQuery("");
+        const activeContent = drafts[doc.id]?.content ?? doc.content;
+        const field = contentFields(activeContent).find((item) => item.path.join(".") === path);
+        if (!field) return;
+        openCanvasSelection(() => {
+          setPage(doc.id);
+          if (!doc.collectionId && doc.id !== "shared" && doc.route !== canvasRoute) {
+            setPreviewReady(false);
+            setCanvasRoute(doc.route);
+          }
+          setSelected(path);
+          setFieldQuery("");
+          setCanvasSelection({
+            kind: event.data.category === "component" ? "component" : "element",
+            label: typeof event.data.label === "string" ? event.data.label.slice(0, 100) : fieldLabel(field.path),
+            value: String(field.value),
+            valueType: typeof field.value === "boolean" ? "boolean" : typeof field.value === "number" ? "number" : "string",
+            id: doc.id,
+            path,
+          });
+        });
+      }
+      if (event.data.type === "three-acts:select-cms" && !busy) {
+        const binding = event.data.binding;
+        if (!binding || typeof binding !== "object") return;
+        const collectionId = binding.collectionId;
+        const field = binding.field;
+        const label = event.data.label;
+        const value = event.data.value;
+        if (typeof collectionId !== "string" || !/^[a-zA-Z0-9_-]{1,80}$/.test(collectionId)
+          || typeof field !== "string" || field.length > 160
+          || typeof label !== "string" || label.length > 120
+          || typeof value !== "string" || value.length > 4000) return;
+        openCanvasSelection(() => {
+          setSelected(null);
+          setCanvasSelection({ kind: "cms", label, value, collectionId, field });
+        });
+      }
+      if (event.data.type === "three-acts:select-element" && !busy) {
+        const kind = event.data.category;
+        const label = event.data.label;
+        const details = event.data.element;
+        if ((kind !== "component" && kind !== "element") || typeof label !== "string" || label.length > 100
+          || !details || typeof details !== "object" || typeof details.text !== "string" || details.text.length > 4000
+          || typeof details.tag !== "string" || !/^[a-z][a-z0-9-]{0,20}$/.test(details.tag)) return;
+        openCanvasSelection(() => {
+          setSelected(null);
+          setCanvasSelection({
+            kind,
+            label,
+            value: details.text,
+            readonlyMessage: "This text is not set up for editing yet. Ask your site owner to make it editable.",
+          });
+        });
       }
       if (event.data.type === "three-acts:edit" && !busy && typeof event.data.id === "string" && typeof event.data.path === "string" && typeof event.data.value === "string") {
         const doc = workspace?.documents.find((item) => item.id === event.data.id);
@@ -176,7 +231,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     return () => window.removeEventListener("message", receive);
     // The handler must read the current draft, not a captured earlier version.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspace, drafts, page, content, busy, sendPreview]);
+  }, [workspace, drafts, page, content, busy, sendPreview, onSelectPage]);
 
   function downloadRecovery() {
     if (!recovery) return;
@@ -189,8 +244,13 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   }
 
   function selectField(field: ContentField) {
-    setSelected(field.path.join("."));
-    if (publicSite && previewReady) frame.current?.contentWindow?.postMessage({ type: "three-acts:focus", id: page, path: field.path.join(".") }, publicSite.origin);
+    const path = field.path.join(".");
+    const activeDocument = workspace?.documents.find((document) => document.id === page);
+    openCanvasSelection(() => {
+      setSelected(path);
+      setCanvasSelection({ kind: "component", label: fieldLabel(field.path), value: String(field.value), valueType: typeof field.value === "boolean" ? "boolean" : typeof field.value === "number" ? "number" : "string", id: page, path });
+      if (publicSite && previewReady) frame.current?.contentWindow?.postMessage({ type: "three-acts:focus", id: activeDocument?.id ?? page, path }, publicSite.origin);
+    });
   }
 
   function selectPage(id: string) {
@@ -199,6 +259,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     if (next && !next.collectionId && id !== "shared" && next.route !== canvasRoute) { setPreviewReady(false); setCanvasRoute(next.route); }
     setPage(id);
     setSelected(null);
+    setCanvasSelection(null);
     setFieldQuery("");
   }
 
@@ -292,6 +353,26 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       <div className="mt-auto border-t border-cms-line p-1 text-ui text-cms-muted"><p className="truncate px-1 pb-1" title={workspace?.connected ? "Connected to GitHub" : "GitHub not connected"}>{workspace?.connected ? "Connected to GitHub" : "GitHub not connected"}</p><Button variant="ghost" className="h-6 w-full justify-start px-1" onClick={() => void load()} disabled={busy || loading}><RefreshCw size={13}/>{loading ? "Loading…" : "Reload from source"}</Button></div>
     </aside>
 
+    {canvasSelection ? (() => {
+      const selectedDocument = canvasSelection.id ? workspace?.documents.find((document) => document.id === canvasSelection.id) : null;
+      const selectedContent = selectedDocument ? drafts[selectedDocument.id]?.content ?? selectedDocument.content : null;
+      const selectedField = selectedContent && canvasSelection.path
+        ? contentFields(selectedContent).find((field) => field.path.join(".") === canvasSelection.path)
+        : null;
+      const selection = selectedField ? { ...canvasSelection, value: String(selectedField.value), label: canvasSelection.label || fieldLabel(selectedField.path) } : canvasSelection;
+      return <FieldPanel
+        selection={selection}
+        editable={Boolean(selectedDocument && selectedField && canvasSelection.kind !== "cms")}
+        disabled={busy}
+        onClose={() => setCanvasSelection(null)}
+        onChange={(value) => {
+          if (!selectedDocument || !selectedField || canvasSelection.kind === "cms") return;
+          const nextValue = typeof selectedField.value === "boolean" ? value === true : typeof selectedField.value === "number" ? Number(value) : value;
+          changeField(selectedField, nextValue, selectedDocument.id);
+        }}
+      />;
+    })() : pageDetailsPath ? pageDetailsPanel : null}
+
     <main className="flex min-h-0 min-w-0 flex-1 flex-col">
       <PanelHeader className="h-8 min-h-8 gap-1.5 px-2">
         <div className="flex min-w-0 flex-1 items-center gap-2 text-ui">
@@ -323,7 +404,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       </div>
     </main>
 
-    {content ? <div className="flex min-h-0 min-w-0 flex-col"><p className={`m-0 border-l border-cms-line-strong bg-cms-bg px-2 py-1 text-ui text-cms-subtle ${currentTemplate ? "" : "hidden"}`}>Collection fields are managed in CMS.</p><Inspector content={content} selected={selected} query={fieldQuery} onQuery={setFieldQuery} onSelect={selectField} onChange={changeField} disabled={busy}/></div> : <aside className="hidden w-60 shrink-0 border-l border-cms-line-strong bg-cms-surface lg:block" aria-label="Content inspector"/>}
+    {content ? <div className="flex min-h-0 min-w-0 flex-col"><p className={`m-0 border-l border-cms-line-strong bg-cms-bg px-2 py-1 text-ui text-cms-subtle ${currentTemplate ? "" : "hidden"}`}>Collection fields are managed in CMS.</p><Inspector content={content} selected={selected} query={fieldQuery} onQuery={setFieldQuery} onSelect={selectField} disabled={busy}/></div> : <aside className="hidden w-60 shrink-0 border-l border-cms-line-strong bg-cms-surface lg:block" aria-label="Content inspector"/>}
     {reviewing && workspace && <Review drafts={drafts} workspace={workspace} message={message} onMessage={setMessage} busy={busy} error={error} onClose={() => { setReviewing(false); setError(""); }} onPush={() => void push()}/>}
     <ConfirmDialog open={discarding} onOpenChange={setDiscarding} title="Discard this page’s draft?" description="The page will return to the latest loaded source. Your other drafts will stay saved." confirmLabel="Discard draft" onConfirm={() => { const next = { ...drafts }; delete next[page]; persist(next); setNotice("Page draft discarded"); }}/>
   </div>;

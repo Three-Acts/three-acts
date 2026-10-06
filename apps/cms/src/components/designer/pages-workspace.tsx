@@ -21,7 +21,7 @@ type PendingDetailsAction = {
   action: () => void;
 };
 
-/** Keeps the designer mounted while page details are shown in a side panel. */
+/** Keeps the designer mounted while page details are shown in its docked side panel. */
 export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBusyChange }: PagesWorkspaceProps) {
   const [detailsPath, setDetailsPath] = useState<string | null>(null);
   const [templateDetails, setTemplateDetails] = useState<TemplateDetails | null>(null);
@@ -103,7 +103,7 @@ export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBus
 
   const isTemplate = contentDefinitions.some((document) => document.collectionId && document.route === detailsPath);
   const detailsPanel: ReactNode = detailsPath ? (
-    <aside aria-label="Page details" className="absolute bottom-2 left-[calc(15rem_+_0.5rem)] top-10 z-20 flex w-96 max-w-[calc(100vw_-_16rem)] overflow-hidden rounded-cms-lg border border-cms-line-strong bg-cms-bg shadow-xl max-sm:left-[calc(11rem_+_0.5rem)] max-sm:max-w-[calc(100vw_-_12rem)]">
+    <aside aria-label="Page details" className="flex min-h-0 w-72 max-w-[40vw] shrink-0 overflow-hidden border-r border-cms-line-strong bg-cms-bg">
       {isTemplate ? templateDetails?.document.route === detailsPath ? <TemplateDetailsPanel details={templateDetails} disabled={busy} onClose={requestCloseDetails}/> : <div className="p-3 text-ui text-cms-muted"><p>Select a CMS template to edit its details.</p><Button aria-label="Close page details" disabled={busy} onClick={requestCloseDetails}>Close</Button></div> : <PageSettingsView
         collection={collection}
         initialPagePath={detailsPath}
@@ -125,10 +125,10 @@ export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBus
         onSelectPage={selectPage}
         onTemplateDetailsChange={setTemplateDetails}
         onUnsavedChange={reportDesignerUnsaved}
+        pageDetailsPanel={detailsPanel}
         pageDetailsPath={detailsPath}
         user={user}
       />
-      {detailsPanel}
 
       <ConfirmDialog
         confirmLabel="Discard"

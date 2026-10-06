@@ -1,6 +1,6 @@
 # CMS Designer
 
-Designer is the first CMS workspace tab and opens by default. It brings the static-page content canvas into the existing CMS and uses the same CMS login, UI atoms, and theme. Use the settings icon beside a page to open its existing SEO fields and settings in a floating panel next to the Pages list. The canvas and Content inspector stay in place; closing or switching a page with unsaved details requires confirmation. The canvas supports responsive preview, click-to-select copy, local drafts, and review before sending content to GitHub. It is a content-editing foundation: page layout, sections, routes, and source code remain developer-owned.
+Designer is the first CMS workspace tab and opens by default. It brings the static-page content canvas into the existing CMS and uses the same CMS login, UI atoms, and theme. Use the settings icon beside a page to open its existing SEO fields and settings in a docked panel between the Pages list and canvas. The canvas supports responsive preview, hover outlines, click-to-select content, local drafts, and review before sending content to GitHub. It is a content-editing foundation: page layout, sections, routes, and source code remain developer-owned.
 
 ## Run locally
 
@@ -56,9 +56,11 @@ Content changes preview immediately. Other CMS data on the page stays sourced th
 
 ## CMS pages
 
-The Pages list includes templates for products, articles, authors, product categories, and article categories. The page dropdown in the canvas toolbar switches between static pages and CMS templates. For the current template, **View items in this collection** opens its published items for preview; **Back to pages** returns to the page list. Search the dropdown to find a page or item, or use its current-page settings icon to open the floating details panel. Preview routes use published collection snapshots, so unpublished slug changes do not navigate to a page that does not yet exist. A collection with no published items can still have its template copy edited.
+The Pages list includes templates for products, articles, authors, product categories, and article categories. The page dropdown in the canvas toolbar switches between static pages and CMS templates. For the current template, **View items in this collection** opens its published items for preview; **Back to pages** returns to the page list. Search the dropdown to find a page or item, or use its current-page settings icon to open the docked details panel. Preview routes use published collection snapshots, so unpublished slug changes do not navigate to a page that does not yet exist. A collection with no published items can still have its template copy edited.
 
-The template's settings icon opens its unbound copy in the floating details panel. These fields also appear in the Content inspector and can be selected on the canvas. Edits apply to every generated page using that template and follow the same browser-draft and GitHub review workflow as static pages. Collection-bound titles, descriptions, images, prices, and article bodies remain managed in CMS; template edits do not change collection records or generated SEO metadata.
+The template's settings icon opens its unbound copy in the docked details panel. These fields also appear in the Content inspector and can be selected on the canvas. Edits apply to every generated page using that template and follow the same browser-draft and GitHub review workflow as static pages. Collection-bound titles, descriptions, images, prices, and article bodies remain managed in CMS; template edits do not change collection records or generated SEO metadata.
+
+Hovering a connected static-content field highlights it in green; ordinary unbound text is blue, and CMS-bound content is purple. Clicking a connected static-content field opens its editor to the left of the canvas. CMS-bound fields open as read-only because the CMS workspace owns their values. Unbound text can be selected for inspection, but it must be registered in the static-content schema before edits can be saved or pushed to GitHub.
 
 ## Extend the editing contract
 
