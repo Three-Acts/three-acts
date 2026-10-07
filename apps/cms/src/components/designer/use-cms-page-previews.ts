@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useCmsBackend } from "../../cms/backend-context";
-import type { CmsRecord } from "../../cms/types";
+import type { CmsRecord, PublishStatus } from "../../cms/types";
 
-export type CmsPagePreview = { id: string; label: string; route: string };
+export type CmsPagePreview = { id: string; label: string; route: string; publishStatus: PublishStatus };
 type PreviewState = { collectionId: string | null; items: CmsPagePreview[]; loading: boolean; error: string | null };
 
 const pageSize = 100;
@@ -39,7 +39,7 @@ export function useCmsPagePreviews(collectionId: string | undefined, routePatter
           if (typeof slug !== "string" || !slug.trim()) return [];
           const labelValue = values.title ?? values.name ?? slug;
           const label = typeof labelValue === "string" && labelValue.trim() ? labelValue : slug;
-          return [{ id: record.id, label, route: routePattern.replace("[slug]", encodeURIComponent(slug)) }];
+          return [{ id: record.id, label, route: routePattern.replace("[slug]", encodeURIComponent(slug)), publishStatus: record.publishStatus }];
         });
         if (active) setState({ collectionId, items, loading: false, error: null });
       } catch (error) {

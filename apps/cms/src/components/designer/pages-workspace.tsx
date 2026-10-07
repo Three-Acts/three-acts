@@ -6,6 +6,7 @@ import type { CmsCollectionSummary } from "../../cms/types";
 import { Button, ConfirmDialog } from "../atoms";
 import { PageSettingsView } from "../settings/page-settings-view";
 import { DesignerWorkspace } from "./designer-workspace";
+import { usePagePublishStatuses } from "./use-page-publish-statuses";
 import { TemplateDetailsPanel, type TemplateDetails } from "./template-details-panel";
 
 type PagesWorkspaceProps = {
@@ -17,6 +18,7 @@ type PagesWorkspaceProps = {
   toolbarHost?: HTMLDivElement | null;
   onClosePublish?: () => void;
   onViewSiteUrlChange?: (url: string | null) => void;
+  publishRevision?: number;
 };
 
 type PendingDetailsAction = {
@@ -25,7 +27,7 @@ type PendingDetailsAction = {
 };
 
 /** Keeps the designer mounted while page details are shown in a side panel. */
-export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBusyChange, toolbarHost, onClosePublish, onViewSiteUrlChange }: PagesWorkspaceProps) {
+export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBusyChange, toolbarHost, onClosePublish, onViewSiteUrlChange, publishRevision = 0 }: PagesWorkspaceProps) {
   const [detailsPath, setDetailsPath] = useState<string | null>(null);
   const [templateDetails, setTemplateDetails] = useState<TemplateDetails | null>(null);
   const [detailsDirty, setDetailsDirty] = useState(false);
@@ -34,6 +36,8 @@ export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBus
   const [detailsBusy, setDetailsBusy] = useState(false);
   const [pendingDetailsAction, setPendingDetailsAction] = useState<PendingDetailsAction | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [staticSaveRevision, setStaticSaveRevision] = useState(0);
+  const pagePublishStatuses = usePagePublishStatuses(collection.id, publishRevision + staticSaveRevision);
 
   const reportBusy = useCallback((busy: boolean) => {
     setDetailsBusy(busy);
@@ -50,6 +54,11 @@ export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBus
   const reportDesignerUnsaved = useCallback((unsafe: boolean) => {
     setDesignerUnsaved(unsafe);
   }, []);
+
+  const onStaticPageSaved = useCallback(() => {
+    setStaticSaveRevision((revision) => revision + 1);
+    onSaved();
+  }, [onSaved]);
 
   const busy = designerBusy || detailsBusy;
   const hostDirty = detailsDirty || designerUnsaved;
@@ -115,7 +124,7 @@ export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBus
         onBusyChange={reportBusy}
         onClose={requestCloseDetails}
         onDirtyChange={reportDirty}
-        onSaved={onSaved}
+        onSaved={onStaticPageSaved}
       />}
     </aside>
   ) : null;
@@ -133,6 +142,8 @@ export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBus
         toolbarHost={toolbarHost}
         onClosePublish={onClosePublish}
         onViewSiteUrlChange={onViewSiteUrlChange}
+        pagePublishStatuses={pagePublishStatuses}
+        pageDetailsDirty={detailsDirty}
       />
       {detailsPanel}
 

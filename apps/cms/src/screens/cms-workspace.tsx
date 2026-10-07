@@ -79,6 +79,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   const [isSettingsDirty, setIsSettingsDirty] = useState(false);
   const [isDesignerBusy, setIsDesignerBusy] = useState(false);
   const [settingsRevision, setSettingsRevision] = useState(0);
+  const [publishRevision, setPublishRevision] = useState(0);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(availableTabs[0] ?? "cms");
   const [designerToolbarHost, setDesignerToolbarHost] = useState<HTMLDivElement | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -119,6 +120,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   function handlePublished() {
     refreshRecords();
     refreshCollections();
+    setPublishRevision((revision) => revision + 1);
 
     if (!isSettingsDirty && !isDesignerBusy) {
       setSettingsRevision((revision) => revision + 1);
@@ -226,6 +228,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
                 toolbarHost={designerToolbarHost}
                 onClosePublish={() => setPublishOpen(false)}
                 onViewSiteUrlChange={setViewSiteUrl}
+                publishRevision={publishRevision}
               />
             ) : (
               <SiteSettingsView

@@ -18,6 +18,8 @@ import type { CanvasNode, CanvasSelection } from "./canvas-types";
 import { getElementPresentation } from "./element-presentation";
 import { CanvasBreadcrumb } from "./canvas-breadcrumb";
 import { GitHubConnection } from "./github-connection";
+import { getPagePresentation } from "./page-state";
+import type { PublishStatus } from "../../cms/types";
 
 export type TemplateDetailsChange = { document: EditorDocument; content: ContentObject; onChange: (path: string[], value: string | number | boolean) => void } | null;
 
@@ -55,7 +57,7 @@ function isCanvasSelection(value: unknown): value is CanvasSelection {
     && Boolean(selection.styles && typeof selection.styles === "object" && !Array.isArray(selection.styles) && Object.values(selection.styles).every((value) => typeof value === "string"));
 }
 
-export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsavedChange, onOpenPageDetails, onSelectPage, pageDetailsPath, onTemplateDetailsChange, toolbarHost, onClosePublish, onViewSiteUrlChange }: {
+export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsavedChange, onOpenPageDetails, onSelectPage, pageDetailsPath, pageDetailsDirty = false, pagePublishStatuses, onTemplateDetailsChange, toolbarHost, onClosePublish, onViewSiteUrlChange }: {
   user: AuthUser;
   onPagePathChange?: (path: string) => void;
   onBusyChange?: (busy: boolean) => void;
@@ -63,6 +65,8 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   onOpenPageDetails?: (route: string, select: () => void) => void;
   onSelectPage?: (route: string | null, select: () => void) => void;
   pageDetailsPath?: string | null;
+  pageDetailsDirty?: boolean;
+  pagePublishStatuses: Record<string, PublishStatus>;
   onTemplateDetailsChange?: (details: TemplateDetailsChange) => void;
   toolbarHost?: HTMLDivElement | null;
   onClosePublish?: () => void;
@@ -110,6 +114,9 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   }, []);
   const key = workspace ? draftKey(workspace, user.email) : null;
   const current = workspace?.documents.find((document) => document.id === page);
+  const pageStates = Object.fromEntries((workspace?.documents ?? []).map((document) => [document.id,
+    getPagePresentation(pagePublishStatuses[document.route], Boolean(drafts[document.id]) || (pageDetailsDirty && pageDetailsPath === document.route))
+  ]));
   const contentDocument = workspace?.documents.find((document) => document.id === (canvasSelection?.textField?.id ?? canvasSelection?.binding?.id)) ?? current;
   const content = contentDocument ? drafts[contentDocument.id]?.content ?? contentDocument.content : null;
   const currentTemplate = current?.collectionId ? current : null;
@@ -379,13 +386,13 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       <p className="px-2 pb-0 pt-1 text-ui font-medium uppercase tracking-label text-cms-muted">Static pages</p>
       <nav aria-label="Static pages">
         {workspace?.documents.filter((doc) => doc.id !== "shared" && !doc.collectionId && `${doc.label} ${doc.route}`.toLowerCase().includes(query.toLowerCase())).map((doc) =>
-          <div key={doc.id} className={`group flex h-[26px] w-full items-center pr-0.5 transition-colors hover:bg-cms-raised ${page === doc.id ? "bg-cms-raised text-cms-text" : "text-cms-muted"}`}>
-            <button title={`${doc.label} · ${doc.route}`} className="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-ui disabled:opacity-50" aria-pressed={page === doc.id} onClick={() => {
+          <div key={doc.id} className={`group flex h-[26px] w-full items-center pr-0.5 transition-colors hover:bg-cms-raised ${page === doc.id ? "bg-cms-raised" : ""}`}>
+            <button title={`${doc.label} · ${doc.route}`} className={`flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-ui disabled:opacity-50 ${pageStates[doc.id].color}`} data-page-state={pageStates[doc.id].state} aria-description={pageStates[doc.id].label} aria-pressed={page === doc.id} onClick={() => {
               const select = () => selectPage(doc.id);
               if (onSelectPage) onSelectPage(doc.route, select);
               else select();
             }} disabled={busy}>
-              <PageIcon route={doc.route} collectionId={doc.collectionId} size={13}/><span className="min-w-0 flex-1 truncate">{doc.label}</span>{drafts[doc.id] && <i className="size-2 shrink-0 rounded-full bg-cms-accent" aria-label="Changed"/>}
+              <PageIcon route={doc.route} collectionId={doc.collectionId} size={13}/><span className="min-w-0 flex-1 truncate">{doc.label}</span>
             </button>
             <IconButton className="pointer-events-none size-6 shrink-0 border-transparent bg-transparent p-0 opacity-0 shadow-none group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100" aria-label={`Page details for ${doc.label}`} title="Page details" aria-pressed={pageDetailsPath === doc.route} onClick={() => onOpenPageDetails?.(doc.route, () => selectPage(doc.id))} disabled={busy}>
               <Settings size={12}/>
@@ -396,13 +403,13 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       <p className="px-2 pb-0 pt-1 text-ui font-medium uppercase tracking-label text-cms-muted">CMS pages</p>
       <nav aria-label="CMS pages">
         {workspace?.documents.filter((doc) => Boolean(doc.collectionId) && `${doc.label} ${doc.route}`.toLowerCase().includes(query.toLowerCase())).map((doc) =>
-          <div key={doc.id} className={`group flex h-[26px] w-full items-center pr-0.5 transition-colors hover:bg-cms-raised ${page === doc.id ? "bg-cms-raised text-cms-text" : "text-cms-muted"}`}>
-            <button title={`${doc.label} · ${doc.route}`} className="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-ui disabled:opacity-50" aria-pressed={page === doc.id} onClick={() => {
+          <div key={doc.id} className={`group flex h-[26px] w-full items-center pr-0.5 transition-colors hover:bg-cms-raised ${page === doc.id ? "bg-cms-raised" : ""}`}>
+            <button title={`${doc.label} · ${doc.route}`} className={`flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-ui disabled:opacity-50 ${pageStates[doc.id].state === "saved" ? "text-violet-400" : pageStates[doc.id].color}`} data-page-state={pageStates[doc.id].state} aria-description={pageStates[doc.id].label} aria-pressed={page === doc.id} onClick={() => {
               const select = () => selectPage(doc.id);
               if (onSelectPage) onSelectPage(doc.route, select);
               else select();
             }} disabled={busy}>
-              <PageIcon route={doc.route} collectionId={doc.collectionId} size={13}/><span className="min-w-0 flex-1 truncate">{doc.label}</span>{drafts[doc.id] && <i className="size-2 shrink-0 rounded-full bg-cms-accent" aria-label="Changed"/>}
+              <PageIcon route={doc.route} collectionId={doc.collectionId} size={13}/><span className="min-w-0 flex-1 truncate">{doc.label}</span>
             </button>
             <IconButton className="pointer-events-none size-6 shrink-0 border-transparent bg-transparent p-0 opacity-0 shadow-none group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100" aria-label={`Page details for ${doc.label}`} title="Page details" aria-pressed={pageDetailsPath === doc.route} onClick={() => onOpenPageDetails?.(doc.route, () => selectPage(doc.id))} disabled={busy}>
               <Settings size={12}/>
@@ -417,7 +424,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     <main className="flex min-h-0 min-w-0 flex-1 flex-col">
       <PanelHeader className="h-8 min-h-8 gap-1.5 px-2" render={<header aria-label="Canvas toolbar"/>}>
         <div className="flex min-w-0 flex-1 items-center gap-2 text-ui">
-          <PagePicker documents={workspace?.documents ?? []} current={current} previewItems={previews.items} chosenPreview={chosenPreview} previewsLoading={previews.loading} previewsError={previews.error} disabled={busy || loading || !workspace} onSelectPage={choosePage} onSelectPreview={choosePreview} onOpenDetails={(document) => onOpenPageDetails?.(document.route, () => selectPage(document.id))}/>
+          <PagePicker pageStates={pageStates} documents={workspace?.documents ?? []} current={current} previewItems={previews.items} chosenPreview={chosenPreview} previewsLoading={previews.loading} previewsError={previews.error} disabled={busy || loading || !workspace} onSelectPage={choosePage} onSelectPreview={choosePreview} onOpenDetails={(document) => onOpenPageDetails?.(document.route, () => selectPage(document.id))}/>
           <span className="hidden min-w-0 truncate text-cms-muted md:inline" title={canvasRoute}>{canvasRoute}</span>
         </div>
         <div className="flex shrink-0 items-center gap-0.5" aria-label="Canvas mode">

@@ -60,6 +60,19 @@ async function openReview(page: import("@playwright/test").Page) {
   return review;
 }
 
+async function expectPageState(
+  pageItem: import("@playwright/test").Locator,
+  state: "changed" | "draft" | "published" | "saved",
+  description: string,
+  color: string
+) {
+  await expect(pageItem).toHaveAttribute("data-page-state", state);
+  await expect(pageItem).toHaveAttribute("aria-description", description);
+  await expect(pageItem).toHaveCSS("color", color);
+  await expect(pageItem.locator("span").first()).toHaveCSS("color", color);
+  await expect(pageItem.locator("svg").first()).toHaveCSS("color", color);
+}
+
 async function openCurrentPageDetails(page: import("@playwright/test").Page) {
   const picker = await openPagePicker(page);
   const details = picker.getByRole("button", { name: "Current page details", exact: true });
@@ -895,4 +908,150 @@ test("disconnected GitHub workspace lets editors review but disables pushing", a
   const review = await openReview(page);
   await expect(review).toContainText("GitHub is not connected.");
   await expect(page.getByRole("button", { name: "Push to GitHub" })).toBeDisabled();
+});
+
+test("page and item icons communicate publication state and unsaved changes", async ({ page }) => {
+  let homeStatus: "published" | "draft" = "published";
+  await page.route("**/api/cms/collections/page-settings/records**", async (route) => {
+    const response = await route.fetch();
+    const payload = await response.json() as { data: { records: Array<{ values: Record<string, unknown>; publishStatus: string }> } };
+    for (const record of payload.data.records) {
+      if (record.values.pagePath === "/") record.publishStatus = homeStatus;
+      if (record.values.pagePath === "/about") record.publishStatus = "draft";
+    }
+    await route.fulfill({ response, json: payload });
+  });
+
+  await signInAndOpenDesigner(page);
+  await page.getByRole("button", { name: "Pages panel" }).click();
+  const pages = page.getByRole("complementary", { name: "Pages" });
+  const home = pages.getByRole("navigation", { name: "Static pages" }).getByRole("button").filter({ hasText: "Home" });
+  const white = "rgb(239, 239, 238)";
+  const blue = "rgb(32, 100, 236)";
+  const orange = "rgb(231, 161, 90)";
+
+  await expectPageState(home, "published", "Published", white);
+  const initialPicker = await openPagePicker(page);
+  const pickerHome = initialPicker.getByRole("button", { name: "Open page Home", exact: true });
+  await expectPageState(pickerHome, "published", "Published", white);
+  await expect(initialPicker.getByRole("button", { name: "Open page Product template", exact: true }).locator("svg.lucide-database")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+
+  const hero = page.frameLocator('iframe[title="Website canvas"]').locator('[data-static-field="home.hero_section.display_1"]');
+  await hero.click();
+  await page.locator("#selected-text").fill(firstEdit);
+  await expectPageState(home, "changed", "Changes", blue);
+  await expectPageState(page.getByRole("button", { name: "Choose page" }), "changed", "Changes", blue);
+  const changedPicker = await openPagePicker(page);
+  await expectPageState(changedPicker.getByRole("button", { name: "Open page Home", exact: true }), "changed", "Changes", blue);
+  await expectPageState(pages.getByRole("navigation", { name: "Static pages" }).getByRole("button").filter({ hasText: "About" }), "draft", "Draft", orange);
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-page-states.png", import.meta.url)), fullPage: true });
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Discard drafts" }).click();
+  await page.getByRole("alertdialog", { name: "Discard drafts?" }).getByRole("button", { name: "Discard drafts" }).click();
+  await expectPageState(home, "published", "Published", white);
+
+  homeStatus = "draft";
+  await page.reload();
+  await openDesignerTab(page);
+  await page.getByRole("button", { name: "Pages panel" }).click();
+  const reloadedPages = page.getByRole("complementary", { name: "Pages" });
+  const reloadedHome = reloadedPages.getByRole("navigation", { name: "Static pages" }).getByRole("button").filter({ hasText: "Home" });
+  await expectPageState(reloadedHome, "draft", "Draft", orange);
+  const draftPicker = await openPagePicker(page);
+  await expectPageState(draftPicker.getByRole("button", { name: "Open page Home", exact: true }), "draft", "Draft", orange);
+  await page.keyboard.press("Escape");
+
+  const reloadedHero = page.frameLocator('iframe[title="Website canvas"]').locator('[data-static-field="home.hero_section.display_1"]');
+  await reloadedHero.click();
+  await page.locator("#selected-text").fill(directEdit);
+  await expectPageState(reloadedHome, "changed", "Changes", blue);
+  await expectPageState(page.getByRole("button", { name: "Choose page" }), "changed", "Changes", blue);
+  await page.getByRole("button", { name: "Discard drafts" }).click();
+  await page.getByRole("alertdialog", { name: "Discard drafts?" }).getByRole("button", { name: "Discard drafts" }).click();
+  await expectPageState(reloadedHome, "draft", "Draft", orange);
+
+  await choosePage(page, "Product template");
+  const productPicker = await openPagePicker(page);
+  const productTemplate = productPicker.getByRole("button", { name: "Open page Product template", exact: true });
+  await expect(productTemplate.locator("svg.lucide-database")).toHaveCount(1);
+  const templateSidebar = reloadedPages.getByRole("navigation", { name: "CMS pages" }).getByRole("button").filter({ hasText: "Product template" });
+  await expect(templateSidebar).toHaveAttribute("data-page-state", "saved");
+  await expect(templateSidebar).toHaveClass(/text-violet-400/);
+  const savedTemplateColor = await templateSidebar.evaluate((element) => getComputedStyle(element).color);
+  await expect(templateSidebar.locator("span").first()).toHaveCSS("color", savedTemplateColor);
+  await expect(templateSidebar.locator("svg.lucide-database")).toHaveCSS("color", savedTemplateColor);
+  await productPicker.getByRole("button", { name: "Browse collection items", exact: true }).click();
+  const publishedItem = productPicker.getByRole("button", { name: "Preview item Web App (Astro Static Site)", exact: true });
+  await expectPageState(publishedItem, "published", "Published", white);
+  await expect(publishedItem.locator("svg.lucide-database")).toHaveCount(1);
+  const draftItem = productPicker.getByRole("button", { name: "Preview item Studio Theme", exact: true });
+  await expectPageState(draftItem, "draft", "Draft", orange);
+  await expect(draftItem.locator("svg.lucide-database")).toHaveCount(1);
+  await draftItem.click();
+  await expect(page.getByRole("button", { name: "Choose page" })).toContainText("Studio Theme");
+  await expectPageState(page.getByRole("button", { name: "Choose page" }), "draft", "Draft", orange);
+
+  const productCopy = page.frameLocator('iframe[title="Website canvas"]').locator('[data-static-field="product-template.what_you_get"]');
+  await productCopy.click();
+  const selectedTemplateCopy = page.locator("#selected-text");
+  await expect(selectedTemplateCopy).toBeVisible();
+  await selectedTemplateCopy.fill("Edited template copy with a browser draft");
+  await expectPageState(templateSidebar, "changed", "Changes", blue);
+  await expectPageState(page.getByRole("button", { name: "Choose page" }), "changed", "Changes", blue);
+  await page.getByRole("button", { name: "Discard drafts" }).click();
+  await page.getByRole("alertdialog", { name: "Discard drafts?" }).getByRole("button", { name: "Discard drafts" }).click();
+  await expectPageState(templateSidebar, "saved", "Saved", savedTemplateColor);
+  await expect(templateSidebar).toHaveClass(/text-violet-400/);
+  await expectPageState(page.getByRole("button", { name: "Choose page" }), "draft", "Draft", orange);
+});
+
+test("global publish refreshes page statuses without replacing dirty page details", async ({ page }) => {
+  let aboutStatus = "queued_to_publish";
+  await page.route("**/api/cms/collections/page-settings/records**", async (route) => {
+    const response = await route.fetch();
+    const payload = await response.json() as { data?: { records?: Array<{ values: Record<string, unknown>; publishStatus: string }> } };
+    for (const record of payload.data?.records ?? []) {
+      if (record.values.pagePath === "/") record.publishStatus = "published";
+      if (record.values.pagePath === "/about") record.publishStatus = aboutStatus;
+    }
+    await route.fulfill({ response, json: payload });
+  });
+  await page.route("**/api/cms/publish", async (route) => {
+    aboutStatus = "published";
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, data: { published: 1 } }) });
+  });
+  await page.route("**/api/deploy", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, data: { triggered: false, message: "E2E deploy stub." } }) });
+  });
+
+  await signInAndOpenDesigner(page);
+  await page.getByRole("button", { name: "Pages panel" }).click();
+  const pages = page.getByRole("complementary", { name: "Pages" });
+  const staticPages = pages.getByRole("navigation", { name: "Static pages" });
+  const home = staticPages.getByRole("button").filter({ hasText: "Home" });
+  const about = staticPages.getByRole("button").filter({ hasText: "About" });
+  await expectPageState(about, "draft", "Queued to publish", "rgb(231, 161, 90)");
+
+  await openCurrentPageDetails(page);
+  const details = page.getByRole("complementary", { name: "Page details" });
+  const homeName = details.getByLabel("Page name");
+  await expect(homeName).toBeVisible();
+  await expect(details.getByLabel("Page path")).toHaveValue("/");
+  await homeName.fill("Home details draft preserved through publish");
+  await expectPageState(home, "changed", "Changes", "rgb(32, 100, 236)");
+
+  const publishing = await openPublishing(page);
+  await publishing.getByRole("button", { name: "Publish site" }).click();
+  await expect(page.getByText("Publishing not configured", { exact: true })).toBeVisible();
+  await expect(homeName).toHaveValue("Home details draft preserved through publish");
+  await expectPageState(home, "changed", "Changes", "rgb(32, 100, 236)");
+  await expectPageState(about, "published", "Published", "rgb(239, 239, 238)");
+
+  await details.getByRole("button", { name: "Close page details" }).click();
+  const discardDetails = page.getByRole("alertdialog", { name: "Discard unsaved changes?" });
+  await expect(discardDetails).toBeVisible();
+  await discardDetails.getByRole("button", { name: "Discard" }).click();
+  await expect(details).toHaveCount(0);
 });

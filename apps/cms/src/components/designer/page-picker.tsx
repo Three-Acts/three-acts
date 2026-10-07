@@ -4,10 +4,12 @@ import { Popover } from "@base-ui-components/react/popover";
 import type { EditorDocument } from "@three-acts/static-content";
 import { IconButton, SearchInput } from "../atoms";
 import { PageIcon } from "./page-icon";
+import { getPagePresentation, type PagePresentation } from "./page-state";
 import type { CmsPagePreview } from "./use-cms-page-previews";
 
 type PagePickerProps = {
   documents: EditorDocument[];
+  pageStates: Record<string, PagePresentation>;
   current: EditorDocument | undefined;
   previewItems: CmsPagePreview[];
   chosenPreview: CmsPagePreview | null;
@@ -26,6 +28,7 @@ function matches(query: string, ...values: (string | undefined)[]) {
 
 export function PagePicker({
   documents,
+  pageStates,
   current,
   previewItems,
   chosenPreview,
@@ -44,6 +47,10 @@ export function PagePicker({
   const cmsPages = useMemo(() => documents.filter((document) => document.id !== "shared" && Boolean(document.collectionId) && matches(query, document.label, document.route)), [documents, query]);
   const visiblePreviewItems = useMemo(() => previewItems.filter((item) => matches(query, item.label, item.route)), [previewItems, query]);
   const currentIsTemplate = Boolean(current?.collectionId);
+  const stateForPage = (document: EditorDocument) => pageStates[document.id] ?? getPagePresentation();
+  const currentState = current ? stateForPage(current) : getPagePresentation();
+  const stateForItem = (item: CmsPagePreview) => getPagePresentation(item.publishStatus, currentState.state === "changed");
+  const triggerState = currentIsTemplate && chosenPreview ? stateForItem(chosenPreview) : currentState;
   const searching = Boolean(query.trim());
   const showPageLists = searching || bodyMode === "pages";
   const showPreviewItems = currentIsTemplate && (searching || bodyMode === "items");
@@ -87,7 +94,9 @@ export function PagePicker({
     }}>
       <Popover.Trigger
         aria-label="Choose page"
-        className="flex h-7 max-w-64 min-w-0 items-center gap-1.5 rounded-cms border border-transparent px-2 text-ui text-cms-text transition-colors hover:border-cms-line hover:bg-cms-raised focus-visible:outline-1 focus-visible:outline-cms-accent disabled:cursor-not-allowed disabled:opacity-50"
+        data-page-state={triggerState.state}
+        aria-description={triggerState.label}
+        className={`flex h-7 max-w-64 min-w-0 items-center gap-1.5 rounded-cms border border-transparent px-2 text-ui ${triggerState.color} transition-colors hover:border-cms-line hover:bg-cms-raised focus-visible:outline-1 focus-visible:outline-cms-accent disabled:cursor-not-allowed disabled:opacity-50`}
         disabled={disabled}
       >
         {current && <PageIcon route={current.route} collectionId={current.collectionId} className="shrink-0" size={14} />}
@@ -102,7 +111,7 @@ export function PagePicker({
             initialFocus={searchRef}
             className="flex max-h-[min(70vh,560px)] w-[320px] max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-cms border border-cms-line-strong bg-cms-surface text-cms-text shadow-[0_8px_24px_rgba(0,0,0,0.24)] outline-none"
           >
-            {current && current.id !== "shared" && <div className="group/current flex min-h-8 shrink-0 items-center gap-2 border-b border-cms-line px-3 py-1.5">
+            {current && current.id !== "shared" && <div data-page-state={currentState.state} className={`group/current flex min-h-8 shrink-0 items-center gap-2 border-b border-cms-line px-3 py-1.5 ${currentState.color}`}>
               <PageIcon route={current.route} collectionId={current.collectionId} className="shrink-0" size={14} />
               <span className="min-w-0 flex-1 truncate text-ui font-medium" title={current.label}>{current.label}</span>
               <IconButton
@@ -143,11 +152,13 @@ export function PagePicker({
                         <button
                           type="button"
                           aria-label={`Preview item ${item.label}`}
+                          data-page-state={stateForItem(item).state}
+                          aria-description={stateForItem(item).label}
                           aria-current={chosenPreview?.id === item.id ? "true" : undefined}
                           title={`${item.label} · ${item.route}`}
                           disabled={disabled}
                           onClick={() => selectPreview(item.id)}
-                          className={`flex h-7 w-full min-w-0 items-center gap-2 rounded-cms px-2 text-left text-ui transition-colors hover:bg-cms-raised focus-visible:outline-1 focus-visible:outline-cms-accent disabled:cursor-not-allowed disabled:opacity-50 ${chosenPreview?.id === item.id ? "text-cms-text" : "text-cms-muted"}`}
+                          className={`flex h-7 w-full min-w-0 items-center gap-2 rounded-cms px-2 text-left text-ui transition-colors hover:bg-cms-raised focus-visible:outline-1 focus-visible:outline-cms-accent disabled:cursor-not-allowed disabled:opacity-50 ${stateForItem(item).color} ${chosenPreview?.id === item.id ? "bg-cms-raised" : ""}`}
                         >
                           <PageIcon route={current?.route} collectionId={current?.collectionId} className="shrink-0" size={14} />
                           <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -164,7 +175,7 @@ export function PagePicker({
                   <p className="px-2 pb-1 pt-1 text-ui font-medium uppercase tracking-label text-cms-muted">Static pages</p>
                   <ul className="space-y-px">
                     {staticPages.map((document) => <li key={document.id}>
-                      <button type="button" aria-label={`Open page ${document.label}`} aria-current={current?.id === document.id ? "page" : undefined} title={`${document.label} · ${document.route}`} disabled={disabled} onClick={() => selectPage(document)} className={`flex h-7 w-full min-w-0 items-center gap-2 rounded-cms px-2 text-left text-ui transition-colors hover:bg-cms-raised focus-visible:outline-1 focus-visible:outline-cms-accent disabled:cursor-not-allowed disabled:opacity-50 ${current?.id === document.id ? "bg-cms-raised text-cms-text" : "text-cms-muted"}`}>
+                      <button type="button" aria-label={`Open page ${document.label}`} data-page-state={stateForPage(document).state} aria-description={stateForPage(document).label} aria-current={current?.id === document.id ? "page" : undefined} title={`${document.label} · ${document.route}`} disabled={disabled} onClick={() => selectPage(document)} className={`flex h-7 w-full min-w-0 items-center gap-2 rounded-cms px-2 text-left text-ui transition-colors hover:bg-cms-raised focus-visible:outline-1 focus-visible:outline-cms-accent disabled:cursor-not-allowed disabled:opacity-50 ${stateForPage(document).color} ${current?.id === document.id ? "bg-cms-raised" : ""}`}>
                         <PageIcon route={document.route} className="shrink-0" size={14} /><span className="min-w-0 flex-1 truncate">{document.label}</span><span className="max-w-28 truncate text-cms-subtle">{document.route}</span>
                       </button>
                     </li>)}
@@ -174,7 +185,7 @@ export function PagePicker({
                   <p className="px-2 pb-1 pt-1 text-ui font-medium uppercase tracking-label text-cms-muted">CMS pages</p>
                   <ul className="space-y-px">
                     {cmsPages.map((document) => <li key={document.id}>
-                      <button type="button" aria-label={`Open page ${document.label}`} aria-current={current?.id === document.id ? "page" : undefined} title={`${document.label} · ${document.route}`} disabled={disabled} onClick={() => selectPage(document)} className={`flex h-7 w-full min-w-0 items-center gap-2 rounded-cms px-2 text-left text-ui transition-colors hover:bg-cms-raised focus-visible:outline-1 focus-visible:outline-cms-accent disabled:cursor-not-allowed disabled:opacity-50 ${current?.id === document.id ? "bg-cms-raised text-cms-text" : "text-cms-muted"}`}>
+                      <button type="button" aria-label={`Open page ${document.label}`} data-page-state={stateForPage(document).state} aria-description={stateForPage(document).label} aria-current={current?.id === document.id ? "page" : undefined} title={`${document.label} · ${document.route}`} disabled={disabled} onClick={() => selectPage(document)} className={`flex h-7 w-full min-w-0 items-center gap-2 rounded-cms px-2 text-left text-ui transition-colors hover:bg-cms-raised focus-visible:outline-1 focus-visible:outline-cms-accent disabled:cursor-not-allowed disabled:opacity-50 ${stateForPage(document).color} ${current?.id === document.id ? "bg-cms-raised" : ""}`}>
                         <PageIcon route={document.route} collectionId={document.collectionId} className="shrink-0" size={14} /><span className="min-w-0 flex-1 truncate">{document.label}</span><span className="max-w-28 truncate text-cms-subtle">{document.route}</span>
                       </button>
                     </li>)}
