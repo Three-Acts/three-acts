@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { createContentClient, createSeedContentFetch } from "@three-acts/content";
 import { defineConfig } from "astro/config";
 import { loadEnv } from "vite";
+import { revisionMarkerIntegration } from "./scripts/revision-marker.mjs";
 
 const env = loadEnv(process.env.NODE_ENV ?? "production", process.cwd(), "");
 const apiOrigin = env.API_ORIGIN;
@@ -93,7 +94,7 @@ export default defineConfig({
   site: resolveSiteUrl(),
   output: "static",
   redirects,
-  integrations: [react()],
+  integrations: [react(), revisionMarkerIntegration(env)],
   vite: {
     plugins: [tailwindcss()],
     // Same-origin `/api/*` in dev, proxied to the API app (Vercel rewrite in prod).

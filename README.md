@@ -103,6 +103,7 @@ The CMS runs at http://localhost:5174, the public site at http://localhost:4321,
 - `GET /api/meta` - template metadata endpoint.
 - `POST /api/deploy` - trigger a Vercel deploy hook (used by the CMS Publish flow).
 - `GET /api/deploy-status` - normalized Vercel deployment state for progress feedback.
+- `GET`/`POST /api/editor/deploy` - authenticated exact-revision publication configuration, deployment and production-marker verification.
 - `POST /api/auth/sign-up` - creates a shop identity + `customers` record, returns a `scope: "shop"` session.
 - `POST /api/auth/sign-in` - `{ email, password, scope? }` (`scope` defaults to `"shop"`) -> a session.
 - `POST /api/auth/sign-out` - stateless; the client drops its token.
@@ -301,6 +302,10 @@ Browsing is fully static and indexable; the Cart, Checkout, sign-in/up, and acco
 ## Publishing (CMS → Vercel)
 
 Editors change data, then click **Publish** in the CMS top bar. That calls `POST /api/deploy` (which triggers a Vercel Deploy Hook to rebuild the static site) and polls `GET /api/deploy-status` for live state, surfacing progress in a bottom-right toast: **queued → building → deployed ✓** (or failed). Configure `VERCEL_DEPLOY_HOOK_URL`, `VERCEL_TOKEN`, and `VERCEL_PROJECT_ID` in `apps/api`; when unset, the flow degrades gracefully with a clear message.
+
+Revision-aware clients use `GET /api/editor/deploy` to verify configuration and `POST /api/editor/deploy` with `{ revision, publicationId }` to build an exact Git commit. These routes require a signed CMS session. The source commit must contain the matching `packages/static-content/src/documents/publication.json` receipt. Configure `EDITOR_PUBLIC_SITE_URL`, `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, optional `VERCEL_TEAM_ID`, and the editor's GitHub connection; the project must use the same repository, production branch and `EDITOR_VERCEL_ROOT_DIRECTORY` (default `apps/web`). A provider `READY` result remains unverified until that production origin's `editor-revision.json` matches both identities. Browser state must retain the receipt for retries; legacy deploy-hook results cannot establish this verification.
+
+`POST /api/cms/publish` also accepts `{ records: [{ collectionId, id, modifiedAt, valuesHash }] }` for selected promotion through a signed CMS session. Data adapters implement `publishReviewed` with an atomic queued-status/version check. The result identifies each promoted, already promoted, conflicting, missing or still pending record; callers must require `complete` before requesting deployment. A newly queued record is never included implicitly.
 
 ## Forking for a client
 

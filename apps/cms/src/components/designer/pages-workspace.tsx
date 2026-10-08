@@ -7,6 +7,8 @@ import type { CmsCollectionSummary } from "../../cms/types";
 import { Button, ConfirmDialog } from "../atoms";
 import { PageSettingsView } from "../settings/page-settings-view";
 import { DesignerWorkspace } from "./designer-workspace";
+import type { PublicationSource } from "./publication-source";
+import type { PublicationStatus } from "../../hooks/use-publication";
 import { usePagePublishStatuses } from "./use-page-publish-statuses";
 import { TemplateDetailsPanel, type TemplateDetails } from "./template-details-panel";
 
@@ -23,6 +25,9 @@ type PagesWorkspaceProps = {
   onClosePublish?: () => void;
   onViewSiteUrlChange?: (url: string | null) => void;
   publishRevision?: number;
+  onPublicationSourceChange?: (source: PublicationSource | null) => void;
+  publicationLocked?: boolean;
+  publicationStatus?: PublicationStatus | null;
 };
 
 type PendingDetailsAction = {
@@ -31,7 +36,7 @@ type PendingDetailsAction = {
 };
 
 /** Keeps the designer mounted while page details are shown in a side panel. */
-export function PagesWorkspace({ active = true, onOpenCmsRecord, discardDetailsRevision = 0, collection, user, onDirtyChange, onSaved, onBusyChange, toolbarHost, onClosePublish, onViewSiteUrlChange, publishRevision = 0 }: PagesWorkspaceProps) {
+export function PagesWorkspace({ active = true, onOpenCmsRecord, discardDetailsRevision = 0, collection, user, onDirtyChange, onSaved, onBusyChange, toolbarHost, onClosePublish, onViewSiteUrlChange, publishRevision = 0, onPublicationSourceChange, publicationLocked = false, publicationStatus }: PagesWorkspaceProps) {
   const [detailsPath, setDetailsPath] = useState<string | null>(null);
   const [templateDetails, setTemplateDetails] = useState<TemplateDetails | null>(null);
   const [detailsDirty, setDetailsDirty] = useState(false);
@@ -123,7 +128,7 @@ export function PagesWorkspace({ active = true, onOpenCmsRecord, discardDetailsR
       {isTemplate ? templateDetails?.document.route === detailsPath ? <TemplateDetailsPanel details={templateDetails} disabled={busy} onClose={requestCloseDetails}/> : <div className="p-3 text-ui text-cms-muted"><p>Select a CMS template to edit its details.</p><Button aria-label="Close page details" disabled={busy} onClick={requestCloseDetails}>Close</Button></div> : <PageSettingsView
         collection={collection}
         initialPagePath={detailsPath}
-        key={`${detailsPath}:${discardDetailsRevision}`}
+        key={`${detailsPath}:${discardDetailsRevision}:${publishRevision}`}
         layout="panel"
         onBusyChange={reportBusy}
         onClose={requestCloseDetails}
@@ -150,6 +155,9 @@ export function PagesWorkspace({ active = true, onOpenCmsRecord, discardDetailsR
         onViewSiteUrlChange={onViewSiteUrlChange}
         pagePublishStatuses={pagePublishStatuses}
         pageDetailsDirty={detailsDirty}
+        onPublicationSourceChange={onPublicationSourceChange}
+        publicationLocked={publicationLocked}
+        publicationStatus={publicationStatus}
       />
       {detailsPanel}
 

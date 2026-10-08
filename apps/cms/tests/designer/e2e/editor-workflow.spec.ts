@@ -10,6 +10,7 @@ const firstEdit = "A browser-saved headline for Three Acts.";
 const directEdit = "A directly edited headline for Three Acts.";
 const pushedEdit = "A committed headline for Three Acts.";
 
+
 function pagePicker(page: import("@playwright/test").Page) {
   return page.getByRole("dialog", { name: "Page picker" });
 }
@@ -812,7 +813,7 @@ test("the Publish menu centralizes source actions and preserves drafts when relo
   await expect(menu.getByRole("button", { name: "GitHub connection" })).toBeVisible();
   await expect(menu.getByRole("button", { name: "Reload from source" })).toBeVisible();
   await expect(menu.getByRole("button", { name: "Review & push" })).toBeEnabled();
-  await expect(menu.getByRole("button", { name: "Publish site" })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Review & publish" })).toBeVisible();
   await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-publish-menu.png", import.meta.url)), fullPage: true });
 
   await menu.getByRole("button", { name: "GitHub connection" }).click();
@@ -959,8 +960,8 @@ test("page and item icons communicate publication state and unsaved changes", as
   await expectPageState(page.getByRole("button", { name: "Choose page" }), "draft", "Draft", orange);
 });
 
-test("global publish refreshes page statuses without replacing dirty page details", async ({ page }) => {
-  let aboutStatus = "queued_to_publish";
+test("publication requires saved page details and preserves unsaved edits", async ({ page }) => {
+  const aboutStatus = "queued_to_publish";
   await page.route("**/api/cms/collections/page-settings/records**", async (route) => {
     const response = await route.fetch();
     const payload = await response.json() as { data?: { records?: Array<{ values: Record<string, unknown>; publishStatus: string }> } };
@@ -970,14 +971,6 @@ test("global publish refreshes page statuses without replacing dirty page detail
     }
     await route.fulfill({ response, json: payload });
   });
-  await page.route("**/api/cms/publish", async (route) => {
-    aboutStatus = "published";
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, data: { published: 1 } }) });
-  });
-  await page.route("**/api/deploy", async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, data: { triggered: false, message: "E2E deploy stub." } }) });
-  });
-
   await signInAndOpenDesigner(page);
   await page.getByRole("button", { name: "Pages panel" }).click();
   const pages = page.getByRole("complementary", { name: "Pages" });
@@ -995,11 +988,12 @@ test("global publish refreshes page statuses without replacing dirty page detail
   await expectPageState(home, "changed", "Changes", "rgb(32, 100, 236)");
 
   const publishing = await openPublishing(page);
-  await publishing.getByRole("button", { name: "Publish site" }).click();
-  await expect(page.getByText("Publishing not configured", { exact: true })).toBeVisible();
+  await expect(publishing.getByRole("button", { name: "Review & publish" })).toBeDisabled();
+  await expect(publishing.getByText("Save or discard the open record/settings edits before reviewing publication.")).toBeVisible();
   await expect(homeName).toHaveValue("Home details draft preserved through publish");
   await expectPageState(home, "changed", "Changes", "rgb(32, 100, 236)");
-  await expectPageState(about, "published", "Published", "rgb(239, 239, 238)");
+  await expectPageState(about, "draft", "Queued to publish", "rgb(231, 161, 90)");
+  await publishing.getByRole("button", { name: "Close publishing" }).click();
 
   await details.getByRole("button", { name: "Close page details" }).click();
   const discardDetails = page.getByRole("alertdialog", { name: "Discard unsaved changes?" });
@@ -2272,4 +2266,65 @@ test("composed section utilities and variants are independent and main-component
   await editor.getByRole("button", { name: "Back to canvas" }).click();
   await expect(image).toHaveAttribute("data-editor-selected", "");
   await expect(canvas.locator(`[data-layout-section="${heroId}"]`)).toBeVisible();
+});
+
+test("publication reviews source and exact CMS records, deploys the committed revision and verifies live after reload", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const heroButton = canvas.locator('[data-editor-component="Button.Link"][data-editor-instance="home.hero_section.href_3"]');
+  await heroButton.click();
+  await page.getByRole("complementary", { name: "Component properties" }).getByRole("combobox", { name: "Component variant" }).selectOption("secondary");
+  await selectLayoutSection(page, "CTA Section");
+  await sectionAction(page, "Duplicate");
+  const copy = canvas.locator('[data-layout-section^="section-"]').last();
+  const copiedId = await copy.getAttribute("data-layout-section");
+  await page.getByRole("complementary", { name: "Component properties" }).getByRole("textbox", { name: "Component Headline", exact: true }).fill("A reviewed composed section");
+  const copiedSection = canvas.locator(`[data-layout-section="${copiedId}"] > section`);
+  await copiedSection.click({ position: { x: 1, y: 1 } });
+  await page.getByRole("button", { name: "Style panel", exact: true }).click();
+  const styles = page.getByRole("complementary", { name: "Style inspector" });
+  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
+  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-12");
+  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("tablet");
+  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-16");
+  const hero = canvas.locator('[data-static-field="home.hero_section.display_1"]');
+  await hero.click();
+  await page.locator("#selected-text").fill("A reviewed publication headline");
+  const requests: string[] = [];
+  page.on("request", request => { const path = new URL(request.url()).pathname; if (request.method() === "POST" && ["/api/editor/push", "/api/cms/publish", "/api/editor/deploy"].includes(path)) requests.push(path); });
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await page.getByRole("button", { name: "Review & publish", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Review publication", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Publishing" }).getByText("A reviewed publication headline", { exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Publishing" })).toContainText("A reviewed composed section");
+  await expect(page.getByRole("dialog", { name: "Publishing" })).toContainText("Page composition");
+  await expect(page.getByRole("region", { name: "Reviewed CMS records" })).toBeVisible();
+  await page.getByRole("button", { name: "Publish reviewed changes", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Publication status" })).toContainText("Deploying committed revision");
+  expect(requests).toEqual(["/api/editor/push", "/api/cms/publish", "/api/editor/deploy"]);
+  const head = (await (await page.request.get("http://127.0.0.1:5380/repos/test/site/git/ref/heads/content")).json()).object.sha;
+  const provider = await (await page.request.get("http://127.0.0.1:5381/__e2e/status")).json();
+  expect(provider.deployments[0].gitSource.sha).toBe(head);
+  await page.request.post("http://127.0.0.1:5381/__e2e/control", { data: { state: "READY", markerMatches: false } });
+  await expect(page.getByRole("region", { name: "Publication status" })).toContainText("Verifying production revision");
+  await expect(page.getByRole("region", { name: "Publication status" })).not.toContainText("Live revision verified");
+  await page.reload();
+  await openDesignerTab(page);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Publication status" })).toContainText(head.slice(0, 8));
+  await page.request.post("http://127.0.0.1:5381/__e2e/control", { data: { state: "READY", markerMatches: true } });
+  await expect(page.getByRole("region", { name: "Publication status" })).toContainText("Live revision verified");
+  await expect(page.getByLabel("Draft save state")).toContainText(`Live · ${head.slice(0, 8)}`);
+  expect((await (await page.request.get("http://127.0.0.1:5381/__e2e/status")).json()).creates).toBe(provider.creates);
+  const snapshot = await page.evaluate(async () => {
+    const { apiFetch } = await import("/src/lib/api-client.ts");
+    return apiFetch<EditorWorkspace>("/editor/content");
+  });
+  expect(snapshot.headSha).toBe(head);
+  expect(snapshot.documents.find(doc => doc.id === "home")!.content.hero_section).toMatchObject({ display_1: "A reviewed publication headline" });
+  expect(snapshot.documents.find(doc => doc.id === "layout")!.content).toHaveProperty(`pages.home.sections.${copiedId}.content.p_1`, "A reviewed composed section");
+  expect(JSON.stringify(snapshot.documents.find(doc => doc.id === "design")!.content)).toContain("pt-12");
+  expect(JSON.stringify(snapshot.documents.find(doc => doc.id === "design")!.content)).toContain("secondary");
+  writeFileSync(fileURLToPath(new URL("../artifacts/publication-committed.json", import.meta.url)), JSON.stringify({ revision: head, documents: snapshot.documents.map(doc => ({ id: doc.id, content: doc.content })) }, null, 2));
+  await page.screenshot({ path: "apps/cms/tests/designer/artifacts/publication-live.png" });
 });

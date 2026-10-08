@@ -8,6 +8,10 @@ import { contentDefinitions, contentPath, serializeContent, defaultLayout, dupli
 import homeSource from "@three-acts/static-content/documents/home.json";
 import contentRoute from "../../../api/api/editor/content";
 import pushRoute from "../../../api/api/editor/push";
+import deployRoute from "../../../api/api/editor/deploy";
+import cmsPublishRoute from "../../../api/api/cms/publish";
+import recordsRoute from "../../../api/api/cms/collections/[collectionId]/records";
+import { listRecordsQuery } from "@three-acts/cms-schema";
 
 const AUTH_SECRET = "editor-api-integration-secret";
 const ENV_KEYS = [
@@ -31,7 +35,7 @@ class GithubStub {
   readonly calls: StubCall[] = [];
   readonly snapshots = new Map<string, Map<string, GitFile>>();
   readonly trees = new Map<string, Map<string, GitFile>>();
-  readonly commits = new Map<string, { tree: string; parent: string | null }>();
+  readonly commits = new Map<string, { tree: string; parent: string | null; message?: string }>();
   head = "1111111111111111111111111111111111111111";
   rejectRefUpdate = false;
   private server?: Server;
@@ -85,6 +89,18 @@ class GithubStub {
       send(200, { object: { sha: this.head } });
       return;
     }
+    if (request.method === "GET" && path === "/commits") {
+      const history: Array<{ sha: string; commit: { message: string } }> = [];
+      let sha: string | null = url.searchParams.get("sha");
+      while (sha && history.length < 100) {
+        const commit = this.commits.get(sha);
+        if (!commit) break;
+        history.push({ sha, commit: { message: commit.message ?? "Initial content" } });
+        sha = commit.parent;
+      }
+      send(200, history);
+      return;
+    }
     const commitMatch = path.match(/^\/git\/commits\/([a-f0-9]{40})$/);
     if (request.method === "GET" && commitMatch) {
       const commit = this.commits.get(commitMatch[1]);
@@ -112,11 +128,11 @@ class GithubStub {
       return;
     }
     if (request.method === "POST" && path === "/git/commits") {
-      const input = body as { tree?: string; parents?: string[] };
+      const input = body as { tree?: string; parents?: string[]; message?: string };
       const files = this.trees.get(input.tree ?? "");
       if (!files) return send(422, { message: "tree not found" });
       const sha = this.nextSha();
-      this.commits.set(sha, { tree: input.tree!, parent: input.parents?.[0] ?? null });
+      this.commits.set(sha, { tree: input.tree!, parent: input.parents?.[0] ?? null, message: input.message });
       this.snapshots.set(sha, new Map(files));
       send(201, { sha, html_url: `https://github.com/test/site/commit/${sha}` });
       return;
@@ -124,7 +140,7 @@ class GithubStub {
     if (request.method === "PATCH" && path === "/git/refs/heads/content") {
       if (this.rejectRefUpdate) return send(422, { message: "branch moved" });
       const input = body as { sha?: string; force?: boolean };
-      if (input.force !== false || !input.sha || !this.commits.has(input.sha)) return send(422, { message: "invalid ref update" });
+      if (input.force !== false || !input.sha || this.commits.get(input.sha)?.parent !== this.head) return send(422, { message: "invalid or non-fast-forward ref update" });
       this.head = input.sha;
       send(200, { object: { sha: this.head } });
       return;
@@ -155,6 +171,7 @@ async function invoke(handler: (request: VercelRequest, response: VercelResponse
   method: string;
   token?: string;
   body?: unknown;
+  query?: Record<string, unknown>;
 }): Promise<ApiResult> {
   const headers: Record<string, string> = {};
   let status = 200;
@@ -169,7 +186,7 @@ async function invoke(handler: (request: VercelRequest, response: VercelResponse
     method: options.method,
     headers: options.token ? { authorization: `Bearer ${options.token}` } : {},
     body: options.body ?? {},
-    query: {}
+    query: options.query ?? {}
   } as unknown as VercelRequest;
   await handler(request, response);
   return { status, body: result, headers };
@@ -213,6 +230,11 @@ test("content and push routes require a CMS session before contacting GitHub", a
   const push = await invoke(pushRoute, { method: "POST", body: { message: "update", changes: [] } });
   const shopToken = signSessionToken({ sub: "shop-1", email: "customer@example.com", name: "Customer", scope: "shop" }, AUTH_SECRET).token;
   const shopSession = await invoke(contentRoute, { method: "GET", token: shopToken });
+  for (const method of ["GET", "POST"]) {
+    assert.equal((await invoke(deployRoute, { method, body: {} })).status, 401);
+    assert.equal((await invoke(deployRoute, { method, token: shopToken, body: {} })).status, 401);
+  }
+  assert.equal((await invoke(cmsPublishRoute, { method: "POST", body: { records: [] } })).status, 401);
 
   assert.equal(content.status, 401);
   assert.equal(errorCode(content), "unauthorized");
@@ -221,6 +243,44 @@ test("content and push routes require a CMS session before contacting GitHub", a
   assert.equal(shopSession.status, 401);
   assert.equal(errorCode(shopSession), "unauthorized");
   assert.equal(github.calls.length, 0);
+});
+
+test("reviewed publication boundaries reject malformed promotion bodies and accept an empty authenticated review", async t => {
+  const { token } = await setup(t);
+  for (const body of [[], 3, { extra: true }, { collectionId: 123 }, { collectionId: "articles", records: [] }, { records: [{ collectionId: "articles", id: "a", modifiedAt: "bad", valuesHash: "c".repeat(64) }] }]) {
+    const result = await invoke(cmsPublishRoute, { method: "POST", token, body });
+    assert.equal(result.status, 400);
+  }
+  const empty = await invoke(cmsPublishRoute, { method: "POST", token, body: { records: [] } });
+  assert.equal(empty.status, 200);
+  assert.deepEqual(resultData(empty), { published: 0, complete: true, records: [] });
+});
+
+test("publication push retries reconcile the same commit after a lost response and later branch changes", async (t) => {
+  const { github, token } = await setup(t);
+  const workspace = resultData<EditorWorkspace>(await invoke(contentRoute, { method: "GET", token }));
+  const home = workspace.documents.find(doc => doc.id === "home")!;
+  const content = structuredClone(home.content);
+  (content.hero_section as ContentObject).display_1 = "A reviewed release";
+  const body = { requestId: "d280d96c-5b8f-4d43-8b9b-e5dce7f2ce31", expectedHead: workspace.headSha, message: "Publish reviewed source", changes: [{ id: home.id, sha: home.sha, content }] };
+  const committed = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body }));
+  const firstRetry = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body }));
+  assert.deepEqual(firstRetry, committed);
+  const faq = workspace.documents.find(doc => doc.id === "faq")!;
+  const faqContent = structuredClone(faq.content);
+  (faqContent.faq as ContentObject).title_2 = "A teammate's later edit";
+  const later = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body: { message: "Later edit", changes: [{ id: faq.id, sha: faq.sha, content: faqContent }] } }));
+  assert.notEqual(later.sha, committed.sha);
+  const laterRetry = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body }));
+  assert.deepEqual(laterRetry, committed);
+  assert.equal(github.head, later.sha, "Reconciliation must not rewind the branch");
+  assert.equal(github.calls.filter(call => call.method === "POST" && call.path === "/git/commits").length, 2);
+  const different = await invoke(pushRoute, { method: "POST", token, body: { ...body, message: "Different release" } });
+  assert.equal(different.status, 409);
+  assert.equal(errorCode(different), "publication_request_conflict");
+  const malformed = await invoke(pushRoute, { method: "POST", token, body: { ...body, requestId: "not-an-identity" } });
+  assert.equal(malformed.status, 400);
+  assert.equal(github.calls.filter(call => call.method === "PATCH").length, 2);
 });
 
 test("content route reads all documents from the configured branch without caching", async (t) => {
@@ -241,6 +301,38 @@ test("content route reads all documents from the configured branch without cachi
   assert.deepEqual(data.documents.map(({ id }) => id), contentDefinitions.map(({ id }) => id));
   assert.equal(response.headers["cache-control"], "no-store");
   assert.equal(github.calls.filter(({ method }) => method === "GET").length, contentDefinitions.length + 1);
+});
+
+test("publication review rejects an advanced branch even when its changed document is untouched", async t => {
+  const { github, token } = await setup(t);
+  const workspace = resultData<EditorWorkspace>(await invoke(contentRoute, { method: "GET", token }));
+  const faq = workspace.documents.find(doc => doc.id === "faq")!;
+  const faqContent = structuredClone(faq.content);
+  (faqContent.faq as ContentObject).title_2 = "A concurrent FAQ change";
+  const later = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body: { message: "Change FAQ", changes: [{ id: faq.id, sha: faq.sha, content: faqContent }] } }));
+  const home = workspace.documents.find(doc => doc.id === "home")!;
+  const homeContent = structuredClone(home.content);
+  (homeContent.hero_section as ContentObject).display_1 = "Reviewed against the old branch";
+  const writes = github.calls.filter(call => call.method !== "GET").length;
+  const rejected = await invoke(pushRoute, { method: "POST", token, body: { requestId: "d280d96c-5b8f-4d43-8b9b-e5dce7f2ce31", expectedHead: workspace.headSha, message: "Publish old review", changes: [{ id: home.id, sha: home.sha, content: homeContent }] } });
+  assert.equal(rejected.status, 409);
+  assert.equal(errorCode(rejected), "publication_revision_conflict");
+  assert.equal(github.head, later.sha);
+  assert.equal(github.calls.filter(call => call.method !== "GET").length, writes, "No tree or commit may incorporate unreviewed branch changes");
+});
+
+test("record list REST query retains the publication filter and rejects malformed statuses", async t => {
+  const { token } = await setup(t);
+  const query = Object.fromEntries(new URLSearchParams(listRecordsQuery({ publishStatus: "queued_to_publish", limit: 100, offset: 0 })));
+  const result = await invoke(recordsRoute, { method: "GET", token, query: { collectionId: "articles", ...query } });
+  assert.equal(result.status, 200);
+  const data = resultData<{ records: Array<{ publishStatus: string }>; total: number }>(result);
+  assert.ok(data.records.length > 0);
+  assert.ok(data.records.every(record => record.publishStatus === "queued_to_publish"));
+  assert.equal(data.total, data.records.length);
+  for (const status of ["unknown", "", ["published", "draft"]]) {
+    assert.equal((await invoke(recordsRoute, { method: "GET", token, query: { collectionId: "articles", publishStatus: status } })).status, 400);
+  }
 });
 
 test("push creates one commit for multiple documents, preserves untouched files, and reads committed content back", async (t) => {

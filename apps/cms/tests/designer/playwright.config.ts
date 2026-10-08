@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "@playwright/test";
 
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
-const ports = { github: "5380", api: "5375", web: "5341", cms: "5274" };
+const ports = { github: "5380", provider: "5381", api: "5375", web: "5341", cms: "5274" };
 
 export default defineConfig({
   testDir: "./e2e",
@@ -21,6 +21,14 @@ export default defineConfig({
     trace: "retain-on-failure"
   },
   webServer: [
+    {
+      command: "npx tsx apps/cms/tests/designer/publication-stub-server.ts",
+      cwd: root,
+      url: `http://127.0.0.1:${ports.provider}/__e2e/status`,
+      timeout: 30_000,
+      reuseExistingServer: false,
+      env: { ...process.env, PORT: ports.provider }
+    },
     {
       command: "npx tsx apps/cms/tests/designer/github-stub-server.ts",
       cwd: root,
@@ -45,7 +53,12 @@ export default defineConfig({
         EDITOR_GITHUB_REPOSITORY: "test/site",
         EDITOR_GITHUB_BRANCH: "content",
         EDITOR_GITHUB_TOKEN: "browser-test-token",
-        EDITOR_GITHUB_API_BASE: `http://127.0.0.1:${ports.github}`
+        EDITOR_GITHUB_API_BASE: `http://127.0.0.1:${ports.github}`,
+        VERCEL_TOKEN: "provider-browser-test",
+        VERCEL_PROJECT_ID: "prj_editorweb",
+        VERCEL_TEAM_ID: "team_editor",
+        VERCEL_API_BASE: `http://127.0.0.1:${ports.provider}`,
+        EDITOR_PUBLIC_SITE_URL: `http://localhost:${ports.provider}`
       }
     },
     {

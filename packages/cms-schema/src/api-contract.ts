@@ -33,7 +33,7 @@ export const cmsApiPaths = {
 export type CreateRecordBody = { values?: Partial<Record<string, CmsRecordValue>> };
 export type SaveRecordBody = { record: CmsRecord; expectedModifiedAt?: string };
 export type ImportRecordsBody = { rows: Array<Record<string, CmsRecordValue>> };
-export type PublishBody = { collectionId?: string };
+export type PublishBody = { collectionId?: string; records?: import("./publication").ReviewedCmsRecord[] };
 export type SetPublishStatusBody = { recordIds: string[]; publishStatus: Exclude<PublishStatus, "published"> };
 /** Base64 payload keeps the bridge dependency-free; keep files under 4 MB (Vercel body limit). */
 export type UploadAssetBody = { fileName: string; contentType: string; size: number; data: string };
@@ -43,6 +43,7 @@ export const MAX_ASSET_UPLOAD_BYTES = 4 * 1024 * 1024;
 export function listRecordsQuery(options?: ListRecordsOptions): string {
   const params = new URLSearchParams();
   if (options?.search) params.set("search", options.search);
+  if (options?.publishStatus) params.set("publishStatus", options.publishStatus);
   if (options?.sort) {
     params.set("sortKey", options.sort.key);
     params.set("sortDirection", options.sort.direction);

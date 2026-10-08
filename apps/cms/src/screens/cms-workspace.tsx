@@ -14,6 +14,8 @@ import { RecordEditor } from "../components/editor";
 import { ImportDialog } from "../components/import";
 import { SiteSettingsView } from "../components/settings";
 import { PagesWorkspace } from "../components/designer/pages-workspace";
+import type { PublicationSource } from "../components/designer/publication-source";
+import type { PublicationStatus } from "../hooks/use-publication";
 
 // Tabs come from the static registry so they don't pop in once the
 // collection summaries finish loading.
@@ -82,7 +84,9 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   // screen so it re-reads records the publish pipeline just changed.
   const [isSettingsDirty, setIsSettingsDirty] = useState(false);
   const [isDesignerBusy, setIsDesignerBusy] = useState(false);
-  const [settingsRevision, setSettingsRevision] = useState(0);
+  const [publicationSource, setPublicationSource] = useState<PublicationSource | null>(null);
+  const [publicationLocked, setPublicationLocked] = useState(false);
+  const [publicationStatus, setPublicationStatus] = useState<PublicationStatus | null>(null);
   const [publishRevision, setPublishRevision] = useState(0);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(availableTabs[0] ?? "cms");
   const [designerToolbarHost, setDesignerToolbarHost] = useState<HTMLDivElement | null>(null);
@@ -127,14 +131,10 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
     refreshRecords();
     refreshCollections();
     setPublishRevision((revision) => revision + 1);
-
-    if (!isSettingsDirty && !isDesignerBusy && !cmsReturn) {
-      setSettingsRevision((revision) => revision + 1);
-    }
   }
 
   function guardNavigation(action: () => void, settingsUnsafe = isSettingsDirty, preserveRecord = false) {
-    if (isDesignerBusy || isSaving || uploadingField) return;
+    if (publicationLocked || isDesignerBusy || isSaving || uploadingField) return;
     if ((!preserveRecord && isDirty) || settingsUnsafe) {
       setPendingAction(() => () => {
         if (!preserveRecord && isDirty) discardRecordChanges();
@@ -224,10 +224,14 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
         publishOpen={publishOpen}
         onPublishOpenChange={setPublishOpen}
         viewSiteUrl={viewSiteUrl}
+        publicationSource={publicationSource}
+        onPublicationLockedChange={setPublicationLocked}
+        onPublicationStatusChange={setPublicationStatus}
+        unsavedPublication={isDirty || isSettingsDirty || isSaving || Boolean(uploadingField)}
       />
-      <div className="flex min-h-0 flex-1">
+      <div inert={publicationLocked} className="flex min-h-0 flex-1">
         {pageSettingsCollection && <main hidden={activeTab !== "page-settings"} className={cn("relative min-h-0 min-w-0 flex-1", activeTab === "page-settings" ? "flex" : "hidden")}>
-          <PagesWorkspace collection={pageSettingsCollection} key={`${pageSettingsCollection.id}-${settingsRevision}`} active={activeTab === "page-settings"} onOpenCmsRecord={openCmsRecord} discardDetailsRevision={detailsDiscardRevision} onDirtyChange={setIsSettingsDirty} onSaved={refreshCollections} onBusyChange={setIsDesignerBusy} user={user} toolbarHost={activeTab === "page-settings" ? designerToolbarHost : null} onClosePublish={() => setPublishOpen(false)} onViewSiteUrlChange={setViewSiteUrl} publishRevision={publishRevision}/>
+          <PagesWorkspace collection={pageSettingsCollection} key={pageSettingsCollection.id} active={activeTab === "page-settings"} onOpenCmsRecord={openCmsRecord} discardDetailsRevision={detailsDiscardRevision} onDirtyChange={setIsSettingsDirty} onSaved={refreshCollections} onBusyChange={setIsDesignerBusy} user={user} toolbarHost={activeTab === "page-settings" ? designerToolbarHost : null} onClosePublish={() => setPublishOpen(false)} onViewSiteUrlChange={setViewSiteUrl} publishRevision={publishRevision} onPublicationSourceChange={setPublicationSource} publicationLocked={publicationLocked} publicationStatus={publicationStatus}/>
         </main>}
         {activeTab === "cms" ? (
           <CollectionSidebar
@@ -248,7 +252,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
           <main className="relative flex min-h-0 min-w-0 flex-1">
               <SiteSettingsView
                 collection={settingsCollection}
-                key={`${settingsCollection.id}-${settingsRevision}`}
+                key={`${settingsCollection.id}-${publishRevision}`}
                 onDirtyChange={setIsSettingsDirty}
                 onSaved={refreshCollections}
                 mediaCollection={mediaCollection}

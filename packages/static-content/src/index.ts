@@ -1,7 +1,9 @@
 import { checkContentShape } from "./value-validation";
 import layout from "./documents/layout.json";
+import publication from "./documents/publication.json";
 import { validateLayout } from "./layout";
 export * from "./layout";
+export * from "./publication";
 export { isSafeContentUrl, isSafeMediaUrl } from "./value-validation";
 import design from "./documents/design.json";
 import { validateDesign } from "@three-acts/design";
@@ -26,10 +28,11 @@ import articleCategoryTemplate from "./documents/article-category-template.json"
 
 export type ContentValue = string | number | boolean | ContentValue[] | { [key: string]: ContentValue };
 export type ContentObject = { [key: string]: ContentValue };
-export type ContentDefinition = { id: string; label: string; route: string; content: ContentObject; collectionId?: string; kind?: "design" | "layout" };
+export type ContentDefinition = { id: string; label: string; route: string; content: ContentObject; collectionId?: string; kind?: "design" | "layout" | "publication" };
 export const contentDefinitions: ContentDefinition[] = [
   { id: "design", label: "Site design", route: "/", kind: "design", content: design },
   { id: "layout", label: "Page composition", route: "/", kind: "layout", content: layout },
+  { id: "publication", label: "Publication receipt", route: "/", kind: "publication", content: publication },
   { id: "home", label: "Home", route: "/", content: home },
   { id: "about", label: "About", route: "/about", content: about },
   { id: "faq", label: "FAQ", route: "/faq", content: faq },
@@ -58,6 +61,11 @@ export const serializeContent = (content: ContentObject) => `${JSON.stringify(co
 export function validateContent(id: string, input: unknown): ContentObject {
   if (id === "design") return validateDesign(input) as unknown as ContentObject;
   if (id === "layout") return validateLayout(input) as unknown as ContentObject;
+  if (id === "publication") {
+    const value = input as Record<string, unknown> | null;
+    if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== 2 || value.version !== 1 || typeof value.publicationId !== "string" || value.publicationId !== "" && !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.publicationId)) throw new Error("Invalid publication receipt.");
+    return { version: 1, publicationId: value.publicationId };
+  }
   const definition = contentDefinitions.find((item) => item.id === id);
   if (!definition) throw new Error("Unknown content document.");
 

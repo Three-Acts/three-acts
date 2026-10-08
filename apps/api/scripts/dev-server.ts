@@ -21,6 +21,7 @@ type RouteLoader = () => Promise<{ default: (request: VercelRequest, response: V
 const routes = {
   "/api/editor/content": () => import("../api/editor/content"),
   "/api/editor/push": () => import("../api/editor/push"),
+  "/api/editor/deploy": () => import("../api/editor/deploy"),
   "/api/health": () => import("../api/health"),
   "/api/meta": () => import("../api/meta"),
   "/api/deploy": () => import("../api/deploy"),

@@ -265,6 +265,8 @@ export type CmsDataAdapter = {
    * the data adapter.
    */
   publishQueued: (collectionId?: string) => Promise<{ published: number }>;
+  /** Promote only the exact queued versions captured in publication review. */
+  publishReviewed: (records: import("./publication").ReviewedCmsRecord[]) => Promise<import("./publication").CmsPromotionResult>;
   /**
    * Bulk status override for the selection toolbar ("Update items"). Only
    * `queued_to_publish` and `not_published` are valid targets: `published` is
