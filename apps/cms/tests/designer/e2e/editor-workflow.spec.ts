@@ -1449,3 +1449,158 @@ test("CMS handoff guards page details and exposes missing-record recovery withou
   await expect(source).toContainText("no registered record identity");
   await expect(source.getByRole("button", { name: "Edit CMS item" })).toHaveCount(0);
 });
+
+async function outlineItem(page: import("@playwright/test").Page, element: import("@playwright/test").Locator) {
+  await expect(element).toHaveAttribute("data-three-acts-node", /^n\d+$/);
+  const id = await element.getAttribute("data-three-acts-node");
+  return page.locator(`[data-canvas-selector='[data-three-acts-node="${id}"]']`);
+}
+
+test("hidden Navigator reveals closed FAQ content and preserves the interaction through CMS handoff", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  await choosePage(page, "FAQ");
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const answers = canvas.locator('[data-cms-bound="faqs.answer"]');
+  const answer = answers.nth(1);
+  const disclosure = answer.locator("xpath=ancestor::details[1]");
+  const originallyOpen = answers.first().locator("xpath=ancestor::details[1]");
+  await expect(disclosure).toHaveJSProperty("open", false);
+  await expect(originallyOpen).toHaveJSProperty("open", true);
+  await originallyOpen.evaluate(details => details.setAttribute("name", "editor-test-faq"));
+  await disclosure.evaluate(details => details.setAttribute("name", "editor-test-faq"));
+  const navigator = page.getByRole("complementary", { name: "Navigator", exact: true });
+  await navigator.getByRole("searchbox", { name: "Search elements" }).fill((await answer.getAttribute("data-cms-item-label"))!);
+  const row = await outlineItem(page, answer);
+  await expect(row.locator('[aria-label="Hidden element"]')).toBeVisible();
+  await row.click();
+  await expect(disclosure).toHaveJSProperty("open", true);
+  await expect(answer).toBeVisible();
+  await expect(originallyOpen).toHaveJSProperty("open", false);
+  await expect(row).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("status", { name: "Selection visibility" })).toContainText("Temporarily revealed");
+  const id = await answer.getAttribute("data-cms-item-id");
+  await page.getByRole("region", { name: "CMS source", exact: true }).getByRole("button", { name: "Edit CMS item" }).click();
+  const editor = page.locator(`[data-cms-record-editor="${id}"]`);
+  await expect(editor.locator('[data-cms-field="answer"]').getByRole("textbox")).toBeFocused();
+  await editor.getByRole("button", { name: "Back to canvas" }).click();
+  await expect(disclosure).toHaveJSProperty("open", true);
+  await expect(row).toHaveAttribute("aria-selected", "true");
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-hidden-faq.png", import.meta.url)), fullPage: true });
+  await page.getByRole("button", { name: "Preview mode", exact: true }).click();
+  await expect(disclosure).toHaveJSProperty("open", false);
+  await expect(originallyOpen).toHaveJSProperty("open", true);
+  await page.getByRole("button", { name: "Design mode", exact: true }).click();
+  await row.click();
+  await expect(disclosure).toHaveJSProperty("open", true);
+  await canvas.locator('[data-static-field="faq.faq.title_2"]').click();
+  await expect(disclosure).toHaveJSProperty("open", false);
+  await expectReviewState(page, false);
+});
+
+test("hidden Navigator inspects responsive content and reveals mobile navigation without source layout changes", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const mobileNav = canvas.locator('nav[aria-label="Mobile"]');
+  const menu = mobileNav.locator("xpath=ancestor::details[1]");
+  const label = mobileNav.locator('[data-static-field="shared.navLinks.0.label"]');
+  const sourceClasses = await menu.getAttribute("class");
+  const navigator = page.getByRole("complementary", { name: "Navigator", exact: true });
+  await navigator.getByRole("searchbox", { name: "Search elements" }).fill("Nav Links");
+  const row = await outlineItem(page, label);
+  await expect(row).toBeVisible();
+  await row.click();
+  await expect(menu).toHaveJSProperty("open", false);
+  await expect(label).toBeHidden();
+  await expect(page.getByRole("status", { name: "Selection visibility" })).toContainText("Hidden at this width");
+  await page.getByRole("button", { name: "mobile preview", exact: true }).click();
+  await expect(menu).toHaveJSProperty("open", true);
+  await expect(label).toBeVisible();
+  await expect(row).toHaveAttribute("aria-selected", "true");
+  await page.locator("#selected-text").fill("Mobile navigation source edit");
+  await expect(label).toHaveText("Mobile navigation source edit");
+  await expect(canvas.locator('nav[aria-label="Primary"] [data-static-field="shared.navLinks.0.label"]')).toHaveText("Mobile navigation source edit");
+  await page.getByRole("button", { name: "Undo edit", exact: true }).click();
+  await expect(label).toHaveText("Shop");
+  await page.getByRole("button", { name: "Preview mode", exact: true }).click();
+  await expect(menu).toHaveJSProperty("open", false);
+  await expect(menu).toHaveAttribute("class", sourceClasses!);
+  await page.getByRole("button", { name: "Design mode", exact: true }).click();
+  await row.click();
+  await expect(menu).toHaveJSProperty("open", true);
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveJSProperty("open", false);
+  await expect(page.getByLabel("Selected element", { exact: true })).toContainText("No selection");
+  await expectReviewState(page, false);
+});
+
+test("hidden Navigator pages a bounded outline and keeps identity after DOM insertion, reorder and removal", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  await canvas.locator("body").evaluate(body => {
+    const section = body.ownerDocument.createElement("section");
+    section.dataset.testid = "large-outline";
+    section.dataset.editorLabel = "Large outline fixture";
+    const fragment = body.ownerDocument.createDocumentFragment();
+    for (let index = 0; index < 6000; index++) {
+      const row = body.ownerDocument.createElement("p");
+      row.dataset.editorLabel = `Outline row ${index}`;
+      row.dataset.testid = `outline-${index}`;
+      row.textContent = `Fixture content ${index}`;
+      fragment.append(row);
+    }
+    section.append(fragment); body.append(section);
+  });
+  const navigator = page.getByRole("complementary", { name: "Navigator", exact: true });
+  const completeness = navigator.getByLabel("Navigator completeness", { exact: true });
+  await expect(completeness).toContainText("Showing 400 of at least");
+  const target = canvas.locator('[data-testid="outline-800"]');
+  await target.click();
+  const row = await outlineItem(page, target);
+  await expect(row).toBeVisible();
+  await expect(row).toHaveAttribute("aria-selected", "true");
+  const identity = await target.getAttribute("data-three-acts-node");
+  await target.evaluate(element => {
+    const sibling = element.ownerDocument.createElement("p");
+    sibling.textContent = "Inserted sibling";
+    element.before(sibling);
+    element.parentElement!.prepend(element);
+  });
+  await expect(target).toHaveAttribute("data-three-acts-node", identity!);
+  await expect(row).toHaveAttribute("aria-selected", "true");
+  // A copied preview attribute is not allowed to impersonate a real DOM identity.
+  await target.evaluate(element => {
+    const clone = element.cloneNode(true) as HTMLElement;
+    clone.dataset.testid = "copied-identity";
+    clone.dataset.editorLabel = "Copied identity fixture";
+    clone.removeAttribute("data-editor-selected");
+    element.parentElement!.append(clone);
+  });
+  // Clear selection removes pinned layers. Load the reordered source into the
+  // regular outline page before testing another selection through its identity.
+  await completeness.getByRole("button", { name: "Load more elements" }).click();
+  await expect(completeness).toContainText("Showing 800");
+  await page.keyboard.press("Escape");
+  await expect(target).not.toHaveAttribute("data-editor-selected", "");
+  await navigator.getByRole("searchbox", { name: "Search elements" }).fill("Outline row 800");
+  await row.click();
+  await expect(target).toHaveAttribute("data-editor-selected", "");
+  await expect(canvas.locator('[data-testid="copied-identity"]')).not.toHaveAttribute("data-editor-selected", "");
+  await navigator.getByRole("searchbox", { name: "Search elements" }).fill("Outline row 4500");
+  for (let nextLimit = 1200; ; nextLimit = Math.min(5000, nextLimit + 400)) {
+    await completeness.getByRole("button", { name: "Load more elements" }).click();
+    await expect(completeness).toContainText(`Showing ${nextLimit}`);
+    if (nextLimit === 5000) break;
+  }
+  await expect(completeness).toContainText("Outline safety limit reached");
+  await expect(completeness.getByRole("button", { name: "Load more elements" })).toHaveCount(0);
+  const outsideLimit = canvas.locator('[data-testid="outline-5500"]');
+  await outsideLimit.click();
+  await navigator.getByRole("searchbox", { name: "Search elements" }).fill("Outline row 5500");
+  const pinned = await outlineItem(page, outsideLimit);
+  await expect(pinned).toBeVisible();
+  await expect(pinned).toHaveAttribute("aria-selected", "true");
+  await outsideLimit.evaluate(element => element.remove());
+  await expect(page.getByLabel("Selected element", { exact: true })).toContainText("No selection");
+  await expect(navigator.locator('[aria-selected="true"]')).toHaveCount(0);
+});

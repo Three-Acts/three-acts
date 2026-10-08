@@ -1,3 +1,4 @@
+import { createCanvasOutline } from "./canvas-outline.js";
 import { normalizeCmsCollection, readCmsSource } from "@three-acts/cms-schema";
 import { applyStyle, componentBaseClass, componentDefinitions, designCss, emptyDesign, resolveProperties, validateDesign } from "@three-acts/design";
 import { cn, historyShortcut } from "@three-acts/utils";
@@ -79,27 +80,10 @@ import { cn, historyShortcut } from "@three-acts/utils";
   }
   function send(data) { window.parent.postMessage(data, origin); }
   function humanize(value) {
-    return String(value || '').replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, char => char.toUpperCase());
+    return String(value || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, char => char.toUpperCase());
   }
-  function selectorFor(element) {
-    if (element === document.body) return 'body';
-    if (element.id && document.querySelectorAll(`#${CSS.escape(element.id)}`).length === 1) return `#${CSS.escape(element.id)}`;
-    const parts = [];
-    for (let current = element; current && current !== document.body; current = current.parentElement) {
-      let part = current.tagName.toLowerCase();
-      if (current.id && document.querySelectorAll(`#${CSS.escape(current.id)}`).length === 1) {
-        parts.unshift(`#${CSS.escape(current.id)}`);
-        break;
-      }
-      const parent = current.parentElement;
-      if (parent) {
-        const siblings = Array.from(parent.children).filter(sibling => sibling.tagName === current.tagName);
-        if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(current) + 1})`;
-      }
-      parts.unshift(part);
-    }
-    return parts.join(' > ');
-  }
+  const outline = createCanvasOutline({ safeElement, describe, keyFor });
+  const selectorFor = outline.selectorFor;
   const styleProperties = ['display','flexDirection','justifyContent','alignItems','gap','paddingTop','paddingRight','paddingBottom','paddingLeft','marginTop','marginRight','marginBottom','marginLeft','width','height','minHeight','maxWidth','fontSize','fontWeight','lineHeight','color','backgroundColor','borderRadius'];
   const styleNames = Object.fromEntries(styleProperties.map(name => [name, name.replace(/[A-Z]/g, char => `-${char.toLowerCase()}`)]));
   let mode = 'design';
@@ -183,33 +167,18 @@ import { cn, historyShortcut } from "@three-acts/utils";
     return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
   }
   function buildTree() {
-    const nodes = [];
-    const visit = (element, parentSelector = 'body', depth = 1) => {
-      if (nodes.length >= 400 || !safeElement(element)) return;
-      const visible = isVisible(element);
-      if (!visible) return;
-      const text = normalize(element.textContent || '').slice(0, 90);
-      const marker = element.matches('[data-static-field],[data-cms-bound],[data-editor-label],[data-editor-component],[data-static-component],[data-component]');
-      const semantic = /^(MAIN|HEADER|FOOTER|NAV|ASIDE|SECTION|ARTICLE|FORM|BUTTON|A|IMG|VIDEO|FIGURE|UL|OL|TABLE|H[1-6]|P|LI)$/.test(element.tagName);
-      const tag = element.tagName.toLowerCase();
-      const layout = tag === 'div' && (/(^|\s)container(\s|$)|(^|\s)max-w[^\s]*/i.test(element.className?.toString() || '') || ['flex','grid'].includes(getComputedStyle(element).display));
-      const inlinePresentation = tag === 'span' && !marker && !keyFor(element) && element.parentElement && normalize(element.parentElement.textContent || '') === normalize(element.textContent || '');
-      const keep = !inlinePresentation && (text || marker || semantic || layout);
-      let nextParent = parentSelector;
-      if (keep) {
-        const selector = selectorFor(element);
-        const info = describe(element);
-        const node = {selector, parentSelector, tag, label: info.label || text || semanticLabel(element), category: info.category || 'element', ...(info.binding ? {binding: info.binding} : {}), depth};
-        nodes.push(node); nextParent = selector;
-      }
-      for (const child of element.children) {
-        if (nodes.length >= 400) break;
-        visit(child, nextParent, keep ? depth + 1 : depth);
-      }
-    };
-    nodes.push({selector:'body', parentSelector:null, tag:'body', label:'Body', category:'element', depth:0});
-    for (const child of document.body.children) visit(child, 'body', 1);
-    send({type:'three-acts:canvas-tree', nodes, route});
+    send({ type: 'three-acts:canvas-tree', ...outline.snapshot(selectedCandidate?.element), route });
+  }
+  function refreshOutline() {
+    if (selectedCandidate && !selectedCandidate.element.isConnected) {
+      selectedCandidate = null;
+      editingComponent = null;
+      outline.restore();
+      send({ type: 'three-acts:selection', selection: null });
+    }
+    buildTree();
+    drawOverlay(hoverCandidate?.element?.isConnected ? hoverCandidate : selectedCandidate);
+    if (selectedCandidate?.element?.isConnected) send({ type: 'three-acts:selection', ...selectionFor(selectedCandidate.element) });
   }
   function computedStyles(element) {
     const computed = getComputedStyle(element);
@@ -294,7 +263,7 @@ import { cn, historyShortcut } from "@three-acts/utils";
     const textField = info.category === 'cms' ? null : directTextField(element);
     const attributes = elementAttributes(element, info.category === 'cms');
     const textState = textField ? 'editable' : element.childElementCount ? 'structured' : normalize(element.textContent || '') ? 'unbound' : 'empty';
-    return {selector:selectorFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), ...(info.cmsSource ? {cmsSource:info.cmsSource} : {}), category:mainPart && info.category !== 'cms' ? 'element' : info.category, ...(component && !mainPart ? {component} : {}), ...(editingComponent ? {editingComponent:editingComponent.name} : {}), ...(designTarget ? {designTarget} : {}), sourceClasses:(element.dataset.editorBaseClass || (root === element ? cn(componentBaseClass(root.dataset.editorComponent, resolveProperties(design, root.dataset.editorComponent, root.dataset.editorInstance, JSON.parse(root.dataset.editorSourceProps || '{}'))), root.dataset.editorCallerClass || '') : '')).split(/\s+/).filter(Boolean), ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
+    return {selector:selectorFor(element), visibility:outline.visibilityFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), ...(info.cmsSource ? {cmsSource:info.cmsSource} : {}), category:mainPart && info.category !== 'cms' ? 'element' : info.category, ...(component && !mainPart ? {component} : {}), ...(editingComponent ? {editingComponent:editingComponent.name} : {}), ...(designTarget ? {designTarget} : {}), sourceClasses:(element.dataset.editorBaseClass || (root === element ? cn(componentBaseClass(root.dataset.editorComponent, resolveProperties(design, root.dataset.editorComponent, root.dataset.editorInstance, JSON.parse(root.dataset.editorSourceProps || '{}'))), root.dataset.editorCallerClass || '') : '')).split(/\s+/).filter(Boolean), ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
   }
   const inspectableAttributes = ['href','src','alt','title','target','aria-label'];
   function directTextField(element) {
@@ -336,7 +305,9 @@ import { cn, historyShortcut } from "@three-acts/utils";
   function publishSelection(element) {
     if (editingComponent && componentRoot(element)?.dataset.editorComponent !== editingComponent.name) editingComponent = null;
     if (!element || !element.isConnected) return;
+    outline.reveal(element);
     selectedCandidate = describe(element);
+    buildTree();
     drawOverlay(selectedCandidate);
     element.setAttribute('data-editor-selected','');
     send({type:'three-acts:selection', ...selectionFor(element)});
@@ -350,7 +321,7 @@ import { cn, historyShortcut } from "@three-acts/utils";
   function drawOverlay(candidate) {
     if (!overlay) return;
     if (mode !== 'design') { overlay.hidden = true; return; }
-    if (!candidate?.element?.isConnected) { overlay.hidden = true; return; }
+    if (!candidate?.element?.isConnected || outline.visibilityFor(candidate.element).state === 'hidden') { overlay.hidden = true; return; }
     const rect = candidate.element.getBoundingClientRect();
     if (!rect.width || !rect.height) { overlay.hidden = true; return; }
     const color = candidate.category === 'cms' ? '#9333ea' : candidate.category === 'component' ? '#16a34a' : '#305eee';
@@ -404,7 +375,9 @@ import { cn, historyShortcut } from "@three-acts/utils";
   }
   function validSelector(selector) {
     if (typeof selector !== 'string' || selector.length > 500) return null;
-    try { return document.querySelector(selector); } catch { return null; }
+    const identified = outline.resolveSelector(selector);
+    if (identified !== undefined) return identified;
+    try { const matches = document.querySelectorAll(selector); return matches.length === 1 ? matches[0] : null; } catch { return null; }
   }
   function activate() {
     if (active) return;
@@ -542,20 +515,27 @@ import { cn, historyShortcut } from "@three-acts/utils";
       }
       if (event.key !== 'Escape' || mode !== 'design' || document.activeElement?.isContentEditable) return;
       selectedCandidate = null;
+      outline.restore();
+      buildTree();
       document.querySelectorAll('[data-editor-selected]').forEach(element => element.removeAttribute('data-editor-selected'));
       if (overlay) overlay.hidden = true;
       send({type:'three-acts:clear-selection'});
       send({type:'three-acts:selection', selection:null});
     }, true);
+    let outlineFrame = 0;
+    new MutationObserver(records => {
+      if (records.every(record => record.target instanceof Element && !safeElement(record.target))) return;
+      if (outlineFrame) cancelAnimationFrame(outlineFrame);
+      outlineFrame = requestAnimationFrame(() => { outlineFrame = 0; if (!activeEditor) refreshOutline(); });
+    }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'open', 'aria-hidden'] });
     window.addEventListener('scroll', () => drawOverlay(hoverCandidate || selectedCandidate), true);
     let resizeFrame = 0;
     window.addEventListener('resize', () => {
       if (resizeFrame) cancelAnimationFrame(resizeFrame);
       resizeFrame = requestAnimationFrame(() => {
         resizeFrame = 0;
-        buildTree();
-        drawOverlay(hoverCandidate || selectedCandidate);
-        if (selectedCandidate?.element?.isConnected) send({type:'three-acts:selection', ...selectionFor(selectedCandidate.element)});
+        if (mode === 'design' && selectedCandidate?.element?.isConnected) outline.reveal(selectedCandidate.element);
+        refreshOutline();
       });
     });
   }
@@ -564,8 +544,9 @@ import { cn, historyShortcut } from "@three-acts/utils";
     if (event.data.type === 'three-acts:mode' && ['design','preview','locked'].includes(event.data.mode)) {
       const nextMode = event.data.mode;
       if (activeEditor && nextMode !== mode) activeEditor.finish(nextMode === 'preview' && mode === 'design');
-      if (nextMode === 'preview') hoverCandidate = null;
+      if (nextMode === 'preview') { hoverCandidate = null; outline.restore(); }
       mode = event.data.mode;
+      refreshOutline();
       if (overlay && mode !== 'design') overlay.hidden = true;
       else if (mode === 'design') drawOverlay(selectedCandidate);
       return;
@@ -573,6 +554,8 @@ import { cn, historyShortcut } from "@three-acts/utils";
     if (event.data.type === 'three-acts:clear-selection') {
       editingComponent = null;
       selectedCandidate = null;
+      outline.restore();
+      buildTree();
       document.querySelectorAll('[data-editor-selected]').forEach(element => element.removeAttribute('data-editor-selected'));
       if (overlay) overlay.hidden = true;
       send({type:'three-acts:selection', selection:null});
@@ -581,12 +564,13 @@ import { cn, historyShortcut } from "@three-acts/utils";
     if (event.data.type === 'three-acts:select-node' && typeof event.data.selector === 'string') {
       if (mode !== 'design') return;
       const element = validSelector(event.data.selector);
-      if (!element || !isVisible(element) || !safeElement(element)) return;
+      if (!element || !safeElement(element)) return;
       document.querySelectorAll('[data-editor-selected]').forEach(node => node.removeAttribute('data-editor-selected'));
-      element.scrollIntoView({behavior:'smooth',block:'center'});
       publishSelection(element);
+      if (outline.visibilityFor(element).state !== 'hidden') element.scrollIntoView({behavior:'smooth',block:'center'});
       return;
     }
+    if (event.data.type === 'three-acts:tree-limit' && mode === 'design' && outline.loadMore(event.data.limit)) { buildTree(); return; }
     if (event.data.type === 'three-acts:enter-component') {
       const root = validSelector(event.data.selector);
       if (mode !== 'design' || !root || componentRoot(root) !== root) return;
