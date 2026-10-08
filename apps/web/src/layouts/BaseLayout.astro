@@ -1,5 +1,7 @@
 ---
 import "../styles.css";
+import designSource from "@three-acts/static-content/documents/design.json";
+import { designCss, validateDesign } from "@three-acts/design";
 import copy from "@three-acts/static-content/documents/shared.json";
 import { contentDefinitions } from "@three-acts/static-content";
 import { shopConfig } from "@three-acts/ecommerce";
@@ -40,6 +42,7 @@ const resolvedAnnouncement =
 <!doctype html>
 <html lang={resolved.locale.replace("_", "-")}>
   <head>
+    <style is:inline id="three-acts-design-css" set:html={designCss(validateDesign(designSource))} />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{resolved.title}</title>

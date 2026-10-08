@@ -1,38 +1,13 @@
+import { componentAttributes, componentClass, componentIdentity, componentProps, partClass } from "../../../lib/design";
 /* eslint-disable react-refresh/only-export-components */
 import { Button as BaseButton } from "@base-ui-components/react/button";
 import type { AnchorHTMLAttributes, ComponentProps, ReactNode } from "react";
-import { cn, cv } from "@three-acts/utils";
+import { cn } from "@three-acts/utils";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "inverse";
-type ButtonSize = "sm" | "md" | "lg";
+import type { ButtonVariant, ButtonSize } from "@three-acts/design";
 type ButtonIcon = "arrow";
 
-const FOCUS = "focus-ring";
 
-const buttonVariants = cv({
-  base: [
-    FOCUS,
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap border text-body font-medium tracking-ui no-underline transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
-  ],
-  variants: {
-    variant: {
-      // black fill / white text — the primary call to action.
-      primary: ["border-ink bg-ink text-surface hover:bg-surface hover:text-ink"],
-      // white fill / black border+text — the standard secondary action.
-      secondary: ["border-line-strong bg-surface text-ink hover:bg-ink hover:text-surface"],
-      // no border/fill, underlined text — low-emphasis actions.
-      ghost: ["border-transparent bg-transparent text-ink underline decoration-1 underline-offset-4 hover:no-underline"],
-      // white fill / black text with a white border — for black bands.
-      inverse: ["border-surface bg-surface text-ink hover:bg-ink hover:text-surface"]
-    },
-    size: {
-      sm: ["px-[17px] py-[11px]"],
-      md: ["px-5 py-3"],
-      lg: ["px-7 py-4"]
-    }
-  },
-  defaultVariants: { variant: "primary", size: "md" }
-});
 
 const spinnerSize: Record<ButtonSize, string> = {
   sm: "size-3.5",
@@ -77,16 +52,23 @@ type RootProps = ComponentProps<typeof BaseButton> & {
  * whenever it navigates.
  */
 function Root({ children, className, variant = "primary", size = "md", loading = false, icon, disabled, ...props }: RootProps) {
+  const name = "Button.Root";
+  const instance = componentIdentity(props);
+  const sourceProps = { variant, size };
+  const resolved = componentProps(name, instance, sourceProps);
+  variant = resolved.variant as ButtonVariant;
+  size = resolved.size as ButtonSize;
   return (
     <BaseButton
-      className={cn(buttonVariants({ variant, size }), className)}
+      className={componentClass(name, { variant, size }, className)}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...props}
+      {...componentAttributes(name, instance, sourceProps, className)}
     >
       {loading && <Spinner size={size} />}
-      {children}
-      {icon === "arrow" && <ArrowIcon />}
+      <span data-editor-part="label" className={partClass(name, "label")}>{children}</span>
+      {icon === "arrow" && <span data-editor-part="icon" className={partClass(name, "icon")}><ArrowIcon /></span>}
     </BaseButton>
   );
 }
@@ -104,16 +86,23 @@ type LinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
 
 /** The anchor-tag twin of `Button.Root`, styled identically, for real navigation. */
 function Link({ children, className, variant = "primary", size = "md", loading = false, icon, ...props }: LinkProps) {
+  const name = "Button.Link";
+  const instance = componentIdentity(props);
+  const sourceProps = { variant, size };
+  const resolved = componentProps(name, instance, sourceProps);
+  variant = resolved.variant as ButtonVariant;
+  size = resolved.size as ButtonSize;
   return (
     <a
-      className={cn(buttonVariants({ variant, size }), loading && "pointer-events-none", className)}
+      className={componentClass(name, { variant, size }, cn(loading && "pointer-events-none", className))}
       aria-disabled={loading || undefined}
       aria-busy={loading || undefined}
       {...props}
+      {...componentAttributes(name, instance, sourceProps, className)}
     >
       {loading && <Spinner size={size} />}
-      {children}
-      {icon === "arrow" && <ArrowIcon />}
+      <span data-editor-part="label" className={partClass(name, "label")}>{children}</span>
+      {icon === "arrow" && <span data-editor-part="icon" className={partClass(name, "icon")}><ArrowIcon /></span>}
     </a>
   );
 }

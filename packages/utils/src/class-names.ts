@@ -15,8 +15,8 @@ const merge = extendTailwindMerge({
   extend: {
     theme: {
       text: ["micro", "ui", "ui-lg", "field", "display", "h2", "h3", "lede", "body", "small"],
-      spacing: ["pane", "select-col", "col-min", "modal-max-h", "hero"],
-      container: ["viewport", "viewport-tight"],
+      spacing: ["pane", "select-col", "col-min", "modal-max-h", "hero", "section", "section-md", "section-sm", "gutter", "gutter-sm", "gap", "gap-y", "header"],
+      container: ["content", "viewport", "viewport-tight"],
       tracking: ["label", "eyebrow"],
       leading: ["display"]
     }

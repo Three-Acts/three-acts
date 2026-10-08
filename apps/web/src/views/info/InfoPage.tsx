@@ -1,3 +1,4 @@
+import { elementClass } from "../../lib/design";
 import type { ReactNode } from "react";
 import { Section } from "../../components/layout/section";
 import { Prose } from "../../components/ui/prose";
@@ -31,17 +32,17 @@ export type InfoPageProps = {
  */
 export function InfoPage({ eyebrow, title, lede, sections, children, staticContentPrefix, staticHeaderFields }: InfoPageProps) {
   return (
-    <Section.Root>
-      <Section.Container className="max-w-4xl">
-        <Section.Header eyebrow={eyebrow && <span data-static-field={staticHeaderFields?.eyebrow}>{eyebrow}</span>} title={<span data-static-field={staticHeaderFields?.title}>{title}</span>} lede={lede && <span data-static-field={staticHeaderFields?.lede}>{lede}</span>} />
+    <Section.Root data-editor-id="source.InfoPage.1">
+      <Section.Container data-editor-id="source.InfoPage.2" className="max-w-4xl">
+        <Section.Header eyebrow={eyebrow && <span data-editor-base-class={""} data-editor-id="source.InfoPage.3" className={elementClass("source.InfoPage.3", "")} data-static-field={staticHeaderFields?.eyebrow}>{eyebrow}</span>} title={<span data-editor-base-class={""} data-editor-id="source.InfoPage.4" className={elementClass("source.InfoPage.4", "")} data-static-field={staticHeaderFields?.title}>{title}</span>} lede={lede && <span data-editor-base-class={""} data-editor-id="source.InfoPage.5" className={elementClass("source.InfoPage.5", "")} data-static-field={staticHeaderFields?.lede}>{lede}</span>} />
         {children}
-        <div className="flex flex-col">
+        <div data-editor-base-class={"flex flex-col"} data-editor-id="source.InfoPage.6" className={elementClass("source.InfoPage.6", "flex flex-col")}>
           {sections.map((section, index) => (
-            <section
+            <section data-editor-base-class={"grid gap-4 border-t border-line-strong py-8 landscape:grid-cols-[16rem_1fr] landscape:gap-x-gap"} data-editor-id="source.InfoPage.7"
               key={section.heading}
-              className="grid gap-4 border-t border-line-strong py-8 landscape:grid-cols-[16rem_1fr] landscape:gap-x-gap"
+              className={elementClass("source.InfoPage.7", "grid gap-4 border-t border-line-strong py-8 landscape:grid-cols-[16rem_1fr] landscape:gap-x-gap")}
             >
-              <h3 data-static-field={staticContentPrefix ? `${staticContentPrefix}.${index}.heading` : undefined} className="text-h3 font-medium text-ink">{section.heading}</h3>
+              <h3 data-editor-base-class={"text-h3 font-medium text-ink"} data-editor-id="source.InfoPage.8" data-static-field={staticContentPrefix ? `${staticContentPrefix}.${index}.heading` : undefined} className={elementClass("source.InfoPage.8", "text-h3 font-medium text-ink")}>{section.heading}</h3>
               <Prose.Root body={section.body} data-static-field={staticContentPrefix ? `${staticContentPrefix}.${index}.body` : undefined} data-static-format="prose" />
             </section>
           ))}

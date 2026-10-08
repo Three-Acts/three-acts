@@ -1,3 +1,4 @@
+import { elementClass } from "../../lib/design";
 import copy from "@three-acts/static-content/documents/home.json";
 import type { Product } from "@three-acts/ecommerce";
 import { Grid } from "../layout/grid";
@@ -20,18 +21,18 @@ export function FeaturedProductsSection({ products }: FeaturedProductsSectionPro
   }
 
   return (
-    <Section.Root>
-      <Section.Container>
+    <Section.Root data-editor-id="source.featured-products-section.1">
+      <Section.Container data-editor-id="source.featured-products-section.2">
         <Section.Header
-          eyebrow={<span data-static-field="home.featured_products_section.eyebrow_2">{copy.featured_products_section.eyebrow_2}</span>}
-          title={<span data-static-field="home.featured_products_section.title_3">{copy.featured_products_section.title_3}</span>}
-          lede={<span data-static-field="home.featured_products_section.lede_4">{copy.featured_products_section.lede_4}</span>}
+          eyebrow={<span data-editor-base-class={""} data-editor-id="home.featured_products_section.eyebrow_2" className={elementClass("home.featured_products_section.eyebrow_2", "")} data-static-field="home.featured_products_section.eyebrow_2">{copy.featured_products_section.eyebrow_2}</span>}
+          title={<span data-editor-base-class={""} data-editor-id="home.featured_products_section.title_3" className={elementClass("home.featured_products_section.title_3", "")} data-static-field="home.featured_products_section.title_3">{copy.featured_products_section.title_3}</span>}
+          lede={<span data-editor-base-class={""} data-editor-id="home.featured_products_section.lede_4" className={elementClass("home.featured_products_section.lede_4", "")} data-static-field="home.featured_products_section.lede_4">{copy.featured_products_section.lede_4}</span>}
           action={
-            <Button.Link data-static-field="home.featured_products_section.href_5" data-static-attribute="href" href={copy.featured_products_section.href_5} variant="ghost" icon="arrow">
-              <span data-static-field="home.featured_products_section.link_6">{copy.featured_products_section.link_6}</span></Button.Link>
+            <Button.Link data-editor-id="home.featured_products_section.href_5" data-static-field="home.featured_products_section.href_5" data-static-attribute="href" href={copy.featured_products_section.href_5} variant="ghost" icon="arrow">
+              <span data-editor-base-class={""} data-editor-id="home.featured_products_section.link_6" className={elementClass("home.featured_products_section.link_6", "")} data-static-field="home.featured_products_section.link_6">{copy.featured_products_section.link_6}</span></Button.Link>
           }
         />
-        <Grid.Root cols={3}>
+        <Grid.Root data-editor-id="source.featured-products-section.3" cols={3}>
           {products.map((product) => {
             const availabilityLabel = AVAILABILITY_LABEL[product.availability];
             return (

@@ -147,8 +147,8 @@ test("canvas selection keeps the content inspector available and explains read-o
   await expect(overlay).toHaveAttribute("data-category", "component");
   await expect(overlay).toHaveCSS("--editor-selection-color", "#16a34a");
   await component.click();
-  await expect(content.locator("#selected-text")).toHaveCount(0);
-  await expect(content.getByText("This text is not connected to a saved content field.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Component properties" }).getByText("This component has no registered property definition.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Style panel" })).toHaveCount(0);
 
   // Selecting a structural parent reports safe metadata without exposing a
   // flattened dump of all text inside its descendants.
@@ -176,8 +176,8 @@ test("canvas selection keeps the content inspector available and explains read-o
   await expect(productOverlay).toHaveAttribute("data-category", "cms");
   await expect(productOverlay).toHaveCSS("--editor-selection-color", "#9333ea");
   await productTitle.click();
-  await expect(content.getByText(/This CMS content is read-only in the designer/i)).toBeVisible();
-  await expect(content.locator("#selected-text")).toHaveCount(0);
+  await expect(page.getByRole("complementary", { name: "Component properties" }).getByText(/This CMS content is read-only in the designer/i)).toBeVisible();
+  await expect(page.locator("#selected-text")).toHaveCount(0);
 
   // A plain, unbound text element opens a clear explanation rather than an
   // editor that cannot persist its changes.
@@ -220,87 +220,41 @@ test("mixed inline content with a saved binding stays metadata-only and cannot e
   await expect(paragraphField.locator("strong")).toHaveText(" Nested fixture content");
 });
 
-test("navigator selection, style preview, reset, page changes, and canvas modes work together", async ({ page }) => {
+test("navigator selection, Tailwind source reset, persisted page changes, and canvas modes work together", async ({ page }) => {
   await signInAndOpenDesigner(page);
   const canvas = page.frameLocator('iframe[title="Website canvas"]');
-  const iframe = page.locator('iframe[title="Website canvas"]');
-  const overlay = canvas.locator("#three-acts-editor-selection");
-  const hero = canvas.locator('[data-static-field="home.hero_section.display_1"]');
-
-  await page.getByRole("button", { name: "Navigator panel" }).click();
   const navigator = page.getByRole("complementary", { name: "Navigator" });
-  await expect(navigator).toBeVisible();
-  await navigator.getByRole("searchbox", { name: "Search elements" }).fill("Heading 1");
-  const headingNode = navigator.getByRole("treeitem", { name: /Heading/i }).first();
-  await expect(headingNode).toBeVisible();
-  await headingNode.click();
+  await navigator.getByRole("searchbox", { name: "Search elements" }).fill("Cta Section");
+  await navigator.getByRole("treeitem", { name: "Element: Cta Section, section, nested element", exact: true }).click();
   await navigator.getByRole("searchbox", { name: "Search elements" }).fill("");
-  await expect(page.getByRole("navigation", { name: "Element breadcrumb" })).toContainText(/Heading/i);
+  await expect(page.getByRole("navigation", { name: "Element breadcrumb" })).toContainText("Cta Section");
   await expect(canvas.locator("[data-editor-selected]")).toHaveCount(1);
-
   await page.getByRole("button", { name: "Style panel" }).click();
-  const style = page.getByRole("complementary", { name: "Style inspector" });
-  await expect(style).toBeVisible();
-  const selected = canvas.locator("[data-editor-selected]").first();
-  await style.getByLabel("Font size").fill("42px");
-  await style.getByLabel("Font size").press("Enter");
-  await expect(selected).toHaveCSS("font-size", "42px");
-  await style.getByLabel("Padding top").fill("17px");
-  await style.getByLabel("Padding top").press("Enter");
-  await expect(selected).toHaveCSS("padding-top", "17px");
-  await style.getByLabel("Background color").fill("#ff0000");
-  await style.getByLabel("Background color").press("Enter");
-  await expect(selected).toHaveCSS("background-color", "rgb(255, 0, 0)");
-  await expectReviewState(page, false);
-  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-style-inspector.png", import.meta.url)), fullPage: true });
-  await style.getByRole("button", { name: "Reset preview styles" }).click();
-  await expect(selected).not.toHaveCSS("font-size", "42px");
-  await expect(selected).not.toHaveCSS("padding-top", "17px");
-  await expect(selected).not.toHaveCSS("background-color", "rgb(255, 0, 0)");
-
-  await hero.click();
-  const fontSize = style.getByLabel("Font size");
-  await fontSize.fill("42px");
-  await fontSize.press("Enter");
-  await expect(hero).toHaveCSS("font-size", "42px");
-  await fontSize.fill("55px");
-  await fontSize.press("Escape");
-  await expect(hero).not.toHaveCSS("font-size", "55px");
-  await fontSize.fill("not-a-size");
-  await fontSize.press("Enter");
-  await expect(fontSize).toHaveAttribute("aria-invalid", "true");
-  await expect(hero).not.toHaveCSS("font-size", "not-a-size");
+  const styles = page.getByRole("complementary", { name: "Style inspector" });
+  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
+  const section = canvas.locator('[data-editor-id="source.cta-section.1"]');
+  const original = await section.getAttribute("class");
+  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-4");
+  await styles.getByRole("combobox", { name: "Background", exact: true }).selectOption("bg-block");
+  await expect(section).toHaveClass(/pt-4/);
+  await expect(section).toHaveClass(/bg-block/);
+  await expect(section).not.toHaveAttribute("style");
+  await expectReviewState(page, true);
   await choosePage(page, "About");
-  await expect(canvas.locator('[data-static-field="about.about.title_5"]')).toBeVisible();
   await choosePage(page, "Home");
-  await expect(hero).toBeVisible();
-  expect(await hero.evaluate((element) => (element as HTMLElement).style.fontSize)).toBe("");
-
-  const previewMode = page.getByRole("button", { name: "Preview mode" });
-  await previewMode.click();
-  await expect(previewMode).toHaveAttribute("aria-pressed", "true");
-  await expect(overlay).toBeHidden();
-  await canvas.getByRole("link", { name: "About", exact: true }).first().click();
-  await expect(page.getByRole("button", { name: "Choose page" })).toContainText("About");
-  await expect(canvas.locator('[data-static-field="about.about.title_5"]')).toBeVisible();
-  await choosePage(page, "Home");
-  await expect(hero).toBeVisible();
-  await expect(page.getByRole("button", { name: "Design mode" })).toBeVisible();
+  await expect(section).toHaveClass(/pt-4/);
+  await expect(section).toHaveClass(/bg-block/);
+  await section.click({ position: { x: 1, y: 1 } });
+  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("");
+  await styles.getByRole("combobox", { name: "Background", exact: true }).selectOption("");
+  await expect(section).toHaveAttribute("class", original!);
+  await expectReviewState(page, false);
+  await page.getByRole("button", { name: "Preview mode" }).click();
+  await expect(canvas.locator("#three-acts-editor-selection")).toBeHidden();
+  await expect(styles.getByRole("combobox", { name: "Padding top", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Design mode" }).click();
-  await expect(previewMode).toHaveAttribute("aria-pressed", "false");
-
-  const routeBeforeSharedClick = await iframe.evaluate((element) => new URL(element.src).pathname);
-  await page.getByRole("button", { name: "Content panel" }).click();
-  await canvas.locator('[data-static-field="shared.navLinks.0.label"]').first().click();
-  await expect(page.getByRole("button", { name: "Choose page" })).toContainText("Home");
-  await expect(page.locator("#selected-text")).toHaveValue("Shop");
-  await expect.poll(() => iframe.evaluate((element) => new URL(element.src).pathname)).toBe(routeBeforeSharedClick);
-
-  await hero.dblclick();
-  await expect(hero).toHaveAttribute("contenteditable", "true");
-  await hero.press("Escape");
-  await expect(hero).not.toHaveAttribute("contenteditable", "true");
-  await expect(hero).toContainText("The client website template that ships production-ready.");
+  await expect(styles.getByRole("combobox", { name: "Padding top", exact: true })).toBeEnabled();
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-style-inspector.png", import.meta.url)), fullPage: true });
 });
 
 test("compact panels keep disclosure choices, reveal canvas selections, and align their controls", async ({ page }) => {
@@ -341,26 +295,18 @@ test("compact panels keep disclosure choices, reveal canvas selections, and alig
   await expect(page.getByRole("button", { name: "Site & navigation", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Navigator panel" }).click();
 
-  const diagram = style.getByLabel("Margin and padding diagram");
-  await expect(diagram.getByRole("textbox")).toHaveCount(8);
-  const spacingRects = await diagram.getByRole("textbox").evaluateAll((inputs) => inputs.map((input) => {
-    const rect = input.getBoundingClientRect();
-    return { label: input.getAttribute("aria-label"), left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, height: rect.height };
-  }));
-  for (let i = 0; i < spacingRects.length; i++) {
-    expect(spacingRects[i].height).toBeLessThanOrEqual(20);
-    for (let j = i + 1; j < spacingRects.length; j++) {
-      const a = spacingRects[i], b = spacingRects[j];
-      expect(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top, `${a.label} overlaps ${b.label}`).toBe(true);
-    }
-  }
+  // A nested content leaf cannot receive an instance-only style override.
+  await expect(style.getByText(/no registered design source/)).toBeVisible();
+  const cta = canvas.locator('[data-editor-id="source.cta-section.1"]');
+  await cta.click({ position: { x: 1, y: 1 } });
+  await style.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
   await style.getByRole("combobox", { name: "Display", exact: true }).selectOption("flex");
-  await expect(style.getByLabel("Flex direction", { exact: true })).toBeVisible();
-  await style.getByRole("button", { name: "More display options" }).click();
-  await page.getByRole("dialog", { name: "Display options" }).getByRole("button", { name: "Use display inline", exact: true }).click();
-  await expect(style.getByRole("combobox", { name: "Display", exact: true })).toHaveValue("inline");
-  await style.getByRole("button", { name: "Reset preview styles" }).click();
-  await expect(style.getByLabel("Flex direction", { exact: true })).toHaveCount(0);
+  await expect(cta).toHaveClass(/flex/);
+  await style.getByRole("combobox", { name: "Direction", exact: true }).selectOption("flex-col");
+  await expect(cta).toHaveClass(/flex-col/);
+  await style.getByRole("combobox", { name: "Display", exact: true }).selectOption("");
+  await style.getByRole("combobox", { name: "Direction", exact: true }).selectOption("");
+  await hero.click();
   await page.getByRole("button", { name: "Show parent elements" }).click();
   const parents = page.getByRole("dialog", { name: "Parent elements" });
   await expect(parents).toBeVisible();
@@ -732,8 +678,10 @@ test("the canvas page picker previews CMS records and shares editable template c
   await expect(boundTitle).toBeVisible();
   await boundTitle.click();
   await boundTitle.dblclick();
+  await expect(page.getByLabel("Main component editing")).toBeVisible();
   await expect(selectedField).toHaveCount(0);
   await expect(page.getByRole("complementary", { name: "Content inspector" }).getByText(/This CMS content is read-only in the designer/i)).toBeVisible();
+  await page.getByRole("button", { name: "Done editing component" }).click();
   await expect(boundTitle).not.toHaveAttribute("contenteditable");
   await templateCopy.click();
   const templateField = page.locator("textarea#selected-text");
@@ -1054,4 +1002,112 @@ test("global publish refreshes page statuses without replacing dirty page detail
   await expect(discardDetails).toBeVisible();
   await discardDetails.getByRole("button", { name: "Discard" }).click();
   await expect(details).toHaveCount(0);
+});
+
+test("Tailwind design drafts configure component properties, shared parts, custom CSS and GitHub readback", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const heroButton = canvas.locator('[data-editor-component="Button.Link"][data-editor-instance="home.hero_section.href_3"]');
+  const closingButton = canvas.locator('[data-editor-component="Button.Link"][data-editor-instance="home.cta_section.href_2"]');
+  await heroButton.click();
+  const properties = page.getByRole("complementary", { name: "Component properties" });
+  await expect(properties).toBeVisible();
+  await expect(page.getByRole("button", { name: "Style panel" })).toHaveCount(0);
+  await properties.getByRole("combobox", { name: "Component variant" }).selectOption("secondary");
+  await expect(heroButton).toHaveClass(/border-line-strong/);
+  await expect(closingButton).toHaveClass(/border-surface/);
+  await properties.getByRole("combobox", { name: "Component size" }).selectOption("sm");
+  await expect(heroButton).toHaveClass(/px-\[17px\]/);
+  const variantLabel = properties.locator('label[for="component-property-variant"]');
+  const sizeLabel = properties.locator('label[for="component-property-size"]');
+  await expect(variantLabel).toHaveClass(/text-cms-accent/);
+  await expect(sizeLabel).toHaveClass(/text-cms-accent/);
+  await properties.getByRole("button", { name: "Reset variant to source" }).click();
+  await expect(properties.getByRole("combobox", { name: "Component variant" })).toHaveValue("primary");
+  await expect(properties.getByRole("combobox", { name: "Component size" })).toHaveValue("sm");
+  await expect(variantLabel).toHaveClass(/text-cms-muted/);
+  await expect(properties.getByRole("button", { name: "Reset variant to source" })).toHaveCount(0);
+  await sizeLabel.click({ modifiers: ["Alt"] });
+  await expect(properties.getByRole("combobox", { name: "Component size" })).toHaveValue("lg");
+  await expect(sizeLabel).toHaveClass(/text-cms-muted/);
+  await expect(properties.getByRole("button", { name: "Reset size to source" })).toHaveCount(0);
+  await properties.getByRole("combobox", { name: "Component variant" }).selectOption("secondary");
+  await properties.getByRole("combobox", { name: "Component size" }).selectOption("sm");
+  const text = properties.getByRole("textbox", { name: "Component Text", exact: true });
+  const sourceText = await text.inputValue();
+  await text.fill("Edited button text");
+  await expect(heroButton).toContainText("Edited button text");
+  await properties.getByRole("button", { name: "Reset Text to source" }).click();
+  await expect(text).toHaveValue(sourceText);
+  await expect(properties.getByRole("combobox", { name: "Component variant" })).toHaveValue("secondary");
+  const editMain = properties.getByRole("button", { name: "Edit main component" });
+  await editMain.hover();
+  await expect(page.getByText("Edit main component. Changes inside it apply to all instances.", { exact: true })).toBeVisible();
+  const href = properties.getByRole("textbox", { name: "href", exact: true });
+  await href.fill("javascript:alert(1)");
+  await href.press("Enter");
+  await expect(href).toHaveAttribute("aria-invalid", "true");
+  await expect(heroButton).toHaveAttribute("href", "/shop");
+  await href.press("Escape");
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-component-properties.png", import.meta.url)), fullPage: true });
+  await properties.getByRole("button", { name: "Edit main component" }).click();
+  await expect(page.getByLabel("Main component editing")).toContainText("Changes apply to all instances");
+  await heroButton.locator('[data-editor-part="label"]').click();
+  const styles = page.getByRole("complementary", { name: "Style inspector" });
+  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
+  await styles.getByRole("combobox", { name: "Font size", exact: true }).selectOption("text-h3");
+  await expect(heroButton.locator('[data-editor-part="label"]')).toHaveClass(/text-h3/);
+  await expect(closingButton.locator('[data-editor-part="label"]')).toHaveClass(/text-h3/);
+  await page.getByRole("button", { name: "Done editing component" }).click();
+  await expect(properties).toBeVisible();
+  await expect(properties.getByRole("combobox", { name: "Component variant" })).toHaveValue("secondary");
+
+  const navigator = page.getByRole("complementary", { name: "Navigator" });
+  await navigator.getByRole("searchbox", { name: "Search elements" }).fill("Hero");
+  await navigator.getByRole("treeitem", { name: "Component: Hero, div, nested element", exact: true }).click();
+  await properties.getByRole("button", { name: "Edit main component" }).click();
+  const hero = canvas.locator('[data-editor-component="HeroSection"]');
+  await styles.getByRole("combobox", { name: "Padding bottom", exact: true }).selectOption("pb-12");
+  await expect(hero).toHaveClass(/pb-12/);
+  await expect(hero).not.toHaveClass(/(?:^|\s)pb-8(?:\s|$)/);
+  await expect(hero).not.toHaveAttribute("style");
+  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("tablet");
+  await styles.getByRole("combobox", { name: "Padding bottom", exact: true }).selectOption("pb-24");
+  await expect(hero).toHaveClass(/tablet:pb-24/);
+  await styles.getByRole("tab", { name: "Custom CSS" }).click();
+  await styles.getByRole("textbox", { name: "Custom selector" }).fill(".editor-callout");
+  await styles.getByRole("textbox", { name: "CSS declarations" }).fill("margin-bottom: 16px; color: var(--color-ink);");
+  await styles.getByRole("button", { name: "Save and apply class" }).click();
+  await expect(hero).toHaveClass(/editor-callout/);
+  await expect(hero).toHaveCSS("margin-bottom", "16px");
+  await styles.getByRole("textbox", { name: "CSS declarations" }).fill("background-color: url(https://example.com);");
+  await styles.getByRole("button", { name: "Save and apply class" }).click();
+  await expect(styles.getByRole("alert")).toContainText("unsupported");
+
+  const review = await openReview(page);
+  await expect(review).toContainText("Site design");
+  await expect(review).toContainText("pb-12");
+  await review.getByRole("button", { name: "Push to GitHub" }).click();
+  await expect(review).toHaveCount(0);
+  await expect(page.getByRole("status")).toContainText("Pushed to GitHub");
+  const publishing = await openPublishing(page);
+  await publishing.getByRole("button", { name: "Reload from source" }).click();
+  await expect(hero).toHaveClass(/pb-12/);
+  await expect(hero).toHaveClass(/tablet:pb-24/);
+  await expect(hero).toHaveCSS("margin-bottom", "16px");
+  await expect(heroButton).toHaveClass(/px-\[17px\]/);
+  await expect(heroButton.locator('[data-editor-part="label"]')).toHaveClass(/text-h3/);
+  await expectReviewState(page, false);
+  await heroButton.click();
+  await properties.getByRole("combobox", { name: "Component size" }).selectOption("lg");
+  await page.reload();
+  await openDesignerTab(page);
+  await expect(heroButton).toHaveClass(/px-7/);
+  await expectReviewState(page, true);
+  await page.getByRole("button", { name: "Discard drafts" }).click();
+  await page.getByRole("alertdialog", { name: "Discard drafts?" }).getByRole("button", { name: "Discard drafts" }).click();
+  await expect(heroButton).toHaveClass(/px-\[17px\]/);
+  await expect(hero).toHaveClass(/pb-12/);
+  await expectReviewState(page, false);
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-tailwind-components.png", import.meta.url)), fullPage: true });
 });

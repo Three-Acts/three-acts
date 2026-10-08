@@ -14,3 +14,6 @@ coverage
 # state only, never committed content.
 apps/api/data/*
 !apps/api/data/.gitkeep
+
+# Generated from the modular editor preview source before web dev/build.
+apps/web/public/editor-preview.js

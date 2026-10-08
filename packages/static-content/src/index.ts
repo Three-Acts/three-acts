@@ -1,3 +1,5 @@
+import design from "./documents/design.json";
+import { validateDesign } from "@three-acts/design";
 import home from "./documents/home.json";
 import about from "./documents/about.json";
 import faq from "./documents/faq.json";
@@ -19,8 +21,9 @@ import articleCategoryTemplate from "./documents/article-category-template.json"
 
 export type ContentValue = string | number | boolean | ContentValue[] | { [key: string]: ContentValue };
 export type ContentObject = { [key: string]: ContentValue };
-export type ContentDefinition = { id: string; label: string; route: string; content: ContentObject; collectionId?: string };
+export type ContentDefinition = { id: string; label: string; route: string; content: ContentObject; collectionId?: string; kind?: "design" };
 export const contentDefinitions: ContentDefinition[] = [
+  { id: "design", label: "Site design", route: "/", kind: "design", content: design },
   { id: "home", label: "Home", route: "/", content: home },
   { id: "about", label: "About", route: "/about", content: about },
   { id: "faq", label: "FAQ", route: "/faq", content: faq },
@@ -47,6 +50,7 @@ export const serializeContent = (content: ContentObject) => `${JSON.stringify(co
 /** The deployed content files define the editing contract. Editors change values,
  * while developers own fields, layout, routes and section order in Git. */
 export function validateContent(id: string, input: unknown): ContentObject {
+  if (id === "design") return validateDesign(input) as unknown as ContentObject;
   const definition = contentDefinitions.find((item) => item.id === id);
   if (!definition) throw new Error("Unknown content document.");
   function check(template: ContentValue, value: unknown, path: string): ContentValue {

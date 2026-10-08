@@ -389,3 +389,26 @@ test("partial GitHub configuration fails closed outside production too", async (
   assert.equal(response.status, 503);
   assert.equal(errorCode(response), "github_unconfigured");
 });
+
+test("validated design changes publish atomically and stale or unsafe design writes fail closed", async (t) => {
+  const { github, token } = await setup(t);
+  const workspace = resultData<EditorWorkspace>(await invoke(contentRoute, { method: "GET", token }));
+  const design = workspace.documents.find(document => document.id === "design")!;
+  const changed = structuredClone(design.content);
+  changed.elements = { "home.title": { utilities: ["pb-12", "tablet:pb-24"], customClasses: ["callout"] } };
+  changed.customCss = { ".callout": { "padding-bottom": "24px" } };
+  const pushed = await invoke(pushRoute, { method: "POST", token, body: { changes: [{ id: "design", sha: design.sha, content: changed }], message: "Save design" } });
+  assert.equal(pushed.status, 200);
+  const result = resultData<EditorPushResult>(pushed);
+  assert.deepEqual(result.documents[0].content, changed);
+  const refCalls = github.calls.filter(call => call.method === "PATCH");
+  assert.equal(refCalls.length, 1);
+  assert.equal((refCalls[0].body as { force: boolean }).force, false);
+  const stale = await invoke(pushRoute, { method: "POST", token, body: { changes: [{ id: "design", sha: design.sha, content: changed }], message: "Stale design" } });
+  assert.equal(stale.status, 409);
+  const unsafe = structuredClone(changed);
+  unsafe.customCss = { ".callout": { "background-color": "url(https://example.com)" } };
+  const rejected = await invoke(pushRoute, { method: "POST", token, body: { changes: [{ id: "design", sha: result.documents[0].sha, content: unsafe }], message: "Unsafe CSS" } });
+  assert.equal(rejected.status, 400);
+  assert.equal(github.calls.filter(call => call.method === "PATCH").length, 1);
+});

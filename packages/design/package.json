@@ -1,0 +1,16 @@
+{
+  "name": "@three-acts/design",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./utility-candidates.json": "./src/utility-candidates.json"
+  },
+  "dependencies": {
+    "@three-acts/utils": "*"
+  },
+  "scripts": {
+    "generate:utilities": "node scripts/generate-utilities.mjs"
+  }
+}

@@ -1,8 +1,13 @@
+import { applyStyle, componentBaseClass, componentDefinitions, designCss, emptyDesign, resolveProperties, validateDesign } from "@three-acts/design";
+import { cn } from "@three-acts/utils";
+
 /* Enabled explicitly by the web app, and activated only by the configured editor origin. */
 (() => {
   const config = document.getElementById('three-acts-editor-config');
   if (!config || window.parent === window) return;
   const { origin, documents } = JSON.parse(config.textContent);
+  let design = validateDesign(documents.find(doc => doc.id === 'design')?.content ?? emptyDesign());
+  let editingComponent = null;
   const brand = documents.find(doc => doc.id === 'shared')?.content.site ?? {};
   const resolve = value => typeof value === 'string' ? value.replace(/\{\{site\.(name|email)\}\}/g, (match,key) => brand[key] ?? match) : value;
   const definitions = new Map(documents.map(doc => [doc.id, doc]));
@@ -23,7 +28,7 @@
       return /^\[[^/]+\]$/.test(part) ? Boolean(pathPart) : part === pathPart;
     });
   }
-  const relevant = [...documents.filter(doc => doc.id !== 'shared' && routeMatches(doc.route, route)), ...documents.filter(doc => doc.id === 'shared')];
+  const relevant = [...documents.filter(doc => doc.id !== 'shared' && doc.id !== 'design' && routeMatches(doc.route, route)), ...documents.filter(doc => doc.id === 'shared')];
   function add(id, path, element, node, attribute) {
     const key = `${id}.${path}`;
     const list = bindings.get(key) || [];
@@ -96,7 +101,6 @@
   }
   const styleProperties = ['display','flexDirection','justifyContent','alignItems','gap','paddingTop','paddingRight','paddingBottom','paddingLeft','marginTop','marginRight','marginBottom','marginLeft','width','height','minHeight','maxWidth','fontSize','fontWeight','lineHeight','color','backgroundColor','borderRadius'];
   const styleNames = Object.fromEntries(styleProperties.map(name => [name, name.replace(/[A-Z]/g, char => `-${char.toLowerCase()}`)]));
-  const originalInlineStyles = new Map();
   let mode = 'design';
   let activeEditor = null;
   function safeElement(element) {
@@ -126,7 +130,7 @@
       : staticGroup
         ? humanize(staticGroup.replace(/_/g, ' '))
         : staticFieldLabel(element, key) || semanticLabel(element));
-    return {category: component || staticGroup ? 'component' : 'element', element, binding, label, selector: selectorFor(element)};
+    return {category: component ? 'component' : 'element', element, binding, label, selector: selectorFor(element)};
   }
   function bindingFor(element) {
     for (const [key, list] of bindings) if (list.some(binding => binding.element === element)) {
@@ -206,8 +210,75 @@
     const computed = getComputedStyle(element);
     return Object.fromEntries(styleProperties.map(property => [property, computed.getPropertyValue(styleNames[property]) || computed[property]]));
   }
+  function componentRoot(element) {
+    const root = element.closest('[data-editor-component]');
+    return root && Object.hasOwn(componentDefinitions, root.dataset.editorComponent) ? root : null;
+  }
+  function componentDescriptor(root) {
+    if (!root) return null;
+    const name = root.dataset.editorComponent;
+    const instanceId = root.dataset.editorInstance;
+    let props = {};
+    try { props = JSON.parse(root.dataset.editorSourceProps || '{}'); } catch { /* Invalid source metadata stays at defaults. */ }
+    const resolvedProps = resolveProperties(design, name, instanceId, props);
+    const fields = Array.from(root.querySelectorAll('[data-static-field]')).filter(element => !element.closest('[data-cms-bound]')).flatMap(element => {
+      const binding = bindingFor(element);
+      if (!binding || (!element.dataset.staticAttribute && !directTextField(element))) return [];
+      const value = binding.path.split('.').reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, definitions.get(binding.id)?.content);
+      return typeof value === 'string' ? [{ ...binding, label: element.dataset.staticAttribute || (name.startsWith('Button.') ? 'Text' : humanize(binding.path.split('.').at(-1).replace(/_\d+$/, ''))), value }] : [];
+    });
+    const ownBinding = bindingFor(root);
+    if (ownBinding && root.dataset.staticAttribute) {
+      const value = ownBinding.path.split('.').reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, definitions.get(ownBinding.id)?.content);
+      if (typeof value === 'string') fields.unshift({ ...ownBinding, label: root.dataset.staticAttribute, value });
+    }
+    return { name, ...(instanceId ? { instanceId } : {}), sourceProps: { ...componentDefinitions[name].defaultVariants, ...props }, props: resolvedProps, fields: fields.filter((field, index) => fields.findIndex(candidate => candidate.id === field.id && candidate.path === field.path) === index).slice(0, 100) };
+  }
+  function editingTarget(element) {
+    const root = componentRoot(element);
+    if (editingComponent && root?.dataset.editorComponent === editingComponent.name) {
+      const part = element.closest('[data-editor-part]');
+      if (part && componentRoot(part) === root && Object.hasOwn(componentDefinitions[editingComponent.name].parts, part.dataset.editorPart)) {
+        return { kind: 'component', component: editingComponent.name, part: part.dataset.editorPart };
+      }
+      return null;
+    }
+    if (editingComponent || (root && root !== element)) return null;
+    return element.dataset.editorId ? { kind: 'element', id: element.dataset.editorId } : null;
+  }
+  function selectableTarget(element) {
+    const root = componentRoot(element);
+    if (!root || (element !== root && element.closest('[data-cms-bound]'))) return element;
+    if (editingComponent?.name === root.dataset.editorComponent) return element.closest('[data-editor-part]') || element;
+    if (element !== root && element.hasAttribute('data-static-field') && !root.dataset.editorComponent.startsWith('Button.')) return element;
+    return root;
+  }
+  function renderDesign(next) {
+    design = validateDesign(next);
+    document.querySelectorAll('[data-editor-id]:not([data-editor-component])').forEach(element => {
+      element.setAttribute('class', applyStyle(element.dataset.editorBaseClass || '', design.elements[element.dataset.editorId]));
+    });
+    document.querySelectorAll('[data-editor-component]').forEach(root => {
+      const name = root.dataset.editorComponent;
+      if (!Object.hasOwn(componentDefinitions, name)) return;
+      let sourceProps = {};
+      try { sourceProps = JSON.parse(root.dataset.editorSourceProps || '{}'); } catch { return; }
+      const props = resolveProperties(design, name, root.dataset.editorInstance, sourceProps);
+      root.className = applyStyle(cn(componentBaseClass(name, props), root.dataset.editorCallerClass || ''), design.components[name]?.parts.root);
+      root.querySelectorAll('[data-editor-part]').forEach(part => {
+        if (componentRoot(part) !== root) return;
+        part.className = applyStyle(part.dataset.editorBaseClass || '', design.components[name]?.parts[part.dataset.editorPart]);
+      });
+    });
+    const sheet = document.getElementById('three-acts-design-css');
+    if (sheet) sheet.textContent = designCss(design);
+  }
   function selectionFor(element) {
     const info = describe(element);
+    const root = componentRoot(element);
+    const component = root === element ? componentDescriptor(root) : null;
+    const designTarget = editingTarget(element);
+    const mainPart = designTarget?.kind === 'component';
     const breadcrumbs = [];
     for (let current = element; current && current !== document.body; current = current.parentElement) {
       if (!safeElement(current)) continue;
@@ -218,7 +289,7 @@
     const textField = info.category === 'cms' ? null : directTextField(element);
     const attributes = elementAttributes(element, info.category === 'cms');
     const textState = textField ? 'editable' : element.childElementCount ? 'structured' : normalize(element.textContent || '') ? 'unbound' : 'empty';
-    return {selector:selectorFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), category:info.category, ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
+    return {selector:selectorFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), category:mainPart && info.category !== 'cms' ? 'element' : info.category, ...(component && !mainPart ? {component} : {}), ...(editingComponent ? {editingComponent:editingComponent.name} : {}), ...(designTarget ? {designTarget} : {}), sourceClasses:(element.dataset.editorBaseClass || (root === element ? cn(componentBaseClass(root.dataset.editorComponent, resolveProperties(design, root.dataset.editorComponent, root.dataset.editorInstance, JSON.parse(root.dataset.editorSourceProps || '{}'))), root.dataset.editorCallerClass || '') : '')).split(/\s+/).filter(Boolean), ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
   }
   const inspectableAttributes = ['href','src','alt','title','target','aria-label'];
   function directTextField(element) {
@@ -258,6 +329,7 @@
     return node === element || (node?.nodeType === Node.TEXT_NODE && node.parentElement === element && element.childNodes.length === 1);
   }
   function publishSelection(element) {
+    if (editingComponent && componentRoot(element)?.dataset.editorComponent !== editingComponent.name) editingComponent = null;
     if (!element || !element.isConnected) return;
     selectedCandidate = describe(element);
     drawOverlay(selectedCandidate);
@@ -328,9 +400,6 @@
     if (typeof selector !== 'string' || selector.length > 500) return null;
     try { return document.querySelector(selector); } catch { return null; }
   }
-  function stylesChanged() {
-    send({type:'three-acts:styles-changed', hasChanges:originalInlineStyles.size > 0});
-  }
   function activate() {
     if (active) return;
     active = true;
@@ -369,14 +438,14 @@
       if (!(target instanceof Element) || !isVisible(target) || !safeElement(target)) return;
       document.querySelectorAll('[data-editor-selected]').forEach(element => element.removeAttribute('data-editor-selected'));
       hoverCandidate = null;
-      publishSelection(target);
+      publishSelection(selectableTarget(target));
     }, true);
     document.addEventListener('submit', event => { event.preventDefault(); event.stopPropagation(); }, true);
     document.addEventListener('pointerover', event => {
       if (mode !== 'design') { clearHover(); return; }
       const target = event.target?.nodeType === Node.TEXT_NODE ? event.target.parentElement : event.target;
       if (!(target instanceof Element) || !isVisible(target) || !safeElement(target)) { clearHover(); return; }
-      const candidate = describe(target);
+      const candidate = describe(selectableTarget(target));
       if (target === hoverCandidate?.element && candidate.category === hoverCandidate?.category) return;
       hoverCandidate = candidate;
       drawOverlay(candidate);
@@ -395,6 +464,12 @@
       if (mode === 'locked') return;
       const target = editTarget;
       if (!(target instanceof Element)) return;
+      const root = componentRoot(target);
+      if (root && !editingComponent && (target === root || root.dataset.editorComponent.startsWith('Button.'))) {
+        editingComponent = { name: root.dataset.editorComponent, selector: selectorFor(root) };
+        publishSelection(root);
+        return;
+      }
       const info = describe(target);
       if (!isSafeEditable(target, info.binding)) return;
       const key = `${info.binding.id}.${info.binding.path}`;
@@ -484,6 +559,7 @@
       return;
     }
     if (event.data.type === 'three-acts:clear-selection') {
+      editingComponent = null;
       selectedCandidate = null;
       document.querySelectorAll('[data-editor-selected]').forEach(element => element.removeAttribute('data-editor-selected'));
       if (overlay) overlay.hidden = true;
@@ -499,32 +575,23 @@
       publishSelection(element);
       return;
     }
-    if (event.data.type === 'three-acts:style' && typeof event.data.selector === 'string' && typeof event.data.property === 'string' && typeof event.data.value === 'string') {
-      if (mode !== 'design') return;
-      const property = event.data.property;
-      const value = event.data.value.trim();
-      const element = validSelector(event.data.selector);
-      if (!styleProperties.includes(property) || !element || !safeElement(element) || !value || value.length > 100 || /url\s*\(|var\s*\(|expression\s*\(|javascript\s*:|[;{}]|!important|@import/i.test(value) || !CSS.supports(styleNames[property], value)) return;
-      if (!originalInlineStyles.has(element)) originalInlineStyles.set(element, {hadStyle:element.hasAttribute('style'), style:element.getAttribute('style')});
-      element.style.setProperty(styleNames[property], value);
-      stylesChanged();
-      if (selectedCandidate?.element === element) send({type:'three-acts:selection', ...selectionFor(element)});
+    if (event.data.type === 'three-acts:enter-component') {
+      const root = validSelector(event.data.selector);
+      if (mode !== 'design' || !root || componentRoot(root) !== root) return;
+      editingComponent = { name: root.dataset.editorComponent, selector: selectorFor(root) };
+      publishSelection(root);
       return;
     }
-    if (event.data.type === 'three-acts:reset-styles') {
-      if (mode !== 'design') return;
-      for (const [element, original] of originalInlineStyles) {
-        if (!element.isConnected) continue;
-        if (original.hadStyle) element.setAttribute('style', original.style ?? '');
-        else element.removeAttribute('style');
-      }
-      originalInlineStyles.clear();
-      stylesChanged();
-      if (selectedCandidate?.element?.isConnected) send({type:'three-acts:selection', ...selectionFor(selectedCandidate.element)});
+    if (event.data.type === 'three-acts:exit-component') {
+      const root = editingComponent ? validSelector(editingComponent.selector) : null;
+      editingComponent = null;
+      if (root) publishSelection(root);
       return;
     }
     if (event.data.type === 'three-acts:preview' && Array.isArray(event.data.documents)) {
       activate();
+      const nextDesign = event.data.documents.find(doc => doc.id === 'design');
+      if (nextDesign) { try { renderDesign(nextDesign.content); } catch { return; } }
       Object.assign(brand, event.data.documents.find(doc => doc.id === 'shared')?.content.site ?? {});
       for (const doc of event.data.documents) {
         if (!definitions.has(doc.id)) continue;
@@ -551,6 +618,7 @@
         }
       }
       buildTree();
+      drawOverlay(hoverCandidate || selectedCandidate);
       if (selectedCandidate?.element?.isConnected) send({type:'three-acts:selection', ...selectionFor(selectedCandidate.element)});
     }
     if (event.data.type === 'three-acts:focus' && typeof event.data.path === 'string') focus(`${event.data.id}.${event.data.path}`, true);

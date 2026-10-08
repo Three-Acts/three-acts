@@ -34,7 +34,8 @@ export function Review({ drafts, workspace, message, onMessage, busy, error, onC
       <div className="mb-3 grid gap-3">
         {Object.entries(drafts).map(([id, draft]) => {
           const original = new Map(contentFields(draft.original).map((field) => [field.path.join("."), field.value]));
-          const changed = contentFields(draft.content).filter((field) => field.value !== original.get(field.path.join(".")));
+          const current = new Map(contentFields(draft.content).map(field => [field.path.join("."), field.value]));
+          const changed = [...new Set([...original.keys(), ...current.keys()])].filter(path => current.get(path) !== original.get(path)).map(path => ({ path: path.split("."), value: current.get(path) }));
           return (
             <section className="overflow-hidden rounded-cms border border-cms-line-strong bg-cms-surface" key={id}>
               <h3 className="m-0 flex items-center justify-between gap-2 border-b border-cms-line px-2.5 py-2 text-ui font-medium text-cms-text">
@@ -45,8 +46,8 @@ export function Review({ drafts, workspace, message, onMessage, busy, error, onC
                 {changed.map((field) => (
                   <div className="grid gap-1 px-2.5 py-2" key={field.path.join(".")}>
                     <small className="text-ui font-medium text-cms-subtle">{fieldLabel(field.path)}</small>
-                    <del className="whitespace-pre-wrap wrap-break-word rounded-cms bg-cms-bg px-2 py-1 text-ui leading-5 text-cms-subtle">{String(original.get(field.path.join("."))) || "Empty"}</del>
-                    <ins className="whitespace-pre-wrap wrap-break-word rounded-cms border border-cms-success/30 bg-cms-success/10 px-2 py-1 text-ui leading-5 text-cms-text no-underline">{String(field.value) || "Empty"}</ins>
+                    <del className="whitespace-pre-wrap wrap-break-word rounded-cms bg-cms-bg px-2 py-1 text-ui leading-5 text-cms-subtle">{original.has(field.path.join(".")) ? String(original.get(field.path.join("."))) || "Empty" : "Not set"}</del>
+                    <ins className="whitespace-pre-wrap wrap-break-word rounded-cms border border-cms-success/30 bg-cms-success/10 px-2 py-1 text-ui leading-5 text-cms-text no-underline">{field.value === undefined ? "Removed" : String(field.value) || "Empty"}</ins>
                   </div>
                 ))}
                 {!changed.length && <p className="m-0 px-2.5 py-2 text-ui text-cms-subtle">No field changes.</p>}
