@@ -3,7 +3,6 @@ import { X } from "lucide-react";
 import { Dialog } from "@base-ui-components/react/dialog";
 import { cn } from "@three-acts/utils";
 import { BareIconButton } from "./bare-icon-button";
-import { ScrollArea } from "./scroll-area";
 import { panelHeaderClass, popupClass } from "./styles";
 
 type ModalProps = {
@@ -40,9 +39,9 @@ export function Modal({ children, className, footer, onClose, open, title }: Mod
               <X size={15} />
             </BareIconButton>
           </header>
-          <ScrollArea className="flex-1" viewportClassName="p-3 text-ui">
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 text-ui">
             {children}
-          </ScrollArea>
+          </div>
           {footer ? <footer className="flex shrink-0 justify-end gap-1.5 border-t border-cms-line px-3 py-2.5">{footer}</footer> : null}
         </Dialog.Popup>
       </Dialog.Portal>

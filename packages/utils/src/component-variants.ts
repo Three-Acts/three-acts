@@ -65,7 +65,7 @@ export default clsx;
  * e.g. { size: { small: ['px-2'], large: ['px-6'] } }
  */
 type VariantDefinitions = {
-    [key: string]: Record<string, string[]>;
+    [key: string]: Record<string, readonly string[]>;
 };
 
 /** Props your consumer will pass: one key per variant, plus optional className */
@@ -77,7 +77,7 @@ type VariantProps<V extends VariantDefinitions> = {
 
 /** The config you pass once, to build your "styler" */
 type VariantConfig<V extends VariantDefinitions> = {
-    base?: string | string[];
+    base?: string | readonly string[];
     /** Your variants map */
     variants?: V;
     /** Which variants to pick when consumer leaves one undefined */

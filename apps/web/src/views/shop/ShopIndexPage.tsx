@@ -22,10 +22,10 @@ export function ShopIndexPage({ meta, categories, products }: ShopIndexPageProps
 
   return (
     <>
-      <Section.Root className="pb-0">
-        <Section.Container>
+      <Section.Root data-editor-id="source.ShopIndexPage.1" className="pb-0">
+        <Section.Container data-editor-id="source.ShopIndexPage.2">
           <Section.Header eyebrow="Shop" title="Everything in the template" lede={meta.seo.description} />
-          <Grid.Root cols={4}>
+          <Grid.Root data-editor-id="source.ShopIndexPage.3" cols={4}>
             {sortedCategories.map((category, index) => (
               <Tile.Root
                 key={category.id}
@@ -39,8 +39,8 @@ export function ShopIndexPage({ meta, categories, products }: ShopIndexPageProps
         </Section.Container>
       </Section.Root>
 
-      <Section.Root className="pt-0">
-        <Section.Container>
+      <Section.Root data-editor-id="source.ShopIndexPage.4" className="pt-0">
+        <Section.Container data-editor-id="source.ShopIndexPage.5">
           <Section.Header title="All pieces" lede="Every app, package, module, theme, integration, licence, service and bundle currently for sale." />
           <ProductGrid products={sortedProducts} />
         </Section.Container>

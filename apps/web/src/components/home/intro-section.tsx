@@ -1,3 +1,4 @@
+import { elementClass } from "../../lib/design";
 import copy from "@three-acts/static-content/documents/home.json";
 import type { Product } from "@three-acts/ecommerce";
 import { Grid } from "../layout/grid";
@@ -24,24 +25,24 @@ export function IntroSection({ images }: IntroSectionProps) {
   const row = [0, 1, 2].map((index) => images[index] ?? FALLBACK_IMAGE);
 
   return (
-    <Section.Root>
-      <Section.Container>
-        <div className="grid gap-x-gap gap-y-gap-y landscape:grid-cols-split">
-          <div className="flex flex-col justify-between gap-8">
-            <Typography.Title className="max-w-[640px]"><span data-static-field="home.intro_section.title_3">{copy.intro_section.title_3}</span></Typography.Title>
-            <p className="max-w-[640px] text-body text-ink">
-              <span data-static-field="home.intro_section.p_4">{copy.intro_section.p_4}</span></p>
+    <Section.Root data-editor-id="source.intro-section.1">
+      <Section.Container data-editor-id="source.intro-section.2">
+        <div data-editor-base-class={"grid gap-x-gap gap-y-gap-y landscape:grid-cols-split"} data-editor-id="source.intro-section.3" className={elementClass("source.intro-section.3", "grid gap-x-gap gap-y-gap-y landscape:grid-cols-split")}>
+          <div data-editor-base-class={"flex flex-col justify-between gap-8"} data-editor-id="source.intro-section.4" className={elementClass("source.intro-section.4", "flex flex-col justify-between gap-8")}>
+            <Typography.Title data-editor-id="source.intro-section.5" className="max-w-[640px]"><span data-editor-base-class={""} data-editor-id="home.intro_section.title_3" className={elementClass("home.intro_section.title_3", "")} data-static-field="home.intro_section.title_3">{copy.intro_section.title_3}</span></Typography.Title>
+            <p data-editor-base-class={"max-w-[640px] text-body text-ink"} data-editor-id="source.intro-section.6" className={elementClass("source.intro-section.6", "max-w-[640px] text-body text-ink")}>
+              <span data-editor-base-class={""} data-editor-id="home.intro_section.p_4" className={elementClass("home.intro_section.p_4", "")} data-static-field="home.intro_section.p_4">{copy.intro_section.p_4}</span></p>
           </div>
-          <Grid.Root cols={3}>
+          <Grid.Root data-editor-id="source.intro-section.7" cols={3}>
             {VALUES.map((value) => (
               <Tile.Root key={value.mark} mark={value.mark} title={value.title} description={value.description} />
             ))}
           </Grid.Root>
         </div>
-        <div className="mt-[75px]">
-          <Grid.Root cols={3}>
+        <div data-editor-base-class={"mt-[75px]"} data-editor-id="source.intro-section.8" className={elementClass("source.intro-section.8", "mt-[75px]")}>
+          <Grid.Root data-editor-id="source.intro-section.9" cols={3}>
             {row.map((image, index) => (
-              <span key={index} className="block aspect-tall w-full overflow-hidden bg-block">
+              <span data-editor-base-class={"block aspect-tall w-full overflow-hidden bg-block"} data-editor-id="source.intro-section.10" key={index} className={elementClass("source.intro-section.10", "block aspect-tall w-full overflow-hidden bg-block")}>
                 <Image src={image.src} alt={image.alt} width={429} height={602} className="size-full object-cover" />
               </span>
             ))}

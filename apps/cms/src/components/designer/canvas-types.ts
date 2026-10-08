@@ -21,6 +21,10 @@ export type CanvasSelection = {
   breadcrumbs: Array<{ selector: string; label: string }>;
   classNames?: string[];
   styles: Record<string, string>;
+  sourceClasses?: string[];
+  designTarget?: { kind: "element"; id: string } | { kind: "component"; component: string; part: string };
+  component?: { name: string; instanceId?: string; props: Record<string, string>; sourceProps?: Record<string, string>; fields: Array<{ id: string; path: string; label: string; value: string }> };
+  editingComponent?: string;
 };
 
 export type CanvasAttribute = {

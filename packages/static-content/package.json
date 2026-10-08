@@ -3,5 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./documents/*.json": "./src/documents/*.json" }
+  "exports": {
+    ".": "./src/index.ts",
+    "./documents/*.json": "./src/documents/*.json"
+  },
+  "dependencies": {
+    "@three-acts/design": "*"
+  }
 }

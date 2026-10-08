@@ -1,9 +1,12 @@
+import { isCanvasSelection, readCanvasNodes } from "./canvas-contract";
+import { componentDefinitions, emptyDesign, validateDesign, type Breakpoint, type DesignDocument, type StyleChange } from "@three-acts/design";
+import { ComponentInspector } from "./component-inspector";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowUpRight, CheckCircle2, Eye, File, GitBranch, Globe, Info, Layers, Monitor, MousePointer2, RefreshCw, Settings, SlidersHorizontal, Smartphone, Tablet, Type, Undo2, X } from "lucide-react";
 import { contentFields, validateContent, type ContentField, type ContentObject, type EditorChange, type EditorDocument, type EditorPushResult, type EditorWorkspace } from "@three-acts/static-content";
 import type { AuthUser } from "@three-acts/auth";
-import { Button, ConfirmDialog, IconButton, PanelHeader, SearchInput, type ToastOptions } from "../atoms";
+import { Button, ConfirmDialog, IconButton, PanelHeader, SearchInput, Tooltip, type ToastOptions } from "../atoms";
 import { popupClass } from "../atoms/styles";
 import { loadDesignerWorkspace, pushDesignerChanges } from "./client";
 import { draftKey, readDrafts, sameContent, updateField, type Drafts } from "./drafts";
@@ -31,31 +34,7 @@ function siteUrl(): URL | null {
 }
 
 const publicSite = siteUrl();
-const widths = { desktop: "100%", tablet: "768px", mobile: "390px" };
-const canvasCategories = new Set(["element", "component", "cms"]);
-
-function readCanvasNodes(value: unknown): CanvasNode[] {
-  if (!Array.isArray(value)) return [];
-  const selectors = new Set<string>();
-  return value.slice(0, 400).filter((node): node is CanvasNode => {
-    if (!node || typeof node !== "object" || typeof node.selector !== "string" || !node.selector || selectors.has(node.selector) || typeof node.label !== "string" || typeof node.tag !== "string" || !canvasCategories.has(node.category) || !Number.isInteger(node.depth) || node.depth < 0 || node.depth > 100 || (node.parentSelector !== null && !selectors.has(node.parentSelector))) return false;
-    selectors.add(node.selector);
-    return true;
-  });
-}
-
-function isCanvasSelection(value: unknown): value is CanvasSelection {
-  if (!value || typeof value !== "object") return false;
-  const selection = value as CanvasSelection;
-  const validBinding = (binding: unknown) => Boolean(binding && typeof binding === "object" && "id" in binding && typeof binding.id === "string" && "path" in binding && typeof binding.path === "string");
-  return typeof selection.selector === "string" && typeof selection.label === "string" && typeof selection.tag === "string" && typeof selection.editable === "boolean" && canvasCategories.has(selection.category)
-    && (selection.textState === undefined || ["editable", "unbound", "structured", "empty"].includes(selection.textState))
-    && (selection.textField === undefined || (validBinding(selection.textField) && typeof selection.textField.value === "string"))
-    && (selection.attributes === undefined || (Array.isArray(selection.attributes) && selection.attributes.length <= 6 && selection.attributes.every((attribute) => attribute && ["href", "src", "alt", "title", "target", "aria-label"].includes(attribute.name) && typeof attribute.value === "string" && (attribute.binding === undefined || validBinding(attribute.binding)))))
-    && (selection.classNames === undefined || (Array.isArray(selection.classNames) && selection.classNames.length <= 100 && selection.classNames.every((className) => typeof className === "string")))
-    && Array.isArray(selection.breadcrumbs) && selection.breadcrumbs.length <= 100 && selection.breadcrumbs.every((crumb) => crumb && typeof crumb.selector === "string" && typeof crumb.label === "string")
-    && Boolean(selection.styles && typeof selection.styles === "object" && !Array.isArray(selection.styles) && Object.values(selection.styles).every((value) => typeof value === "string"));
-}
+const widths = { desktop: "1280px", tablet: "1024px", landscape: "768px", mobile: "390px" };
 
 export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsavedChange, onOpenPageDetails, onSelectPage, pageDetailsPath, pageDetailsDirty = false, pagePublishStatuses, onTemplateDetailsChange, toolbarHost, onClosePublish, onViewSiteUrlChange }: {
   user: AuthUser;
@@ -84,7 +63,8 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   const [leftPanel, setLeftPanel] = useState<"pages" | "navigator">("navigator");
   const [rightPanel, setRightPanel] = useState<"content" | "style">("style");
   const [canvasMode, setCanvasMode] = useState<"design" | "preview">("design");
-  const [hasStyleChanges, setHasStyleChanges] = useState(false);
+  const [breakpoint, setBreakpoint] = useState<Breakpoint>("desktop");
+  const [editingComponent, setEditingComponent] = useState<string | null>(null);
   const [device, setDevice] = useState<keyof typeof widths>("desktop");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -124,6 +104,42 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   const chosenPreview = previews.items.find((item) => item.id === previewIds[page]) ?? previews.items[0] ?? null;
   const templateContent = currentTemplate ? drafts[currentTemplate.id]?.content ?? currentTemplate.content : null;
   const changedCount = Object.keys(drafts).length;
+  const designDocument = workspace?.documents.find(document => document.id === "design");
+  const design = (drafts.design?.content ?? designDocument?.content ?? emptyDesign()) as unknown as DesignDocument;
+  const isComponentSelection = Boolean((canvasSelection?.component || canvasSelection?.category === "component") && !canvasSelection?.editingComponent);
+  function updateDesign(change: (design: DesignDocument) => void) {
+    if (!designDocument || busy || loading || reviewing) return;
+    const next = structuredClone(design);
+    change(next);
+    const validated = validateDesign(next) as unknown as ContentObject;
+    const nextDrafts = { ...drafts };
+    const original = nextDrafts.design?.original ?? designDocument.content;
+    if (sameContent(validated, original)) delete nextDrafts.design;
+    else nextDrafts.design = { content: validated, sha: nextDrafts.design?.sha ?? designDocument.sha, original };
+    persist(nextDrafts);
+  }
+  function writeSelectedStyle(next: DesignDocument, style: StyleChange) {
+    const target = canvasSelection?.designTarget;
+    if (target?.kind === "element") {
+      if (!style.utilities.length && !style.customClasses.length) delete next.elements[target.id];
+      else next.elements[target.id] = style;
+    } else if (target?.kind === "component") {
+      const entry = next.components[target.component] ?? { parts: {} };
+      if (!style.utilities.length && !style.customClasses.length) delete entry.parts[target.part];
+      else entry.parts[target.part] = style;
+      if (Object.keys(entry.parts).length) next.components[target.component] = entry;
+      else delete next.components[target.component];
+    }
+  }
+  function changeBreakpoint(value: Breakpoint) {
+    setBreakpoint(value);
+    setDevice(value === "base" ? "mobile" : value);
+  }
+  function resolveSelectedField(binding: { id: string; path: string }) {
+    const document = workspace?.documents.find(document => document.id === binding.id);
+    const saved = document ? drafts[document.id]?.content ?? document.content : null;
+    return saved ? contentFields(saved).find(field => field.path.join(".") === binding.path) : undefined;
+  }
   const stale = workspace?.documents.filter((document) => drafts[document.id] && drafts[document.id].sha !== document.sha) ?? [];
 
   function postCanvas(data: Record<string, unknown>) {
@@ -133,7 +149,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   function resetCanvasState() {
     setCanvasSelection(null);
     setCanvasNodes([]);
-    setHasStyleChanges(false);
+    setEditingComponent(null);
   }
 
   const load = useCallback(async (preferredPage?: string, preferredRoute?: string) => {
@@ -150,7 +166,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       const saved = readDrafts(draftKey(next, user.email));
       setDrafts(unsavedStorageDrafts.current ?? saved.drafts);
       setRecovery(saved.recovery);
-      const firstPage = next.documents.find((document) => document.id === preferredPage && document.id !== "shared") ?? next.documents.find((document) => document.id !== "shared");
+      const firstPage = next.documents.find((document) => document.id === preferredPage && document.kind !== "design" && document.id !== "shared") ?? next.documents.find((document) => document.kind !== "design" && document.id !== "shared");
       setPage(firstPage?.id ?? "shared");
       setCanvasRoute(firstPage?.collectionId && preferredRoute ? preferredRoute : firstPage?.route ?? "/");
     } catch (loadError) {
@@ -240,7 +256,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
           const url = new URL(event.data.href);
           if (url.origin !== publicSite.origin) { notify({ title: "Open external links with View site", duration: 4500 }); return; }
           const route = url.pathname.replace(/\/$/, "") || "/";
-          const document = workspace?.documents.find((doc) => !doc.collectionId && doc.id !== "shared" && doc.route === route);
+          const document = workspace?.documents.find((doc) => !doc.collectionId && doc.kind !== "design" && doc.id !== "shared" && doc.route === route);
           const preview = previews.items.find((item) => item.route === route);
           if (document) choosePage(document);
           else if (preview) choosePreview(preview.id);
@@ -250,21 +266,21 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       if (event.data.type === "three-acts:canvas-tree" && Array.isArray(event.data.nodes)) {
         setCanvasNodes(readCanvasNodes(event.data.nodes));
       }
-      if (event.data.type === "three-acts:styles-changed" && typeof event.data.hasChanges === "boolean") setHasStyleChanges(event.data.hasChanges);
       if (event.data.type === "three-acts:clear-selection" || (event.data.type === "three-acts:selection" && event.data.selection === null)) setCanvasSelection(null);
       if (event.data.type === "three-acts:selection" && !busy && !reviewing && canvasMode === "design" && isCanvasSelection(event.data)) {
         setCanvasSelection(event.data);
+        setEditingComponent(event.data.editingComponent ?? null);
         setSelectionVersion((version) => version + 1);
         const doc = workspace?.documents.find((item) => item.id === event.data.binding?.id);
         const path = event.data.binding?.path;
         const editableField = doc && typeof path === "string" && contentFields(drafts[doc.id]?.content ?? doc.content).some((field) => field.path.join(".") === path);
-        if (editableField && doc.id !== "shared") setPage(doc.id);
+        if (editableField && doc.kind !== "design" && doc.id !== "shared") setPage(doc.id);
       }
       if (event.data.type === "three-acts:select" && !busy && !reviewing && canvasMode === "design") {
         const doc = workspace?.documents.find((item) => item.id === event.data.id);
         const path = event.data.path;
         if (!doc || typeof path !== "string" || !contentFields(drafts[doc.id]?.content ?? doc.content).some((field) => field.path.join(".") === path)) return;
-        if (doc.id !== "shared") setPage(doc.id);
+        if (doc.kind !== "design" && doc.id !== "shared") setPage(doc.id);
         // Shared fields select their content document while keeping the current canvas page.
       }
       if (event.data.type === "three-acts:edit" && !busy && !reviewing && typeof event.data.id === "string" && typeof event.data.path === "string" && typeof event.data.value === "string") {
@@ -293,11 +309,10 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   function selectPage(id: string) {
     if (busy) return;
     const next = workspace?.documents.find((doc) => doc.id === id);
-    postCanvas({ type: "three-acts:reset-styles" });
     postCanvas({ type: "three-acts:clear-selection" });
     if (next && !next.collectionId && id !== "shared" && next.route !== canvasRoute) { setPreviewReady(false); setCanvasRoute(next.route); resetCanvasState(); }
     setCanvasSelection(null);
-    setHasStyleChanges(false);
+    setEditingComponent(null);
     setPage(id);
   }
 
@@ -385,7 +400,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       <div className="min-h-0 flex-1 overflow-y-auto">
       <p className="px-2 pb-0 pt-1 text-ui font-medium uppercase tracking-label text-cms-muted">Static pages</p>
       <nav aria-label="Static pages">
-        {workspace?.documents.filter((doc) => doc.id !== "shared" && !doc.collectionId && `${doc.label} ${doc.route}`.toLowerCase().includes(query.toLowerCase())).map((doc) =>
+        {workspace?.documents.filter((doc) => doc.kind !== "design" && doc.id !== "shared" && !doc.collectionId && `${doc.label} ${doc.route}`.toLowerCase().includes(query.toLowerCase())).map((doc) =>
           <div key={doc.id} className={`group flex h-[26px] w-full items-center pr-0.5 transition-colors hover:bg-cms-raised ${page === doc.id ? "bg-cms-raised" : ""}`}>
             <button title={`${doc.label} · ${doc.route}`} className={`flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-ui disabled:opacity-50 ${pageStates[doc.id].color}`} data-page-state={pageStates[doc.id].state} aria-description={pageStates[doc.id].label} aria-pressed={page === doc.id} onClick={() => {
               const select = () => selectPage(doc.id);
@@ -398,7 +413,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
               <Settings size={12}/>
             </IconButton>
           </div>)}
-        {workspace && !workspace.documents.some((doc) => doc.id !== "shared" && !doc.collectionId && `${doc.label} ${doc.route}`.toLowerCase().includes(query.toLowerCase())) && <p className="px-2 py-2 text-ui text-cms-muted">No pages match your search.</p>}
+        {workspace && !workspace.documents.some((doc) => doc.kind !== "design" && doc.id !== "shared" && !doc.collectionId && `${doc.label} ${doc.route}`.toLowerCase().includes(query.toLowerCase())) && <p className="px-2 py-2 text-ui text-cms-muted">No pages match your search.</p>}
       </nav>
       <p className="px-2 pb-0 pt-1 text-ui font-medium uppercase tracking-label text-cms-muted">CMS pages</p>
       <nav aria-label="CMS pages">
@@ -432,7 +447,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
           <IconButton className={`size-6 border-transparent bg-transparent shadow-none ${canvasMode === "preview" ? "text-cms-accent" : ""}`} aria-label="Preview mode" title="Preview mode" aria-pressed={canvasMode === "preview"} disabled={controlsDisabled} onClick={() => setCanvasMode("preview")}><Eye size={14}/></IconButton>
         </div>
         <span className="mx-0.5 h-4 shrink-0 border-r border-cms-line" aria-hidden="true"/>
-        <div className="flex shrink-0 items-center gap-0.5" aria-label="Canvas width">{([{ id: "desktop", Icon: Monitor }, { id: "tablet", Icon: Tablet }, { id: "mobile", Icon: Smartphone }] as const).map(({ id, Icon }) => <IconButton key={id} className={`size-6 border-transparent bg-transparent shadow-none ${device === id ? "text-cms-accent" : ""}`} aria-label={`${id} preview`} title={`${id[0].toUpperCase()}${id.slice(1)} preview`} aria-pressed={device === id} onClick={() => setDevice(id)}><Icon size={14}/></IconButton>)}</div>
+        <div className="flex shrink-0 items-center gap-0.5" aria-label="Canvas width">{([{ id: "desktop", Icon: Monitor }, { id: "tablet", Icon: Tablet }, { id: "landscape", Icon: Tablet }, { id: "mobile", Icon: Smartphone }] as const).map(({ id, Icon }) => <IconButton key={id} className={`size-6 border-transparent bg-transparent shadow-none ${device === id ? "text-cms-accent" : ""}`} aria-label={`${id} preview`} title={`${id[0].toUpperCase()}${id.slice(1)} preview`} aria-pressed={device === id} onClick={() => { setDevice(id); setBreakpoint(id === "mobile" ? "base" : id); }}><Icon size={14}/></IconButton>)}</div>
         <span className="mx-0.5 h-4 shrink-0 border-r border-cms-line" aria-hidden="true"/>
         <IconButton aria-label="Discard drafts" title={`Discard all ${changedCount} content drafts`} className="size-6 border-transparent bg-transparent p-1 shadow-none" disabled={!changedCount || controlsDisabled} onClick={() => setDiscarding(true)}><Undo2 size={14}/></IconButton>
       </PanelHeader>
@@ -441,8 +456,8 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
         {recovery && <div className="flex shrink-0 items-center gap-2 border-b border-cms-pending/40 bg-cms-pending/10 px-3 py-2 text-ui text-cms-text" role="alert">Some saved drafts use older or invalid fields. Compatible drafts are restored, and a backup is kept in this browser.<Button variant="ghost" onClick={downloadRecovery}>Download draft backup</Button></div>}
         {stale.length > 0 && <div className="shrink-0 border-b border-cms-pending/40 bg-cms-pending/10 px-3 py-2 text-ui text-cms-text" role="alert">{stale.map((doc) => doc.label).join(", ")} changed on GitHub. Your drafts are preserved. Discard the affected drafts and reapply your edits before pushing.</div>}
         {!workspace ? <div className="grid min-h-0 flex-1 place-items-center p-6 text-center"><div className="max-w-sm"><Layers size={28} className="mx-auto text-cms-muted"/><h2 className="mt-3 text-ui-lg font-semibold">{loading ? "Opening your workspace…" : "Your content couldn't be loaded"}</h2><p className="my-2 text-ui text-cms-muted">The designer connects through the Three Acts API.</p><Button onClick={() => void load()} disabled={loading}>Try again</Button></div></div> : <>
-          <div className="flex min-h-0 flex-1 justify-center overflow-auto bg-cms-bg">
-            <div className="h-full min-h-80 shrink-0 overflow-hidden border border-cms-line-strong bg-cms-surface" style={{ width: `min(${widths[device]}, 100%)` }}>
+          <div className="flex min-h-0 flex-1 overflow-auto bg-cms-bg">
+            <div className="h-full min-h-80 shrink-0 overflow-hidden border border-cms-line-strong bg-cms-surface" style={{ width: widths[device] }}>
               {frameUrl ? <iframe key={frameRevision} ref={frame} title="Website canvas" src={frameUrl} sandbox="allow-scripts allow-same-origin" onLoad={sendPreview} className="h-full w-full border-0 bg-white"/> : <div className="grid h-full place-items-center p-6 text-center"><div>
                 {currentTemplate && (!chosenPreview || canvasRoute !== chosenPreview.route) ? <>
                   <Layers size={28} className="mx-auto text-cms-muted"/>
@@ -459,18 +474,38 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
 
     <div className="flex min-h-0 w-64 shrink-0 flex-col border-l border-cms-line-strong bg-cms-bg max-sm:w-60">
       <div className="flex h-8 shrink-0 items-stretch gap-4 border-b border-cms-line px-2" aria-label="Right panel">
-        <button type="button" className={`flex items-center gap-1.5 border-b-2 px-0.5 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${rightPanel === "style" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Style panel" aria-pressed={rightPanel === "style"} onClick={() => setRightPanel("style")}><SlidersHorizontal size={12}/>Style</button>
-        <button type="button" className={`flex items-center gap-1.5 border-b-2 px-0.5 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${rightPanel === "content" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Content panel" aria-pressed={rightPanel === "content"} onClick={() => setRightPanel("content")}><Type size={12}/>Content</button>
+        {isComponentSelection ? <span className="flex items-center border-b-2 border-cms-text px-0.5 text-ui text-cms-text">Properties</span> : <>
+          <button type="button" className={`flex items-center gap-1.5 border-b-2 px-0.5 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${rightPanel === "style" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Style panel" aria-pressed={rightPanel === "style"} onClick={() => setRightPanel("style")}><SlidersHorizontal size={12}/>Style</button>
+          <button type="button" className={`flex items-center gap-1.5 border-b-2 px-0.5 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${rightPanel === "content" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Content panel" aria-pressed={rightPanel === "content"} onClick={() => setRightPanel("content")}><Type size={12}/>Content</button>
+        </>}
       </div>
+      {editingComponent && <div aria-label="Main component editing" className="grid gap-1 border-b border-cms-line bg-cms-success/10 px-2 py-2 text-ui"><div className="flex items-center justify-between gap-2"><strong className="min-w-0 truncate font-medium">Editing {componentDefinitions[editingComponent]?.label ?? editingComponent}</strong><Tooltip content="Exit main component editing"><IconButton aria-label="Done editing component" className="size-5 shrink-0 border-transparent bg-transparent p-0 shadow-none" disabled={controlsDisabled} onClick={() => postCanvas({ type: "three-acts:exit-component" })}><X size={12}/></IconButton></Tooltip></div><span className="text-cms-muted">Changes apply to all instances</span></div>}
       <div aria-label="Selected element" className="flex h-8 shrink-0 items-center gap-1.5 border-b border-cms-line px-2 text-ui">
         <elementPresentation.Icon aria-hidden="true" size={13} className={`shrink-0 ${elementPresentation.color}`}/>
         <span className="min-w-0 flex-1 truncate" title={canvasSelection?.label}>{canvasSelection?.label ?? "No selection"}</span>
         {canvasSelection && <span className="shrink-0 font-mono text-[10px] text-cms-subtle">{canvasSelection.tag}</span>}
       </div>
-      {rightPanel === "style" ? <StyleInspector selection={canvasSelection} onChange={(property, value) => { if (canvasSelection) postCanvas({ type: "three-acts:style", selector: canvasSelection.selector, property, value }); }} onReset={() => postCanvas({ type: "three-acts:reset-styles" })} hasChanges={hasStyleChanges} disabled={controlsDisabled || canvasMode === "preview"}/> : <Inspector content={content} canvasSelection={canvasSelection} resolveField={(binding) => {
-        const document = workspace?.documents.find((item) => item.id === binding.id);
-        return document ? contentFields(drafts[document.id]?.content ?? document.content).find((field) => field.path.join(".") === binding.path) : undefined;
-      }} onChange={(field, value, documentId) => changeField(field, value, documentId ?? contentDocument?.id ?? page)} disabled={controlsDisabled || canvasMode === "preview"}/>}
+      {isComponentSelection && canvasSelection ? <ComponentInspector templateInstance={Boolean(currentTemplate)} selection={canvasSelection} onResetProperty={key => updateDesign(next => {
+        const id = canvasSelection.component?.instanceId;
+        if (!id || !next.instances[id]) return;
+        delete next.instances[id].props[key];
+        if (!Object.keys(next.instances[id].props).length) delete next.instances[id];
+      })} resolveSourceField={binding => {
+        const document = workspace?.documents.find(document => document.id === binding.id);
+        return document ? contentFields(document.content).find(field => field.path.join(".") === binding.path) : undefined;
+      }} disabled={controlsDisabled || canvasMode === "preview"} resolveField={resolveSelectedField} onField={(field, value, id) => changeField(field, value, id)} onProperty={(key, value) => {
+        const component = canvasSelection.component;
+        if (!component?.instanceId) return;
+        updateDesign(next => {
+          const stored = next.instances[component.instanceId!];
+          const entry = stored?.component === component.name ? stored : { component: component.name, props: {} };
+          const sourceValue = component.sourceProps?.[key] ?? componentDefinitions[component.name].defaultVariants[key];
+          if (value === sourceValue) delete entry.props[key];
+          else entry.props[key] = value;
+          if (Object.keys(entry.props).length) next.instances[component.instanceId!] = entry;
+          else delete next.instances[component.instanceId!];
+        });
+      }} onEnter={() => { setRightPanel("style"); postCanvas({ type: "three-acts:enter-component", selector: canvasSelection.selector }); }}/> : rightPanel === "style" ? <StyleInspector key={canvasSelection?.selector ?? "empty"} selection={canvasSelection} design={design} breakpoint={breakpoint} onBreakpointChange={changeBreakpoint} onChange={style => updateDesign(next => writeSelectedStyle(next, style))} onCustomCss={(selector, declarations, style) => updateDesign(next => { next.customCss[selector] = declarations; writeSelectedStyle(next, style); })} disabled={controlsDisabled || canvasMode === "preview"}/> : <Inspector content={content} canvasSelection={canvasSelection} resolveField={resolveSelectedField} onChange={(field, value, documentId) => changeField(field, value, documentId ?? contentDocument?.id ?? page)} disabled={controlsDisabled || canvasMode === "preview"}/>}
     </div>
     {reviewing && workspace && <Review drafts={drafts} workspace={workspace} message={message} onMessage={setMessage} busy={busy} error={error} onClose={() => { setReviewing(false); setError(""); }} onPush={() => void push()}/>}
     {connectionOpen && <GitHubConnection workspace={workspace} loading={loading} error={connectionError} lastSynced={lastSynced} lastCommit={commit} onReload={reload} onClose={() => setConnectionOpen(false)}/>}

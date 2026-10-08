@@ -1,6 +1,6 @@
+import { componentAttributes, componentClass, componentIdentity } from "../../../lib/design";
 /* eslint-disable react-refresh/only-export-components */
 import type { HTMLAttributes, ReactNode } from "react";
-import { cn } from "@three-acts/utils";
 
 type EyebrowProps = HTMLAttributes<HTMLParagraphElement> & {
   children: ReactNode;
@@ -12,7 +12,7 @@ type EyebrowProps = HTMLAttributes<HTMLParagraphElement> & {
 /** Small uppercase label above a heading, e.g. "01 / Shop", "This week's roast". */
 function Eyebrow({ children, mark, className, ...props }: EyebrowProps) {
   return (
-    <p className={cn("flex items-center gap-2 text-small uppercase tracking-eyebrow text-ink", className)} {...props}>
+    <p className={componentClass("Typography.Eyebrow", {}, className)} {...props} {...componentAttributes("Typography.Eyebrow", componentIdentity(props), {}, className)}>
       {mark && <span aria-hidden="true">{mark} /</span>}
       {children}
     </p>
@@ -29,7 +29,7 @@ type HeadingProps = HTMLAttributes<HTMLHeadingElement> & {
 /** The largest headline on a page — the hero, the closing CTA band. Regular weight; size carries the hierarchy. Use once per page, as `<h1>`. */
 function Display({ children, className, as: Tag = "h1", ...props }: HeadingProps) {
   return (
-    <Tag className={cn("text-display font-normal text-ink", className)} {...props}>
+    <Tag className={componentClass("Typography.Display", {}, className)} {...props} {...componentAttributes("Typography.Display", componentIdentity(props), {}, className)}>
       {children}
     </Tag>
   );
@@ -38,7 +38,7 @@ function Display({ children, className, as: Tag = "h1", ...props }: HeadingProps
 /** A section-level heading (Section.Header uses this). Regular weight. Defaults to `<h2>`. */
 function Title({ children, className, as: Tag = "h2", ...props }: HeadingProps) {
   return (
-    <Tag className={cn("text-h2 font-normal text-ink", className)} {...props}>
+    <Tag className={componentClass("Typography.Title", {}, className)} {...props} {...componentAttributes("Typography.Title", componentIdentity(props), {}, className)}>
       {children}
     </Tag>
   );
@@ -52,7 +52,7 @@ type LedeProps = HTMLAttributes<HTMLParagraphElement> & {
 /** The intro sentence beneath a Display/Title — larger, relaxed body copy. */
 function Lede({ children, className, ...props }: LedeProps) {
   return (
-    <p className={cn("max-w-2xl text-lede text-ink", className)} {...props}>
+    <p className={componentClass("Typography.Lede", {}, className)} {...props} {...componentAttributes("Typography.Lede", componentIdentity(props), {}, className)}>
       {children}
     </p>
   );

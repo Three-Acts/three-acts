@@ -22,7 +22,8 @@
     "react-dom": "^19.2.7",
     "tailwindcss": "^4.3.1",
     "vite": "^8.1.0",
-    "@three-acts/static-content": "*"
+    "@three-acts/static-content": "*",
+    "@three-acts/design": "*"
   },
   "devDependencies": {
     "@vercel/config": "^0.5.5",

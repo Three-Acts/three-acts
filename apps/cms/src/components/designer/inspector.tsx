@@ -14,7 +14,7 @@ function safeAttributeUrl(value: string): boolean {
   return value === "" || isSafeContentUrl(value);
 }
 
-function AttributeInput({ id, value, name, disabled, onCommit }: { id: string; value: string; name: string; disabled: boolean; onCommit: (value: string) => void }) {
+export function AttributeInput({ id, value, name, disabled, onCommit }: { id: string; value: string; name: string; disabled: boolean; onCommit: (value: string) => void }) {
   const validateUrl = name === "href" || name === "src";
   const [draft, setDraft] = useState(value);
   const [invalid, setInvalid] = useState(false);
