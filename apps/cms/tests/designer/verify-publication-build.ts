@@ -11,16 +11,19 @@ import { contentDefinitions, contentPath, serializeContent, validateContent, val
 const root = process.cwd();
 const fixture = JSON.parse(await readFile(resolve(root, "apps/cms/tests/designer/artifacts/publication-committed.json"), "utf8")) as { revision: string; documents: Array<{ id: string; content: ContentObject }> };
 assert.match(fixture.revision, /^[a-f0-9]{40}$/);
+const sourceDocuments=fixture.documents.filter(doc=>doc.id.startsWith("source:"));
+assert.ok(sourceDocuments.length);
 const sources = new Map(fixture.documents.map(doc => [doc.id, validateContent(doc.id, doc.content)]));
-assert.equal(sources.size, contentDefinitions.length);
+assert.equal(sources.size, contentDefinitions.length + sourceDocuments.length);
 for (const doc of contentDefinitions) assert.ok(sources.has(doc.id));
 const publicationId = sources.get("publication")!.publicationId;
 assert.equal(typeof publicationId, "string");
-const originals = new Map(await Promise.all(contentDefinitions.map(async doc => [contentPath(doc.id), await readFile(resolve(root, contentPath(doc.id)))] as const)));
+const originals = new Map(await Promise.all([...contentDefinitions,...sourceDocuments].map(async doc => [contentPath(doc.id), await readFile(resolve(root, contentPath(doc.id)))] as const)));
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 let server: ReturnType<typeof createServer> | undefined;
 try {
   for (const doc of contentDefinitions) await writeFile(resolve(root, contentPath(doc.id)), serializeContent(sources.get(doc.id)!));
+  for(const doc of sourceDocuments) await writeFile(resolve(root,contentPath(doc.id)),String(doc.content.code));
   const build = spawnSync("npm", ["run", "build:web"], { cwd: root, env: { ...process.env, CONTENT_SOURCE: "mock", PUBLIC_EDITOR_PREVIEW: "false", VERCEL_GIT_COMMIT_SHA: fixture.revision, EDITOR_SOURCE_REVISION: fixture.revision, EDITOR_PUBLICATION_ID: publicationId as string }, encoding: "utf8" });
   if (build.status !== 0) throw new Error(`Reviewed publication build failed:\n${build.stdout}\n${build.stderr}`);
   const dist = resolve(root, "apps/web/dist");

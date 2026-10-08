@@ -47,6 +47,7 @@ export function ReviewChanges({ drafts, workspace }: { drafts: Drafts; workspace
   return (
 <div className="mb-3 grid gap-3">
         {Object.entries(drafts).map(([id, draft]) => {
+          if (id.startsWith('source:')) return <section key={id} className="overflow-hidden rounded-cms border border-cms-line bg-cms-surface"><h3 className="m-0 border-b border-cms-line px-2 py-2 text-ui font-medium">{id.slice(7)}</h3><div aria-label="Source code diff" className="grid gap-2 p-2 font-mono text-[10px] leading-4"><del className="whitespace-pre-wrap break-words bg-cms-danger-surface p-2 text-cms-subtle">{String(draft.original.code)}</del><ins className="whitespace-pre-wrap break-words bg-cms-success/10 p-2 no-underline">{String(draft.content.code)}</ins></div></section>;
           if (id === "layout") {
             const home = workspace.documents.find(doc => doc.id === "home")?.content;
             if (home) return <LayoutReview key={id} draft={draft} home={home as HomeCopy}/>;

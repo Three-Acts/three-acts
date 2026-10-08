@@ -15,6 +15,7 @@ export type CanvasNode = {
 };
 
 export type CanvasSelection = {
+  source?: import("@three-acts/editor-source").SourceReference;
   section?: LayoutSource;
   visibility?: CanvasVisibility;
   cmsSource?: CmsSource;

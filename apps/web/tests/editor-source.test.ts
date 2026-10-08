@@ -9,8 +9,8 @@ test("source inference preserves caller props, original IDs and named parts with
   assert.equal(result.match(/readProps\(\)/g)?.length, 1);
   assert.match(result, /"className": \("p-4"\)/);
   assert.match(result, /<p \{\.\.\.__threeActsElementProps/);
-  assert.match(result, /<span data-editor-id="existing"\/>/);
-  assert.match(result, /<span data-editor-part="label"\/>/);
+  assert.match(result, /"data-editor-id": \("existing"\)/);
+  assert.match(result, /"data-editor-part": \("label"\)/);
   assert.deepEqual(editorElementProps("inferred", { "data-editor-id": "caller", className: "p-4", title: "Original" }), { "data-editor-id": "caller", "data-editor-base-class": "p-4", className: "p-4", title: "Original" });
 });
 
@@ -63,4 +63,12 @@ test("Astro compiles inferred addition renderers as components and preserves nes
   assert.match(compiled.code,/renderComponent\([^\n]+ThreeActsEditorAdditions/);
   assert.doesNotMatch(compiled.code,/&lt;ThreeActsEditorAdditions/);
   assert.ok(code.indexOf('position="after"') < code.indexOf('position="inside"',code.indexOf('position="after"')));
+});
+
+
+test("image implementation retains the caller source so an image styles its page element",()=>{
+ const code='export function Image(props){return <img {...props} className={props.className} />;}';
+ const transformed=instrumentJsx(code,"/web/src/components/ui/image/index.tsx","/web")!.code;
+ assert.doesNotMatch(transformed,/"data-editor-source":/);
+ assert.match(transformed,/\.\.\.\(props\)/);
 });

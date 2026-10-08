@@ -69,7 +69,8 @@ export const utilityPrefixes: Record<UtilityProperty, string> = {
   marginTop: "mt", marginRight: "mr", marginBottom: "mb", marginLeft: "ml", display: "display",
   flexDirection: "flex-direction", alignItems: "align-items", justifyContent: "justify-content", gap: "gap",
   width: "w", height: "h", maxWidth: "max-w", fontSize: "text", fontWeight: "font", textAlign: "text-align",
-  color: "color", backgroundColor: "bg", borderRadius: "rounded"
+  color: "color", backgroundColor: "bg", borderRadius: "rounded",
+  gridTemplateColumns:"grid-cols",gridTemplateRows:"grid-rows",flexWrap:"flex-wrap",position: "position", minWidth:"min-w", minHeight:"min-h", maxHeight:"max-h",top:"top",right:"right",bottom:"bottom",left:"left",zIndex:"z-index",fontFamily:"font-family",lineHeight:"line-height",letterSpacing:"letter-spacing",textDecoration:"text-decoration",textTransform:"text-transform",overflow:"overflow",borderWidth:"border-width",borderColor:"border-color",borderStyle:"border-style",opacity:"opacity",boxShadow:"box-shadow",cursor:"cursor",pointerEvents:"pointer-events",aspectRatio:"aspect-ratio",objectFit:"object-fit",columnGap:"column-gap",rowGap:"row-gap",transform:"transform",transition:"transition"
 };
 export function propertyUtility(property: UtilityProperty, value: string): string {
   const raw = value.trim();
@@ -78,7 +79,32 @@ export function propertyUtility(property: UtilityProperty, value: string): strin
   if (utilityScope(raw) === "" && utilityProperty(raw) === property) return validateUtility(raw);
   const named = property === "color" ? `text-${raw}` : property === "backgroundColor" ? `bg-${raw}` : "";
   if (named && (utilityControls[property].classes as string[]).includes(named)) return named;
+  const common:Partial<Record<UtilityProperty,Record<string,string>>> = {
+    display:{none:'hidden'},flexDirection:{row:'flex-row',column:'flex-col','row-reverse':'flex-row-reverse','column-reverse':'flex-col-reverse'},
+    alignItems:{'flex-start':'items-start','flex-end':'items-end',start:'items-start',end:'items-end',center:'items-center',stretch:'items-stretch',baseline:'items-baseline'},
+    justifyContent:{'flex-start':'justify-start','flex-end':'justify-end',center:'justify-center','space-between':'justify-between','space-around':'justify-around','space-evenly':'justify-evenly'},
+    textAlign:{left:'text-left',right:'text-right',center:'text-center',justify:'text-justify',start:'text-start',end:'text-end'},
+    fontWeight:{'100':'font-thin','200':'font-extralight','300':'font-light','400':'font-normal','500':'font-medium','600':'font-semibold','700':'font-bold','800':'font-extrabold','900':'font-black',normal:'font-normal',bold:'font-bold'},
+    textDecoration:{none:'no-underline',underline:'underline','line-through':'line-through',overline:'overline'},textTransform:{none:'normal-case',uppercase:'uppercase',lowercase:'lowercase',capitalize:'capitalize'},
+    flexWrap:{nowrap:'flex-nowrap',wrap:'flex-wrap','wrap-reverse':'flex-wrap-reverse'},
+    overflow:{visible:'overflow-visible',hidden:'overflow-hidden',scroll:'overflow-scroll',auto:'overflow-auto',clip:'overflow-clip'},
+    borderStyle:{solid:'border-solid',dashed:'border-dashed',dotted:'border-dotted',none:'border-none',double:'border-double'},
+    pointerEvents:{auto:'pointer-events-auto',none:'pointer-events-none'},objectFit:{cover:'object-cover',contain:'object-contain',fill:'object-fill',none:'object-none','scale-down':'object-scale-down'},position:{static:'static',relative:'relative',absolute:'absolute',fixed:'fixed',sticky:'sticky'},
+  };
+  const preferred=common[property]?.[raw];if(preferred)return preferred;
+  const theme=raw.match(/^var\(--(?:text|color)-([a-z0-9-]+)\)$/);
+  if(theme) {const utility=property==='fontSize'?`text-${theme[1]}`:property==='backgroundColor'?`bg-${theme[1]}`:property==='color'?`text-${theme[1]}`:'';if((utilityControls[property].classes as string[]).includes(utility))return utility;}
+  const arbitraryPrefixes:Partial<Record<UtilityProperty,string>>={color:'text-[color:',backgroundColor:'bg-[color:',fontFamily:'font-[family-name:',fontWeight:'font-[weight:',lineHeight:'leading-[',letterSpacing:'tracking-[',borderWidth:'border-[length:',borderColor:'border-[color:',opacity:'opacity-[',boxShadow:'shadow-[',cursor:'cursor-[',aspectRatio:'aspect-[',objectFit:'object-[',zIndex:'z-[',columnGap:'gap-x-[',rowGap:'gap-y-['};
+  if(arbitraryPrefixes[property])return validateUtility(`${arbitraryPrefixes[property]}${raw.replaceAll(' ','_')}]`);
   const prefix = utilityPrefixes[property];
+  if(property==='gridTemplateColumns'||property==='gridTemplateRows') { const count=raw.match(/^repeat\((\d+),\s*minmax\(0,\s*1fr\)\)$/); return count ? validateUtility(`${prefix}-${count[1]}`) : validateUtility(`[${property==='gridTemplateColumns'?'grid-template-columns':'grid-template-rows'}:${raw.replaceAll(' ','_')}]`); }
+  if(property==='flexWrap')return validateUtility(`[flex-wrap:${raw}]`);
+  const pixels=raw.match(/^(-?\d+(?:\.\d+)?)px$/);
+  if(pixels && /^(?:padding|margin|gap|width|height|minWidth|maxWidth|minHeight|maxHeight|top|right|bottom|left)/.test(property) && Number(pixels[1]) % 4 === 0) {
+    const count=Number(pixels[1])/4;return validateUtility(`${count<0?"-":""}${prefix}-${Math.abs(count)}`);
+  }
+
+  if (["position","zIndex","fontFamily","lineHeight","letterSpacing","textDecoration","textTransform","overflow","borderWidth","borderColor","borderStyle","opacity","boxShadow","cursor","pointerEvents","aspectRatio","objectFit","columnGap","rowGap","transform","transition"].includes(property)) return validateUtility(`[${property.replace(/[A-Z]/g,letter=>"-"+letter.toLowerCase())}:${raw.replaceAll(" ","_")}]`);
   if (property === "fontSize") return validateUtility(`text-[length:${/^\d+(?:\.\d+)?$/.test(raw) ? raw + "px" : raw.replaceAll(" ", "_")}]`);
   if (property === "borderRadius" && /^\d+(?:\.\d+)?$/.test(raw)) return validateUtility(`rounded-[${raw}px]`);
   if (["display", "flex-direction", "align-items", "justify-content", "text-align", "color"].includes(prefix)) return validateUtility(`[${prefix}:${raw.replaceAll(" ", "_")}]`);
@@ -87,12 +113,14 @@ export function propertyUtility(property: UtilityProperty, value: string): strin
 }
 export function utilityProperty(value: string): UtilityProperty | null {
   const utility = value.slice(utilityScope(value).length).replace(/^!|!$/g, "");
+  const native:Array<[UtilityProperty,RegExp]>=[['fontFamily',/^font-(?:sans|serif|mono|\[(?:family-name|family):)/],['lineHeight',/^leading-/],['letterSpacing',/^tracking-/],['opacity',/^opacity-/],['boxShadow',/^shadow(?:$|-)/],['cursor',/^cursor-/],['pointerEvents',/^pointer-events-/],['aspectRatio',/^aspect-/],['objectFit',/^object-(?:contain|cover|fill|none|scale-down)$/],['zIndex',/^-?z-/],['columnGap',/^gap-x-/],['rowGap',/^gap-y-/],['borderStyle',/^border(?:-[trblxyse])?-(?:solid|dashed|dotted|double|hidden|none)$/],['borderWidth',/^border(?:-[trblxyse])?(?:$|-\d+(?:\.\d+)?$|-\[(?:length:|\d|calc\())/],['borderColor',/^border(?:-[trblxyse])?-(?!solid|dashed|dotted|double|hidden|none|collapse|separate|spacing|opacity|\d|\[length:)/]];
+  for(const[property,pattern]of native)if(pattern.test(utility))return property;
   for (const [property, control] of Object.entries(utilityControls)) {
     if ((control.classes as string[]).includes(utility)) return property as UtilityProperty;
     const prefix = utilityPrefixes[property as UtilityProperty];
     const cssProperty = property.replace(/[A-Z]/g, letter => "-" + letter.toLowerCase());
     if (utility.startsWith(`[${prefix}:`) || utility.startsWith(`[${cssProperty}:`)) return property as UtilityProperty;
-    if (/^(?:pt|pr|pb|pl|mt|mr|mb|ml|gap|w|h|max-w|rounded)-/.test(utility.replace(/^-/, "")) && utility.replace(/^-/, "").startsWith(prefix + "-")) return property as UtilityProperty;
+    if (/^(?:pt|pr|pb|pl|mt|mr|mb|ml|gap|w|h|min-w|max-w|min-h|max-h|top|right|bottom|left|grid-cols|grid-rows|rounded)-/.test(utility.replace(/^-/, "")) && utility.replace(/^-/, "").startsWith(prefix + "-")) return property as UtilityProperty;
     if (property === "fontSize" && /^text-\[(?:length:|\d|calc\(|clamp\(|var\(--text)/.test(utility)) return "fontSize";
     if (property === "fontSize" && /^text-(?:xs|sm|base|lg|xl|\d+xl)$/.test(utility)) return "fontSize";
     if (property === "fontWeight" && /^font-(?:thin|extralight|light|normal|medium|semibold|bold|extrabold|black|\d|\[(?!family-name:|family:))/.test(utility)) return "fontWeight";

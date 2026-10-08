@@ -34,3 +34,7 @@ export function pushDesignerChanges(changes: EditorChange[], message: string, re
     body: JSON.stringify({ changes, message, requestId, expectedHead })
   });
 }
+
+export function editDesignerSource(source: import('@three-acts/editor-source').SourceReference, edits: import('@three-acts/editor-source').SourceEdit[]) {
+  return apiFetch<{document: import('@three-acts/static-content').EditorDocument;content: import('@three-acts/static-content').ContentObject}>('/editor/source',{method:'POST',body:JSON.stringify({source,edits})});
+}

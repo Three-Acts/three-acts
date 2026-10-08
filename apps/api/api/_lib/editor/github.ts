@@ -1,3 +1,7 @@
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { sourceId, sourcePath, validateSourceContent, readSourceReference } from '@three-acts/editor-source';
+import { authoredSourceEdits, patchSource, sourceSha } from '@three-acts/editor-source/node';
 import { createHash } from "node:crypto";
 import { contentDefinitions, contentPath, serializeContent, validateContent, type ContentObject, type EditorChange, type EditorDocument, type EditorPushResult, type EditorWorkspace } from "@three-acts/static-content";
 import { ApiError } from "../http";
@@ -49,6 +53,7 @@ async function head(settings: GithubConfig) {
 }
 
 async function readDocument(settings: GithubConfig, id: string, ref: string): Promise<EditorDocument> {
+  if (id.startsWith("source:")) return readSourceDocument(settings, sourcePath(id), ref);
   const definition = contentDefinitions.find((item) => item.id === id)!;
   const file = await github<{ type: string; sha: string; encoding: string; content: string }>(settings, `/contents/${contentPath(id)}?ref=${encodeURIComponent(ref)}`);
   if (file.type !== "file" || file.encoding !== "base64" || !file.content) throw new ApiError(502, "invalid_content", "GitHub returned an unsupported content file.");
@@ -56,6 +61,34 @@ async function readDocument(settings: GithubConfig, id: string, ref: string): Pr
   try { content = validateContent(id, JSON.parse(Buffer.from(file.content, "base64").toString("utf8"))); }
   catch { throw new ApiError(409, "content_schema_changed", `The fields for ${definition.label} changed. Redeploy the editor to match the repository.`); }
   return { ...definition, content, sha: file.sha, sourcePath: contentPath(id) };
+}
+
+async function readSourceDocument(settings: GithubConfig | null, path: string, ref?: string): Promise<EditorDocument> {
+  sourcePath(path);
+  let code: string, sha: string;
+  if (settings) {
+    const file = await github<{type:string;sha:string;encoding:string;content:string}>(settings, `/contents/${path}?ref=${encodeURIComponent(ref ?? await head(settings))}`);
+    if (file.type !== 'file' || file.encoding !== 'base64' || !file.content) throw new ApiError(502,'invalid_source','Cannot read this source file.');
+    code=Buffer.from(file.content,'base64').toString('utf8');sha=file.sha;
+  } else {
+    if (isProduction() || !process.env.EDITOR_LOCAL_SOURCE_ROOT) throw new ApiError(503,'source_unavailable','Connect the source repository before editing element styles.');
+    const root=resolve(process.env.EDITOR_LOCAL_SOURCE_ROOT);
+    try { code=await readFile(resolve(root,path),'utf8'); } catch { throw new ApiError(404,'source_missing','This element source was not found.'); }
+    sha=sourceSha(code);
+  }
+  if(code.length>200000) throw new ApiError(413,'source_too_large','This source file is too large to edit.');
+  return {id:sourceId(path),label:path.split('/').at(-1)!,route:'/',kind:'source',sha,sourcePath:path,sourceStyles:authoredSourceEdits(code,path),content:{code,edits:[]}};
+}
+export async function editElementSource(input: unknown) {
+  const value=input as {source?:unknown;edits?:unknown};
+  const source=readSourceReference(value?.source);
+  if(!source)throw new ApiError(400,'invalid_source','Select a source-backed element.');
+  const settings=config(), document=await readSourceDocument(settings,source.path);
+  if(document.sha!==source.sha)throw new ApiError(409,'source_conflict','The element source changed since this canvas was built. Rebuild and reload the canvas before editing. Your drafts are preserved.');
+  try {
+    const validated=validateSourceContent({code:document.content.code,edits:value.edits});
+    return {document,content:validateSourceContent({...validated,code:await patchSource(validated.code,source.path,validated.edits)})};
+  } catch(error) {throw new ApiError(400,'invalid_source_edit',error instanceof Error?error.message:'Invalid element style edit.');}
 }
 
 export async function loadEditorWorkspace(): Promise<EditorWorkspace> {
@@ -101,7 +134,7 @@ export async function pushEditorContent(input: unknown): Promise<EditorPushResul
   if (!settings) throw new ApiError(503, "github_unconfigured", "Connect GitHub in the API's environment settings before pushing.");
   if (!input || typeof input !== "object") throw new ApiError(400, "invalid_request", "Invalid push request.");
   const { changes, message, requestId, expectedHead } = input as { changes?: unknown; message?: unknown; requestId?: unknown; expectedHead?: unknown };
-  if (!Array.isArray(changes) || changes.length < 1 || changes.length > contentDefinitions.length || typeof message !== "string" || !message.trim() || message.length > 200) {
+  if (!Array.isArray(changes) || changes.length < 1 || changes.length > contentDefinitions.length + 200 || typeof message !== "string" || !message.trim() || message.length > 200) {
     throw new ApiError(400, "invalid_request", "Choose changed pages and enter a commit message under 200 characters.");
   }
   if (message.includes("Editor-Request:") || requestId !== undefined && (typeof requestId !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(requestId))) {
@@ -127,21 +160,28 @@ export async function pushEditorContent(input: unknown): Promise<EditorPushResul
     if (previous) {
       if (previous.commit.message.split("\n").at(-1) !== receipt) throw new ApiError(409, "publication_request_conflict", "This publication identity already belongs to different changes. Review a new release.");
       const documents = await Promise.all(validated.map(change => readDocument(settings, change.id, previous.sha)));
-      if (documents.some((document, index) => serializeContent(document.content) !== serializeContent(validated[index].content))) throw new ApiError(409, "publication_request_conflict", "The publication receipt does not match these changes.");
-      return { sha: previous.sha, url: `https://github.com/${settings.repository}/commit/${previous.sha}`, documents };
+      if (documents.some((document, index) => document.id.startsWith("source:") ? document.content.code !== validated[index].content.code : serializeContent(document.content) !== serializeContent(validated[index].content))) throw new ApiError(409, "publication_request_conflict", "The publication receipt does not match these changes.");
+      return { sha: previous.sha, url: `https://github.com/${settings.repository}/commit/${previous.sha}`, documents: documents.map((doc,index)=>doc.id.startsWith("source:") ? {...doc,content:validated[index].content} : doc) };
     }
   }
   if (expectedHead !== undefined && parent !== expectedHead) throw new ApiError(409, "publication_revision_conflict", "The source branch changed after this publication was reviewed. Reload and review a new release; these drafts are preserved.");
   const originals = await Promise.all(validated.map((change) => readDocument(settings, change.id, parent)));
   if (validated.some((change, index) => change.sha !== originals[index].sha)) throw new ApiError(409, "content_conflict", "A page changed on GitHub since you started editing. Reload and review your drafts.");
+  for (let index=0;index<validated.length;index++) {
+    const change=validated[index]; if(!change.id.startsWith('source:'))continue;
+    try {
+      const source=validateSourceContent(change.content);
+      if(await patchSource(String(originals[index].content.code),sourcePath(change.id),source.edits)!==source.code) throw new Error('Source changes must match the reviewed element style edits.');
+    } catch(error) {throw new ApiError(400,'invalid_source_edit',error instanceof Error?error.message:'Invalid source edit.');}
+  }
   const commit = await github<{ tree: { sha: string } }>(settings, `/git/commits/${parent}`);
   const tree = await github<{ sha: string }>(settings, "/git/trees", "POST", {
     base_tree: commit.tree.sha,
-    tree: validated.map((change) => ({ path: contentPath(change.id), mode: "100644", type: "blob", content: serializeContent(change.content) }))
+    tree: validated.map((change) => ({ path: contentPath(change.id), mode: "100644", type: "blob", content: change.id.startsWith("source:") ? String(change.content.code) : serializeContent(change.content) }))
   });
   const next = await github<{ sha: string; html_url: string }>(settings, "/git/commits", "POST", { message: `${message.trim()}${receipt ? `\n\n${receipt}` : ""}`, tree: tree.sha, parents: [parent] });
   // Never force: a concurrent change after our read must reject the update.
   await github(settings, `/git/refs/heads/${branchPath(settings.branch)}`, "PATCH", { sha: next.sha, force: false });
   const documents = await Promise.all(validated.map((change) => readDocument(settings, change.id, next.sha)));
-  return { sha: next.sha, url: `https://github.com/${settings.repository}/commit/${next.sha}`, documents };
+  return { sha: next.sha, url: `https://github.com/${settings.repository}/commit/${next.sha}`, documents: documents.map((doc,index)=>doc.id.startsWith("source:") ? {...doc,content:validated[index].content} : doc) };
 }

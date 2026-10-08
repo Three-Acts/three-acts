@@ -20,6 +20,7 @@ type RouteLoader = () => Promise<{ default: (request: VercelRequest, response: V
 // `tsx` can statically resolve every dynamic import below.
 const routes = {
   "/api/editor/content": () => import("../api/editor/content"),
+  "/api/editor/source": () => import("../api/editor/source"),
   "/api/editor/push": () => import("../api/editor/push"),
   "/api/editor/deploy": () => import("../api/editor/deploy"),
   "/api/health": () => import("../api/health"),

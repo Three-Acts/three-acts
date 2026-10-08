@@ -5,17 +5,12 @@ import { resolve, extname } from "node:path";
 import { spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
 import { contentDefinitions, contentPath, serializeContent, validateContent, type ContentObject } from "@three-acts/static-content";
-import { validateDesign } from "@three-acts/design";
 const root=process.cwd();
-const fixture=JSON.parse(await readFile(resolve(root,"apps/cms/tests/designer/artifacts/direct-authoring-committed.json"),"utf8")) as {documents:Array<{id:string;content:ContentObject}>};
+const fixture=JSON.parse(await readFile(resolve(root,"apps/cms/tests/designer/artifacts/components-committed.json"),"utf8")) as {documents:Array<{id:string;content:ContentObject}>};
 const sources=new Map(fixture.documents.map(doc=>[doc.id,validateContent(doc.id,doc.content)]));
-const design=validateDesign(sources.get("design"));
-const additions=Object.values(design.additions??{}).flat();
-assert.ok(additions.some(node=>node.text==="Nested content persists in source"));
 const sourceDocuments=fixture.documents.filter(doc=>doc.id.startsWith("source:"));
-const sourceEdits=sourceDocuments.flatMap(doc=>doc.content.edits as unknown as import("@three-acts/editor-source").SourceEdit[]);
-const changed=sourceEdits.find(edit=>edit.style.utilities.includes("pb-[calc(3rem_+_2px)]"));
-assert.ok(changed);
+assert.equal(sourceDocuments.length,2);
+assert.ok(sourceDocuments.some(doc=>String(doc.content.code).includes("text-h3")));
 const originals=new Map(await Promise.all([...contentDefinitions,...sourceDocuments].map(async doc=>[contentPath(doc.id),await readFile(resolve(root,contentPath(doc.id)))] as const)));
 let server:ReturnType<typeof createServer>|undefined;
 let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
@@ -40,19 +35,19 @@ try {
   const address=server.address();assert.ok(address&&typeof address!=="string");
   browser=await chromium.launch();const page=await browser.newPage();
   for(const width of [1280,390]){
-    await page.setViewportSize({width,height:1000});await page.goto(`http://127.0.0.1:${address.port}/privacy/index.html`);
-    assert.equal(await page.locator(`[data-editor-id="${changed.target}"]`).evaluate(el=>getComputedStyle(el).paddingBottom),width>=1280?"72px":"50px");
-    for(const node of additions){
-      const element=page.locator(`[data-editor-id="${node.id}"]`);
-      assert.equal(await element.count(),1,`Exactly one ${node.type} in SSR`);
-      if(node.text) assert.equal(await element.textContent(),node.text);
-      if(node.type==="Button.Link") assert.match(await element.getAttribute("class")??"",/border-line-strong/);
-    }
-    const nested=additions.find(node=>node.text==="Nested content persists in source")!;
-    assert.equal(await page.locator(`[data-editor-id="${nested.id}"]`).evaluate(el=>el.parentElement?.hasAttribute("data-editor-added")),true);
-    await page.screenshot({path:resolve(root,`apps/cms/tests/designer/artifacts/direct-authoring-built-${width}.png`),fullPage:true});
+    await page.setViewportSize({width,height:1000});await page.goto(`http://127.0.0.1:${address.port}/`);
+    const hero=page.locator('[data-editor-component="HeroSection"]');
+    assert.equal(await hero.evaluate(el=>getComputedStyle(el).paddingBottom),width>=1024?"96px":"48px");
+    assert.equal(await hero.evaluate(el=>getComputedStyle(el).marginBottom),width>=1024?"16px":"0px");
+    const button=page.locator('[data-editor-component="Button.Link"][data-editor-instance="home.hero_section.href_3"]');
+    assert.equal(await button.evaluate(el=>el.classList.contains('border-line-strong')),true);
+    assert.equal(await button.locator('[data-editor-part="label"]').evaluate(el=>el.classList.contains('text-h3')),true);
+    const labels=page.locator('[data-editor-component="Button.Link"] [data-editor-part="label"]');
+    assert.equal(await labels.evaluateAll(elements=>elements.every(el=>el.classList.contains('text-h3'))),true);
+    assert.equal(await page.locator('[data-editor-component="Button.Root"] [data-editor-part="label"]').evaluateAll(elements=>elements.some(el=>el.classList.contains('text-h3'))),false);
+    await page.screenshot({path:resolve(root,`apps/cms/tests/designer/artifacts/components-source-built-${width}.png`),fullPage:true});
   }
-  console.log(`Direct Tailwind calculation, added headings, nested Div, component variant and exact node identities persist in normal SSR at 1280px and 390px; ${files.filter(file=>file.endsWith(".html")).length} pages exclude private preview.`);
+  console.log(`Source-authored main component padding, responsive margin, shared Link label and independent variant persist in normal desktop/mobile SSR; sibling Button.Root labels remain unchanged.`);
 }finally{
   await Promise.allSettled([browser?.close(),server?new Promise<void>(done=>server!.close(()=>done())):Promise.resolve()]);
   for(const[path,bytes]of originals) await writeFile(resolve(root,path),bytes);

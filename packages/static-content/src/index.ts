@@ -1,3 +1,4 @@
+import { sourcePath, validateSourceContent } from '@three-acts/editor-source';
 import { checkContentShape } from "./value-validation";
 import layout from "./documents/layout.json";
 import publication from "./documents/publication.json";
@@ -28,7 +29,7 @@ import articleCategoryTemplate from "./documents/article-category-template.json"
 
 export type ContentValue = string | number | boolean | ContentValue[] | { [key: string]: ContentValue };
 export type ContentObject = { [key: string]: ContentValue };
-export type ContentDefinition = { id: string; label: string; route: string; content: ContentObject; collectionId?: string; kind?: "design" | "layout" | "publication" };
+export type ContentDefinition = { id: string; label: string; route: string; content: ContentObject; collectionId?: string; kind?: "design" | "layout" | "publication" | "source" };
 export const contentDefinitions: ContentDefinition[] = [
   { id: "design", label: "Site design", route: "/", kind: "design", content: design },
   { id: "layout", label: "Page composition", route: "/", kind: "layout", content: layout },
@@ -53,12 +54,13 @@ export const contentDefinitions: ContentDefinition[] = [
   { id: "shared", label: "Site & navigation", route: "/", content: shared },
 ];
 
-export const contentPath = (id: string) => `packages/static-content/src/documents/${id}.json`;
+export const contentPath = (id: string) => id.startsWith("source:") ? sourcePath(id) : `packages/static-content/src/documents/${id}.json`;
 export const serializeContent = (content: ContentObject) => `${JSON.stringify(content, null, 2)}\n`;
 
 /** Source files define the editing contract. Editors change validated values,
  * styles and approved layout instances; developers own schemas and routes. */
 export function validateContent(id: string, input: unknown): ContentObject {
+  if (id.startsWith("source:")) { sourcePath(id); return validateSourceContent(input) as unknown as ContentObject; }
   if (id === "design") return validateDesign(input) as unknown as ContentObject;
   if (id === "layout") return validateLayout(input) as unknown as ContentObject;
   if (id === "publication") {
@@ -85,7 +87,7 @@ export function contentFields(content: ContentObject): ContentField[] {
   return fields;
 }
 
-export type EditorDocument = Omit<ContentDefinition, "content"> & { content: ContentObject; sha: string; sourcePath?: string };
+export type EditorDocument = Omit<ContentDefinition, "content"> & { content: ContentObject; sha: string; sourcePath?: string; sourceStyles?: import("@three-acts/editor-source").SourceEdit[] };
 export type EditorWorkspace = {
   repository: string | null;
   branch: string | null;

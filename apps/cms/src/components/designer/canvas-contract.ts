@@ -1,3 +1,4 @@
+import { readSourceReference } from '@three-acts/editor-source';
 import { readCmsSource } from "@three-acts/cms-schema";
 import { componentDefinitions } from "@three-acts/design";
 import { readLayoutSource } from "@three-acts/static-content";
@@ -46,5 +47,6 @@ export function isCanvasSelection(value: unknown): value is CanvasSelection {
     && (selection.designTarget === undefined || (selection.designTarget !== null && typeof selection.designTarget === "object" && (selection.designTarget.kind === "element" ? typeof selection.designTarget.id === "string" : selection.designTarget.kind === "component" && Object.hasOwn(componentDefinitions, selection.designTarget.component) && Object.hasOwn(componentDefinitions[selection.designTarget.component].parts, selection.designTarget.part))))
     && (selection.classNames === undefined || (Array.isArray(selection.classNames) && selection.classNames.length <= 100 && selection.classNames.every((className) => typeof className === "string")))
     && Array.isArray(selection.breadcrumbs) && selection.breadcrumbs.length <= 100 && selection.breadcrumbs.every((crumb) => crumb && typeof crumb.selector === "string" && typeof crumb.label === "string")
+    && (selection.source === undefined || Boolean(readSourceReference(selection.source)))
     && Boolean(selection.styles && typeof selection.styles === "object" && !Array.isArray(selection.styles) && Object.values(selection.styles).every((value) => typeof value === "string"));
 }

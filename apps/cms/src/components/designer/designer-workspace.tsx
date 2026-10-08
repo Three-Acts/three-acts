@@ -1,3 +1,5 @@
+import {readSourcePreview,writeSourcePreview,sourcePreviewKey} from "./source-preview";
+import { readSourceReference, sourceId, validateSourceContent } from '@three-acts/editor-source';
 import { CanvasSizeControls } from "./canvas-size-controls";
 import { CanvasViewport } from "./canvas-viewport";
 import { clampViewportWidth, viewportBreakpoint, viewportPresets, type CanvasZoom } from "./viewport-model";
@@ -16,13 +18,13 @@ import { createPortal } from "react-dom";
 import { ArrowUpRight, CheckCircle2, Eye, File, GitBranch, Globe, Info, Layers, MousePointer2, RefreshCw, Settings, SlidersHorizontal, Type, Undo2, Redo2, RotateCcw, X } from "lucide-react";
 import { contentFields, validateContent, defaultLayout, duplicateSection, insertSection, moveSection, homeSections, layoutLimits, layoutSources, readLayoutSource, validateLayout, type HomeCopy, type HomeSectionType, type LayoutDocument, type ContentField, type ContentObject, type EditorChange, type EditorDocument, type EditorPushResult, type EditorWorkspace } from "@three-acts/static-content";
 import { AddedElementActions, InsertElement, SectionActions } from "./composition-controls";
-import { copySectionDesign } from "./composition-model";
+import { copiedSectionSourceEdits, copySectionDesign } from "./composition-model";
 import { reconcilePublication, type PublicationSource } from "./publication-source";
 import type { PublicationStatus } from "../../hooks/use-publication";
 import type { AuthUser } from "@three-acts/auth";
 import { Button, ConfirmDialog, IconButton, PanelHeader, SearchInput, Tooltip, type ToastOptions } from "../atoms";
 import { popupClass } from "../atoms/styles";
-import { loadDesignerWorkspace, pushDesignerChanges } from "./client";
+import { editDesignerSource, loadDesignerWorkspace, pushDesignerChanges } from "./client";
 import { draftKey, readDrafts, sameContent, updateField, type Drafts } from "./drafts";
 import { Inspector } from "./inspector";
 import { Review } from "./review";
@@ -80,6 +82,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   const [query, setQuery] = useState("");
   const [canvasSelection, setCanvasSelection] = useState<CanvasSelection | null>(null);
   const [selectionVersion, setSelectionVersion] = useState(0);
+  const [sourceReferences,setSourceReferences]=useState<Array<{section: import("@three-acts/static-content").LayoutSource;source:import("@three-acts/editor-source").SourceReference}>>([]);
   const [canvasNodes, setCanvasNodes] = useState<CanvasNode[]>([]);
   const [treeStatus, setTreeStatus] = useState<CanvasTreeStatus | null>(null);
   const [leftPanel, setLeftPanel] = useState<"pages" | "navigator">("navigator");
@@ -150,15 +153,42 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   const templateContent = currentTemplate ? drafts[currentTemplate.id]?.content ?? currentTemplate.content : null;
   const changedCount = Object.keys(drafts).length;
   const designDocument = workspace?.documents.find(document => document.id === "design");
-  const design = (drafts.design?.content ?? designDocument?.content ?? emptyDesign()) as unknown as DesignDocument;
+  const savedDesign = (drafts.design?.content ?? designDocument?.content ?? emptyDesign()) as unknown as DesignDocument;
+  // Source class drafts are a canvas preview only; their durable changes are
+  // authored Astro/TSX files, not entries in the design document.
+  const design = useMemo(() => {
+    const preview=structuredClone(savedDesign);
+    for(const [id,draft] of Object.entries(drafts)) if(id.startsWith('source:')) {
+      for(const edit of validateSourceContent(draft.content).edits) {
+        if(edit.target.startsWith('component:')) {
+          const [,name,part]=edit.target.split(':');
+          (preview.components[name]??={parts:{}}).parts[part]=edit.style;
+        } else preview.elements[edit.target]=edit.style;
+      }
+    }
+    return preview;
+  }, [savedDesign,drafts]);
+  const previewDesign=useMemo(()=>{
+    const preview=structuredClone(design);
+    for(const doc of workspace?.documents??[]) if(doc.kind==='source') {
+      for(const edit of validateSourceContent(doc.content).edits) {
+        if(drafts[doc.id]) continue;
+        if(edit.target.startsWith('component:')) {
+          const [,name,part]=edit.target.split(':');
+          (preview.components[name]??={parts:{}}).parts[part]=edit.style;
+        } else preview.elements[edit.target]=edit.style;
+      }
+    }
+    return preview;
+  },[design,workspace,drafts]);
   const layoutDocument = workspace?.documents.find(document => document.id === "layout");
   const layout = (drafts.layout?.content ?? layoutDocument?.content ?? defaultLayout()) as unknown as LayoutDocument;
   const selectedSection = canvasSelection?.section && layout.pages.home.sections[canvasSelection.section.id]?.type === canvasSelection.section.type ? canvasSelection.section.id : null;
   const layoutSignature = JSON.stringify(layoutSources(layout));
   const compositionEnabled = page === "home" && Boolean(layoutDocument) && active && !busy && !loading && !reviewing && canvasMode === "design" && previewReady && renderedLayout === layoutSignature;
-  function persistLayout(next: LayoutDocument, label: string, nextDesign?: DesignDocument) {
+  function persistLayout(next: LayoutDocument, label: string, nextDesign?: DesignDocument, sourceDrafts?: Drafts) {
     const updates = { layout: validateLayout(next) as unknown as ContentObject, ...(nextDesign ? { design: validateDesign(nextDesign) as unknown as ContentObject } : {}) };
-    const nextDrafts = { ...drafts };
+    const nextDrafts = { ...drafts, ...sourceDrafts };
     for (const [id, content] of Object.entries(updates)) {
       const document = workspace?.documents.find(doc => doc.id === id);
       if (!document) throw new Error("Composition source is unavailable. Reload the workspace.");
@@ -182,16 +212,32 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
       pendingSectionSelection.current = id;
     });
   }
-  function duplicate() {
-    compose(() => {
-      if (!selectedSection) return;
-      const home = drafts.home?.content ?? workspace?.documents.find(doc => doc.id === "home")?.content;
-      if (!home) throw new Error("Home source is unavailable.");
-      const id = `section-${crypto.randomUUID()}`;
-      const nextDesign = copySectionDesign(design, layout.pages.home.sections[selectedSection].type, selectedSection, id);
-      persistLayout(duplicateSection(layout, selectedSection, id, home as HomeCopy), "duplicate section", nextDesign);
-      pendingSectionSelection.current = id;
-    });
+  async function duplicate() {
+    if(!compositionEnabled||!selectedSection||!workspace)return;
+    endGroup();setError('');setBusy(true);
+    try {
+      const home=drafts.home?.content??workspace.documents.find(doc=>doc.id==='home')?.content;
+      if(!home)throw new Error('Home source is unavailable.');
+      const id=`section-${crypto.randomUUID()}`,type=layout.pages.home.sections[selectedSection].type;
+      const copiedSources:Drafts={};
+      const documents=new Map(workspace.documents.filter(doc=>doc.kind==='source').map(doc=>[doc.id,doc]));
+      for(const ref of sourceReferences.filter(ref=>ref.section.id===selectedSection)) {
+        const key=sourceId(ref.source.path);if(documents.get(key)?.sourceStyles!==undefined)continue;
+        const result=await editDesignerSource(ref.source,[]);documents.set(key,result.document);
+      }
+      setWorkspace(previous=>previous?{...previous,documents:[...previous.documents.filter(doc=>!documents.has(doc.id)),...documents.values()]}:previous);
+      for(const document of documents.values()) {
+        const draft=drafts[document.id],edits=draft?validateSourceContent(draft.content).edits:[];
+        const copies=copiedSectionSourceEdits(type,selectedSection,id,document.sourceStyles??[],edits);
+        if(!copies.length)continue;
+        const result=await editDesignerSource({path:document.sourcePath!,start:copies[0].start,sha:draft?.sha??document.sha},[...edits,...copies]);
+        copiedSources[document.id]={content:result.content,original:draft?.original??result.document.content,sha:draft?.sha??result.document.sha};
+      }
+      const nextDesign=copySectionDesign(savedDesign,type,selectedSection,id);
+      persistLayout(duplicateSection(layout,selectedSection,id,home as HomeCopy),'duplicate section',nextDesign,copiedSources);
+      pendingSectionSelection.current=id;
+    } catch(error){setError(error instanceof Error?error.message:'Section could not be duplicated.');}
+    finally{setBusy(false);}
   }
   function move(id: string, delta: number) {
     compose(() => { const index = layout.pages.home.order.indexOf(id); const target = index + delta; if (index >= 0 && target >= 0 && target < layout.pages.home.order.length) persistLayout(moveSection(layout, id, target), "reorder section"); });
@@ -217,7 +263,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   const isComponentSelection = Boolean((canvasSelection?.component || canvasSelection?.category === "component") && !canvasSelection?.editingComponent);
   function updateDesign(change: (design: DesignDocument) => void) {
     if (!designDocument || busy || loading || reviewing) return;
-    const next = structuredClone(design);
+    const next = structuredClone(savedDesign);
     change(next);
     const validated = validateDesign(next) as unknown as ContentObject;
     const nextDrafts = { ...drafts };
@@ -225,6 +271,38 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     if (sameContent(validated, original)) delete nextDrafts.design;
     else nextDrafts.design = { content: validated, sha: nextDrafts.design?.sha ?? designDocument.sha, original };
     persist(nextDrafts, { label: "design change" });
+  }
+  async function changeElementStyle(style: StyleChange) {
+    const selection=canvasSelection;
+    if (!selection?.source || !selection.designTarget) {
+      updateDesign(next=>writeSelectedStyle(next,style)); return;
+    }
+    if (busy || loading || reviewing) return;
+    const source=selection.source, id=sourceId(source.path), existing=drafts[id];
+    const selectedTarget=selection.designTarget.kind==='element'?selection.designTarget.id:`component:${selection.designTarget.component}:${selection.designTarget.part}`;
+    const edits=existing ? validateSourceContent(existing.content).edits : [];
+    const nextEdits=edits.filter(edit=>edit.start!==source.start || edit.target!==selectedTarget);
+    if(style.utilities.length || style.customClasses.length) nextEdits.push({start:source.start,target:selectedTarget,style});
+    setBusy(true);setError('');
+    try {
+      const result=await editDesignerSource(source,nextEdits);
+      const nextDrafts={...drafts};
+      if(nextEdits.length) nextDrafts[id]={content:result.content,original:existing?.original ?? result.document.content,sha:existing?.sha ?? result.document.sha};
+      else delete nextDrafts[id];
+      // Migrate an existing legacy style into the source edit atomically.
+      if(designDocument && (selection.designTarget.kind==='component' || savedDesign.elements[selectedTarget])) {
+        const next=structuredClone(savedDesign);
+        if(selection.designTarget.kind==='element')delete next.elements[selectedTarget];
+        else if(next.components[selection.designTarget.component]) delete next.components[selection.designTarget.component].parts[selection.designTarget.part];
+        const original=nextDrafts.design?.original ?? designDocument.content;
+        const content=next as unknown as ContentObject;
+        if(sameContent(content,original))delete nextDrafts.design;
+        else nextDrafts.design={content,original,sha:nextDrafts.design?.sha ?? designDocument.sha};
+      }
+      setWorkspace(previous=>previous ? {...previous,documents:previous.documents.some(doc=>doc.id===id) ? previous.documents : [...previous.documents,result.document]} : previous);
+      persist(nextDrafts,{label:'style change'});
+    } catch(error) {setError(error instanceof Error?error.message:'Could not edit element source.');}
+    finally {setBusy(false);}
   }
   const insertionAnchor = canvasSelection?.designTarget?.kind === "element" ? canvasSelection.designTarget.id : canvasSelection?.component?.instanceId;
   const insertionEnabled = Boolean(insertionAnchor && designDocument && active && !busy && !loading && !reviewing && !cmsDraft.loading && previewReady && canvasMode === "design" && !editingComponent);
@@ -297,6 +375,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   }
 
   function resetCanvasState() {
+    setSourceReferences([]);
     pendingSectionSelection.current = null;
     setRenderedLayout("");
     setCanvasSelection(null);
@@ -314,11 +393,19 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
       setPreviewReady(false);
       setFrameRevision((revision) => revision + 1);
       resetCanvasState();
-      setWorkspace(next);
+      const cached=readSourcePreview(sourcePreviewKey(next,user.email));
+      const verified=(await Promise.all(cached.map(async (doc):Promise<EditorDocument|null>=>{
+        try {const result=await editDesignerSource({path:doc.sourcePath!,start:0,sha:doc.sha},[]);return {...result.document,content:{...result.document.content,edits:doc.content.edits}};}
+        catch{return null;}
+      }))).filter((doc):doc is EditorDocument=>doc!==null);
+      setWorkspace({...next,documents:[...next.documents,...verified]});
       setCommit(null);
       setLastSynced(new Date());
       const saved = readDrafts(draftKey(next, user.email));
-      resetHistory(unsavedStorageDrafts.current ?? saved.drafts);
+      const restored=unsavedStorageDrafts.current ?? saved.drafts;
+      const sourceDocuments=Object.entries(restored).filter(([id])=>id.startsWith('source:')).map(([id,draft])=>({id,label:id.split('/').at(-1)!,route:'/',kind:'source' as const,sourcePath:id.slice(7),content:draft.original,sha:draft.sha}));
+      if(sourceDocuments.length)setWorkspace({...next,documents:[...next.documents,...verified.filter(doc=>!sourceDocuments.some(source=>source.id===doc.id)),...sourceDocuments]});
+      resetHistory(restored);
       setRecovery(saved.recovery);
       const firstPage = next.documents.find((document) => document.id === preferredPage && !document.kind && document.id !== "shared") ?? next.documents.find((document) => !document.kind && document.id !== "shared");
       setPage(firstPage?.id ?? "shared");
@@ -380,13 +467,14 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     if (!latest.workspace || latest.workspace.repository !== repository || latest.workspace.branch !== branch) return;
     const reconciled = reconcilePublication(latest.workspace, latest.drafts, result, reviewed, baseRevision);
     if (!reconciled) return; // Status polls must not reset newer edit history.
+    writeSourcePreview(sourcePreviewKey(latest.workspace,user.email),result.documents);
     publicationLatest.current = reconciled;
     setWorkspace(reconciled.workspace);
     resetHistory(reconciled.drafts);
     saveDrafts(reconciled.drafts);
     setCommit(result.url);
     setLastSynced(new Date());
-  }, [resetHistory, saveDrafts]);
+  }, [resetHistory, saveDrafts, user.email]);
   const publicationSource = useMemo<PublicationSource>(() => ({ workspace, drafts, busy: sourceBusy || loading || reviewing, storageUnavailable, acknowledge: acknowledgePublication }), [workspace, drafts, sourceBusy, loading, reviewing, storageUnavailable, acknowledgePublication]);
   useEffect(() => { onPublicationSourceChange?.(publicationSource); }, [onPublicationSourceChange, publicationSource]);
   useEffect(() => () => onPublicationSourceChange?.(null), [onPublicationSourceChange]);
@@ -441,9 +529,9 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     frame.current?.contentWindow?.postMessage({
       type: "three-acts:preview",
       ...(isCmsDraft ? { session: cmsSession } : {}),
-      documents: workspace.documents.map((doc) => ({ id: doc.id, content: drafts[doc.id]?.content ?? doc.content }))
+      documents: workspace.documents.filter(doc=>doc.kind!=="source").map((doc) => ({ id: doc.id, content: doc.id === "design" ? previewDesign : drafts[doc.id]?.content ?? doc.content }))
     }, publicSite.origin);
-  }, [workspace, drafts, previewReady, isCmsDraft, cmsSession]);
+  }, [workspace, drafts, previewReady, isCmsDraft, cmsSession, previewDesign]);
 
   useEffect(() => { sendPreview(); }, [sendPreview, previewReady]);
   useEffect(() => {
@@ -500,6 +588,10 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
         } catch { /* Ignore malformed navigation requests. */ }
       }
       if (event.data.type === "three-acts:canvas-tree" && Array.isArray(event.data.nodes)) {
+        if(Array.isArray(event.data.sources)&&event.data.sources.length<=200) {
+          const sources=event.data.sources.flatMap((entry:{section?:unknown;source?:unknown})=>{const section=readLayoutSource(entry?.section),source=readSourceReference(entry?.source);return section&&source?[{section,source}]:[];});
+          setSourceReferences(sources);
+        }
         const nodes = readCanvasNodes(event.data.nodes);
         const status = readCanvasTreeStatus(event.data.treeStatus);
         if (event.data.treeStatus !== undefined && (!status || status.loaded !== nodes.length)) return;
@@ -508,6 +600,17 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
       }
       if (event.data.type === "three-acts:clear-selection" || (event.data.type === "three-acts:selection" && event.data.selection === null)) setCanvasSelection(null);
       if (event.data.type === "three-acts:selection" && !busy && !reviewing && canvasMode === "design" && isCanvasSelection(event.data)) {
+        // Once the rebuilt canvas contains the committed file, its authored
+        // class baseline replaces the temporary post-commit preview classes.
+        if(event.data.source) {
+          const id=sourceId(event.data.source.path),sha=event.data.source.sha;
+          const doc=workspace?.documents.find(doc=>doc.id===id);
+          if(!drafts[id] && workspace && doc?.sha===sha && Array.isArray(doc.content.edits) && doc.content.edits.length) {
+            const updated={...doc,content:{...doc.content,edits:[]}};
+            writeSourcePreview(sourcePreviewKey(workspace,user.email),[updated]);
+            setWorkspace(previous=>previous ? {...previous,documents:previous.documents.map(item=>item.id===id?updated:item)} : previous);
+          }
+        }
         if (canvasSelection?.selector !== event.data.selector) {
           endGroup();
           if (event.data.editingComponent) setRightPanel("style");
@@ -597,6 +700,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     setBusy(true);
     try {
       const result: EditorPushResult = await pushDesignerChanges(changes, message);
+      if(workspace)writeSourcePreview(sourcePreviewKey(workspace,user.email),result.documents);
       const replacements = new Map(result.documents.map((doc) => [doc.id, doc]));
       setWorkspace((previous) => previous ? { ...previous, headSha: result.sha, documents: previous.documents.map((doc) => replacements.get(doc.id) ?? doc) } : previous);
       persist({}, null);
@@ -752,7 +856,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
         <span className="min-w-0 flex-1 truncate" title={canvasSelection?.label}>{canvasSelection?.label ?? "No selection"}</span>
         {canvasSelection && <span className="shrink-0 font-mono text-[10px] text-cms-subtle">{canvasSelection.tag}</span>}
         {selectedAddition && <AddedElementActions disabled={!insertionEnabled} first={additionPeers[0]?.id === selectedAddition.node.id} last={additionPeers.at(-1)?.id === selectedAddition.node.id} onAction={additionAction}/>}
-        {selectedSection && canvasSelection?.component?.name.startsWith("Layout.") && <SectionActions disabled={!compositionEnabled} hidden={layout.pages.home.sections[selectedSection].hidden} first={layout.pages.home.order[0] === selectedSection} last={layout.pages.home.order.at(-1) === selectedSection} onMove={delta => move(selectedSection, delta)} onDuplicate={duplicate} onToggle={toggleSection}/>}
+        {selectedSection && canvasSelection?.component?.name.startsWith("Layout.") && <SectionActions disabled={!compositionEnabled} hidden={layout.pages.home.sections[selectedSection].hidden} first={layout.pages.home.order[0] === selectedSection} last={layout.pages.home.order.at(-1) === selectedSection} onMove={delta => move(selectedSection, delta)} onDuplicate={() => void duplicate()} onToggle={toggleSection}/>}
       </div>
       {canvasSelection?.visibility && canvasSelection.visibility.state !== "visible" && <p role="status" aria-label="Selection visibility" className="m-0 border-b border-cms-line px-2 py-2 text-[10px] leading-4 text-cms-muted">{canvasSelection.visibility.reason}. {canvasSelection.section?.hidden ? canvasSelection.component?.name.startsWith("Layout.") ? "Use Section actions to show it." : "Select its section in Navigator to show it." : canvasSelection.visibility.state === "revealed" ? "Preview restores the disclosure state." : "Select another width or change its source styling to make it visible."}</p>}
       {(canvasSelection?.category === "cms" || canvasSelection?.cmsSource) && <CmsSourceInspector source={canvasSelection.cmsSource} disabled={controlsDisabled || canvasMode === "preview"} onOpen={onOpenCmsRecord}/>}
@@ -774,7 +878,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
           if (Object.keys(entry.props).length) next.instances[component.instanceId!] = entry;
           else delete next.instances[component.instanceId!];
         });
-      }} onEnter={() => { setRightPanel("style"); postCanvas({ type: "three-acts:enter-component", selector: canvasSelection.selector }); }}/> : rightPanel === "style" ? <StyleInspector key={canvasSelection?.selector ?? "empty"} selection={canvasSelection} design={design} breakpoint={breakpoint} onBreakpointChange={changeBreakpoint} onChange={style => updateDesign(next => writeSelectedStyle(next, style))} onCustomCss={(selector, declarations, style) => updateDesign(next => { next.customCss[selector] = declarations; writeSelectedStyle(next, style); })} disabled={controlsDisabled || canvasMode === "preview"}/> : <Inspector content={content} canvasSelection={canvasSelection} resolveField={resolveSelectedField} onChange={(field, value, documentId) => changeField(field, value, documentId ?? contentDocument?.id ?? page)} disabled={controlsDisabled || canvasMode === "preview"}/>}
+      }} onEnter={() => { setRightPanel("style"); postCanvas({ type: "three-acts:enter-component", selector: canvasSelection.selector }); }}/> : rightPanel === "style" ? <StyleInspector key={canvasSelection?.selector ?? "empty"} selection={canvasSelection} design={design} breakpoint={breakpoint} onBreakpointChange={changeBreakpoint} onChange={style => void changeElementStyle(style)} disabled={controlsDisabled || canvasMode === "preview"}/> : <Inspector content={content} canvasSelection={canvasSelection} resolveField={resolveSelectedField} onChange={(field, value, documentId) => changeField(field, value, documentId ?? contentDocument?.id ?? page)} disabled={controlsDisabled || canvasMode === "preview"}/>}
     </div>
     {reviewing && workspace && <Review drafts={drafts} workspace={workspace} message={message} onMessage={setMessage} busy={busy} error={error} onClose={() => { setReviewing(false); setError(""); }} onPush={() => void push()}/>}
     {connectionOpen && <GitHubConnection workspace={workspace} loading={loading} error={connectionError} lastSynced={lastSynced} lastCommit={commit} onReload={reload} onClose={() => setConnectionOpen(false)}/>}
