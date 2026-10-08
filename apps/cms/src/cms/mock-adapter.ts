@@ -1,6 +1,6 @@
 import { collectionRegistry } from "./registry";
 import { cloneSeedCollections } from "@three-acts/cms-schema/seed";
-import { CmsError, canCreateRecords, hasPublishWorkflow, isReadOnlyField } from "./types";
+import { CmsError, canCreateRecords, hasPublishWorkflow, isReadOnlyField, cmsValuesHash, readReviewedCmsRecords, nextModifiedAt, type CmsPromotionResult } from "./types";
 import type {
   AssetUploadResult,
   CmsBackend,
@@ -124,7 +124,7 @@ export const mockCmsBackend: CmsBackend = {
         ...cloneRecord(stored),
         ...resolveSavedStatus(collection, stored, record.publishStatus, values),
         values,
-        modifiedAt: new Date().toISOString()
+        modifiedAt: nextModifiedAt(stored.modifiedAt)
       };
 
       collectionRecords[index] = nextRecord;
@@ -206,12 +206,45 @@ export const mockCmsBackend: CmsBackend = {
             ...record,
             publishStatus: "published" as PublishStatus,
             liveValues: { ...record.values },
-            modifiedAt: new Date().toISOString()
+            modifiedAt: nextModifiedAt(record.modifiedAt)
           };
         });
       }
 
       return delay({ published }, 200);
+    },
+
+    async publishReviewed(input) {
+      const reviewed = readReviewedCmsRecords(input);
+      const results: CmsPromotionResult["records"] = await Promise.all(reviewed.map(async item => {
+        const collection = assertWritable(getCollection(item.collectionId));
+        if (!hasPublishWorkflow(collection)) throw new CmsError("validation", `${collection.label} has no publish workflow.`);
+        const current = records[item.collectionId]?.find(record => record.id === item.id);
+        let state: CmsPromotionResult["records"][number]["state"] = "not-found";
+        if (current) {
+          const matches = await cmsValuesHash(current.values) === item.valuesHash;
+          if (current.publishStatus === "published" && matches && current.liveValues && await cmsValuesHash(current.liveValues) === item.valuesHash) state = "already-published";
+          else if (current.publishStatus === "queued_to_publish" && current.modifiedAt === item.modifiedAt && matches) state = "pending";
+          else state = "conflict";
+        }
+        return { collectionId: item.collectionId, id: item.id, state, ...(current ? { modifiedAt: current.modifiedAt } : {}) };
+      }));
+      if (results.some(record => record.state === "conflict" || record.state === "not-found")) return { published: 0, complete: false, records: results };
+      let published = 0;
+      for (let index = 0; index < reviewed.length; index++) {
+        if (results[index].state === "already-published") continue;
+        const item = reviewed[index];
+        const current = records[item.collectionId]?.find(record => record.id === item.id);
+        if (!current || current.publishStatus !== "queued_to_publish" || current.modifiedAt !== item.modifiedAt) {
+          results[index].state = current ? "conflict" : "not-found";
+          break;
+        }
+        const promoted = { ...current, publishStatus: "published" as const, liveValues: { ...current.values }, modifiedAt: nextModifiedAt(current.modifiedAt) };
+        records[item.collectionId] = records[item.collectionId].map(record => record.id === item.id ? promoted : record);
+        results[index] = { collectionId: item.collectionId, id: item.id, state: "published", modifiedAt: promoted.modifiedAt };
+        published++;
+      }
+      return delay({ published, complete: results.every(record => record.state === "published" || record.state === "already-published"), records: results }, 200);
     },
 
     async setPublishStatus(collectionId: string, recordIds: string[], status: Exclude<PublishStatus, "published">) {
@@ -226,7 +259,6 @@ export const mockCmsBackend: CmsBackend = {
       }
 
       const idSet = new Set(recordIds);
-      const now = new Date().toISOString();
       const updatedById = new Map<string, CmsRecord>();
 
       records[collectionId] = (records[collectionId] ?? []).map((record) => {
@@ -237,8 +269,8 @@ export const mockCmsBackend: CmsBackend = {
         // Unpublishing takes the record off the site: its live snapshot goes too.
         const nextRecord: CmsRecord =
           status === "not_published"
-            ? { ...record, publishStatus: status, liveValues: null, modifiedAt: now }
-            : { ...record, publishStatus: status, modifiedAt: now };
+            ? { ...record, publishStatus: status, liveValues: null, modifiedAt: nextModifiedAt(record.modifiedAt) }
+            : { ...record, publishStatus: status, modifiedAt: nextModifiedAt(record.modifiedAt) };
         updatedById.set(record.id, nextRecord);
         return nextRecord;
       });

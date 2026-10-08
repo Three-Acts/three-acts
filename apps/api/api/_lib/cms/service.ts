@@ -1,5 +1,8 @@
 import {
   CmsError,
+  cmsValuesHash,
+  readReviewedCmsRecords,
+  type CmsPromotionResult,
   MAX_ASSET_UPLOAD_BYTES,
   canCreateRecords,
   collectionRegistry,
@@ -585,6 +588,47 @@ export async function publishQueued(collectionId?: string): Promise<{ published:
   }
 
   return { published };
+}
+
+/** Preflight known conflicts before any promotion. Store-level CAS covers
+ * edits racing that read; partial results remain recoverable on retry. */
+export async function publishReviewed(input: unknown): Promise<CmsPromotionResult> {
+  const reviewed = readReviewedCmsRecords(input);
+  const store = getDataStore();
+  const records: CmsPromotionResult["records"] = [];
+  for (let offset = 0; offset < reviewed.length; offset += 50) {
+    records.push(...await Promise.all(reviewed.slice(offset, offset + 50).map(async item => {
+      const collection = assertWritable(getCollectionOrThrow(item.collectionId));
+      if (!hasPublishWorkflow(collection)) throw new CmsError("validation", `${collection.label} has no publish workflow.`);
+      const current = await store.getRecord(collection, item.id);
+      let state: CmsPromotionResult["records"][number]["state"] = "not-found";
+      if (current) {
+        const matches = await cmsValuesHash(current.values) === item.valuesHash;
+        const liveMatches = !store.listLiveRecords || Boolean(current.liveValues && await cmsValuesHash(current.liveValues) === item.valuesHash);
+        if (current.publishStatus === "published" && matches && liveMatches) state = "already-published";
+        else if (current.publishStatus === "queued_to_publish" && current.modifiedAt === item.modifiedAt && matches) {
+          buildRecordValues(collection, current.values, current.values, { enforceRequired: true });
+          state = "pending";
+        } else state = "conflict";
+      }
+      return { collectionId: item.collectionId, id: item.id, state, ...(current ? { modifiedAt: current.modifiedAt } : {}) };
+    })));
+  }
+  const failed = () => records.some(record => record.state === "conflict" || record.state === "not-found");
+  if (failed()) return { published: 0, complete: false, records };
+  let published = 0;
+  for (let index = 0; index < reviewed.length; index++) {
+    if (records[index].state === "already-published") continue;
+    const item = reviewed[index];
+    const promoted = await store.publishRecord(getCollectionOrThrow(item.collectionId), item.id, item.modifiedAt);
+    if (promoted === "conflict" || promoted === null) {
+      records[index].state = promoted === null ? "not-found" : "conflict";
+      break;
+    }
+    records[index] = { collectionId: item.collectionId, id: item.id, state: "published", modifiedAt: promoted.modifiedAt };
+    published++;
+  }
+  return { published, complete: !failed(), records };
 }
 
 /**

@@ -81,6 +81,21 @@ export async function loadEditorWorkspace(): Promise<EditorWorkspace> {
   return { connected: true, repository: settings.repository, branch: settings.branch, documents, source: "github", headSha: ref, connectionMode: "server" };
 }
 
+/** Provider deployment must use this repository's reachable, source-backed
+ * publication receipt; arbitrary commit IDs are not release evidence. */
+export async function verifyEditorPublicationRevision(revision: string, publicationId: string): Promise<{ repository: string; branch: string }> {
+  const settings = config();
+  if (!settings) throw new ApiError(503, "github_unconfigured", "Connect the editor's repository before publishing.");
+  const current = await head(settings);
+  if (current !== revision) {
+    const comparison = await github<{ merge_base_commit: { sha: string } }>(settings, `/compare/${revision}...${current}`);
+    if (comparison.merge_base_commit.sha !== revision) throw new ApiError(409, "publication_revision_conflict", "The reviewed revision is not on the configured source branch.");
+  }
+  const receipt = await readDocument(settings, "publication", revision);
+  if (receipt.content.publicationId !== publicationId) throw new ApiError(409, "publication_revision_conflict", "The source revision belongs to a different publication.");
+  return { repository: settings.repository, branch: settings.branch };
+}
+
 export async function pushEditorContent(input: unknown): Promise<EditorPushResult> {
   const settings = config();
   if (!settings) throw new ApiError(503, "github_unconfigured", "Connect GitHub in the API's environment settings before pushing.");

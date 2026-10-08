@@ -1,4 +1,5 @@
 export * from "./types";
+export * from "./publication";
 export * from "./errors";
 export * from "./api-contract";
 export * from "./columns";

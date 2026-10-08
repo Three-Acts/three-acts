@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { seedCollections } from "@three-acts/cms-schema/seed";
 import { mockCmsBackend } from "../src/cms/mock-adapter.ts";
+import { cmsValuesHash } from "@three-acts/cms-schema";
 
 // The mock adapter intentionally models browser latency through window.setTimeout.
 Object.defineProperty(globalThis, "window", {
@@ -38,6 +39,20 @@ describe("mock backend seed data", () => {
 });
 
 describe("mock backend publish model", () => {
+  it("promotes only reviewed versions and reconciles retries without newer edits", async () => {
+    const original = await data.createRecord("faqs", { question: "Reviewed FAQ", answer: "An answer." });
+    const queued = await data.saveRecord("faqs", { ...original, publishStatus: "queued_to_publish" });
+    const reviewed = [{ collectionId: "faqs", id: queued.id, modifiedAt: queued.modifiedAt, valuesHash: await cmsValuesHash(queued.values) }];
+    const result = await data.publishReviewed(reviewed);
+    assert.equal(result.complete, true); assert.equal(result.published, 1);
+    assert.equal((await data.publishReviewed(reviewed)).records[0].state, "already-published");
+    const current = await data.getRecord("faqs", queued.id);
+    await data.saveRecord("faqs", { ...current, publishStatus: "queued_to_publish", values: { ...current.values, answer: "A newer answer." } });
+    const stale = await data.publishReviewed(reviewed);
+    assert.equal(stale.complete, false); assert.equal(stale.published, 0); assert.equal(stale.records[0].state, "conflict");
+    assert.equal((await data.getRecord("faqs", queued.id)).liveValues?.answer, "An answer.");
+  });
+
   it("turns an edited published record into a draft that keeps the live snapshot", async () => {
     const original = await data.getRecord("articles", "article-afternoon-launch");
     assert.equal(original.publishStatus, "published");

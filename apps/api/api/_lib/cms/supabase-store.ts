@@ -3,6 +3,7 @@ import {
   CmsError,
   columnForField,
   systemColumnsFor,
+  nextModifiedAt,
   type CmsCollection,
   type CmsField,
   type CmsRecord,
@@ -207,7 +208,7 @@ export class SupabaseDataStore implements CmsDataStore {
   async updateRecord(collection: CmsCollection, record: CmsRecord, expectedModifiedAt?: string): Promise<CmsRecord | "conflict" | null> {
     const client = requireClient();
     const sys = systemColumnsFor(collection);
-    const now = new Date().toISOString();
+    const now = nextModifiedAt(record.modifiedAt);
 
     const payload: Record<string, unknown> = {
       ...mapRecordToRow(collection, record.values),
@@ -260,6 +261,16 @@ export class SupabaseDataStore implements CmsDataStore {
       throw error;
     }
     return data?.length ?? 0;
+  }
+
+  async publishRecord(collection: CmsCollection, recordId: string, expectedModifiedAt: string): Promise<CmsRecord | "conflict" | null> {
+    const sys = systemColumnsFor(collection);
+    const { data, error } = await requireClient().from(collection.tableName)
+      .update({ [sys.publishStatus]: "published", [sys.modifiedAt]: nextModifiedAt(expectedModifiedAt) })
+      .eq(sys.id, recordId).eq(sys.modifiedAt, expectedModifiedAt).eq(sys.publishStatus, "queued_to_publish").select("*");
+    if (error) throw error;
+    if (data?.length) return mapRowToRecord(collection, data[0] as Record<string, unknown>);
+    return await this.getRecord(collection, recordId) ? "conflict" : null;
   }
 
   async setPublishStatus(collection: CmsCollection, recordIds: string[], status: PublishStatus): Promise<CmsRecord[]> {

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { hasPublishWorkflow } from "@three-acts/cms-schema";
+import { hasPublishWorkflow, nextModifiedAt } from "@three-acts/cms-schema";
 import type { CmsCollection, CmsRecord, CmsRecordValue, ListRecordsOptions, ListRecordsResult, PublishStatus } from "@three-acts/cms-schema";
 
 /** Field types whose values are matched against a free-text search term. */
@@ -156,7 +156,7 @@ export class RecordCollectionEngine {
     const updated: CmsRecord = {
       ...cloneRecord(record),
       ...this.resolveSnapshot(base, record),
-      modifiedAt: new Date().toISOString()
+      modifiedAt: nextModifiedAt(stored.modifiedAt)
     };
     this.records[index] = updated;
     this.onChange?.();
@@ -202,7 +202,7 @@ export class RecordCollectionEngine {
       if (record.publishStatus === "queued_to_publish") {
         record.publishStatus = "published";
         record.liveValues = { ...record.values };
-        record.modifiedAt = new Date().toISOString();
+        record.modifiedAt = nextModifiedAt(record.modifiedAt);
         count += 1;
       }
     }
@@ -213,9 +213,19 @@ export class RecordCollectionEngine {
     return count;
   }
 
+  publishRecord(recordId: string, expectedModifiedAt: string): CmsRecord | "conflict" | null {
+    const record = this.records.find(item => item.id === recordId);
+    if (!record) return null;
+    if (!hasPublishWorkflow(this.collection) || record.publishStatus !== "queued_to_publish" || record.modifiedAt !== expectedModifiedAt) return "conflict";
+    record.publishStatus = "published";
+    record.liveValues = { ...record.values };
+    record.modifiedAt = nextModifiedAt(record.modifiedAt);
+    this.onChange?.();
+    return cloneRecord(record);
+  }
+
   setPublishStatus(recordIds: string[], status: PublishStatus): CmsRecord[] {
     const byId = new Map(this.records.map((record) => [record.id, record]));
-    const now = new Date().toISOString();
     const updated: CmsRecord[] = [];
 
     for (const id of recordIds) {
@@ -227,7 +237,7 @@ export class RecordCollectionEngine {
       if (status === "not_published") {
         record.liveValues = null;
       }
-      record.modifiedAt = now;
+      record.modifiedAt = nextModifiedAt(record.modifiedAt);
       updated.push(cloneRecord(record));
     }
 

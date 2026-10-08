@@ -193,6 +193,10 @@ export class FileDataStore implements CmsDataStore {
     return this.mutate(collection, (engine) => engine.publishQueued());
   }
 
+  async publishRecord(collection: CmsCollection, recordId: string, expectedModifiedAt: string): Promise<CmsRecord | "conflict" | null> {
+    return this.mutate(collection, engine => engine.publishRecord(recordId, expectedModifiedAt));
+  }
+
   async setPublishStatus(collection: CmsCollection, recordIds: string[], status: PublishStatus): Promise<CmsRecord[]> {
     return this.mutate(collection, (engine) => engine.setPublishStatus(recordIds, status));
   }

@@ -66,6 +66,8 @@ export interface CmsDataStore {
 
   /** Flips every `queued_to_publish` record in this collection to `published`; returns the count changed. */
   publishQueued(collection: CmsCollection): Promise<number>;
+  /** Atomic queued-status + modified-version guard; never promotes a newer edit. */
+  publishRecord(collection: CmsCollection, recordId: string, expectedModifiedAt: string): Promise<CmsRecord | "conflict" | null>;
 
   /**
    * Sets `status` (and stamps the modified column with "now") on every id in

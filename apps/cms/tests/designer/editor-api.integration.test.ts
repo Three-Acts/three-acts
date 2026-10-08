@@ -8,6 +8,8 @@ import { contentDefinitions, contentPath, serializeContent, defaultLayout, dupli
 import homeSource from "@three-acts/static-content/documents/home.json";
 import contentRoute from "../../../api/api/editor/content";
 import pushRoute from "../../../api/api/editor/push";
+import deployRoute from "../../../api/api/editor/deploy";
+import cmsPublishRoute from "../../../api/api/cms/publish";
 
 const AUTH_SECRET = "editor-api-integration-secret";
 const ENV_KEYS = [
@@ -225,6 +227,11 @@ test("content and push routes require a CMS session before contacting GitHub", a
   const push = await invoke(pushRoute, { method: "POST", body: { message: "update", changes: [] } });
   const shopToken = signSessionToken({ sub: "shop-1", email: "customer@example.com", name: "Customer", scope: "shop" }, AUTH_SECRET).token;
   const shopSession = await invoke(contentRoute, { method: "GET", token: shopToken });
+  for (const method of ["GET", "POST"]) {
+    assert.equal((await invoke(deployRoute, { method, body: {} })).status, 401);
+    assert.equal((await invoke(deployRoute, { method, token: shopToken, body: {} })).status, 401);
+  }
+  assert.equal((await invoke(cmsPublishRoute, { method: "POST", body: { records: [] } })).status, 401);
 
   assert.equal(content.status, 401);
   assert.equal(errorCode(content), "unauthorized");
@@ -233,6 +240,17 @@ test("content and push routes require a CMS session before contacting GitHub", a
   assert.equal(shopSession.status, 401);
   assert.equal(errorCode(shopSession), "unauthorized");
   assert.equal(github.calls.length, 0);
+});
+
+test("reviewed publication boundaries reject malformed promotion bodies and accept an empty authenticated review", async t => {
+  const { token } = await setup(t);
+  for (const body of [[], 3, { extra: true }, { collectionId: 123 }, { collectionId: "articles", records: [] }, { records: [{ collectionId: "articles", id: "a", modifiedAt: "bad", valuesHash: "c".repeat(64) }] }]) {
+    const result = await invoke(cmsPublishRoute, { method: "POST", token, body });
+    assert.equal(result.status, 400);
+  }
+  const empty = await invoke(cmsPublishRoute, { method: "POST", token, body: { records: [] } });
+  assert.equal(empty.status, 200);
+  assert.deepEqual(resultData(empty), { published: 0, complete: true, records: [] });
 });
 
 test("publication push retries reconcile the same commit after a lost response and later branch changes", async (t) => {
