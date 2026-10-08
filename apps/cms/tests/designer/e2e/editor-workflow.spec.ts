@@ -356,7 +356,7 @@ test("CMS designer edits drafts, adapts the canvas, discards safely, pushes to t
 
   await page.getByLabel("mobile preview").click();
   await expect(page.getByLabel("mobile preview")).toHaveAttribute("aria-pressed", "true");
-  const canvasWidth = await page.locator('iframe[title="Website canvas"]').evaluate((element) => Math.round(element.parentElement!.getBoundingClientRect().width));
+  const canvasWidth = await canvas.locator("html").evaluate(element => element.ownerDocument.defaultView!.innerWidth);
   expect(canvasWidth).toBe(390);
   await page.getByLabel("desktop preview").click();
 
@@ -1603,4 +1603,178 @@ test("hidden Navigator pages a bounded outline and keeps identity after DOM inse
   await outsideLimit.evaluate(element => element.remove());
   await expect(page.getByLabel("Selected element", { exact: true })).toContainText("No selection");
   await expect(navigator.locator('[aria-selected="true"]')).toHaveCount(0);
+});
+
+async function expectLogicalWidth(page: import("@playwright/test").Page, width: number) {
+  const html = page.frameLocator('iframe[title="Website canvas"]').locator("html");
+  await expect.poll(() => html.evaluate(element => element.ownerDocument.defaultView!.innerWidth)).toBe(width);
+  await expect(page.getByRole("textbox", { name: "Canvas viewport width", exact: true })).toHaveValue(String(width));
+}
+async function setLogicalWidth(page: import("@playwright/test").Page, width: number) {
+  const input = page.getByRole("textbox", { name: "Canvas viewport width", exact: true });
+  await input.fill(String(width));
+  await input.press("Enter");
+  await expectLogicalWidth(page, width);
+}
+
+test("canvas viewport renders true preset/custom widths and switches Tailwind at exact boundaries", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  for (const [preset, width] of [["desktop", 1280], ["tablet", 1024], ["landscape", 768], ["mobile", 390]] as const) {
+    await page.getByRole("button", { name: `${preset} preview`, exact: true }).click();
+    await expectLogicalWidth(page, width);
+  }
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const button = canvas.locator('[data-editor-component="Button.Link"][data-editor-instance="home.hero_section.href_3"]');
+  await button.click();
+  await page.getByRole("complementary", { name: "Component properties" }).getByRole("button", { name: "Edit main component" }).click();
+  const label = button.locator('[data-editor-part="label"]');
+  await label.click();
+  const style = page.getByRole("complementary", { name: "Style inspector" });
+  await style.getByRole("combobox", { name: "Style breakpoint" }).selectOption("desktop");
+  await expectLogicalWidth(page, 1280);
+  await style.getByRole("combobox", { name: "Display", exact: true }).selectOption("hidden");
+  await expect(label).toHaveClass(/desktop:hidden/);
+  await expect(label).toBeHidden();
+  for (const [width, breakpoint] of [[767, "base"], [768, "landscape"], [1023, "landscape"], [1024, "tablet"], [1279, "tablet"], [1280, "desktop"]] as const) {
+    await setLogicalWidth(page, width);
+    await expect(style.getByRole("combobox", { name: "Style breakpoint" })).toHaveValue(breakpoint);
+    const media = await canvas.locator("html").evaluate(element => element.ownerDocument.defaultView!.matchMedia("(min-width:1280px)").matches);
+    expect(media).toBe(width >= 1280);
+    // Our named landscape breakpoint follows width, even when Fit makes the
+    // iframe taller than it is wide (Tailwind also has an orientation variant).
+    const wideNavigation = canvas.locator('header .landscape\\:flex');
+    if (width >= 768) await expect(wideNavigation).toBeVisible();
+    else await expect(wideNavigation).toBeHidden();
+    const journalGrid = canvas.locator('[data-editor-id="source.journal-section.8"]');
+    await expect.poll(() => journalGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(width >= 1024 ? 3 : width >= 768 ? 2 : 1);
+    if (width < 1280) await expect(label).toBeVisible();
+    else await expect(label).toBeHidden();
+  }
+  await page.getByRole("button", { name: "Undo edit", exact: true }).click();
+  await expect(label).toBeVisible();
+  await expectReviewState(page, false);
+});
+
+test("canvas viewport zoom keeps source width, overlay and inline editing accurate", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const iframe = page.locator('iframe[title="Website canvas"]');
+  const viewport = page.getByLabel("Canvas viewport", { exact: true });
+  const zoom = page.getByRole("combobox", { name: "Canvas zoom", exact: true });
+  await expect(zoom).toHaveValue("fit");
+  await expectLogicalWidth(page, 1280);
+  expect((await iframe.boundingBox())!.width).toBeLessThan((await viewport.boundingBox())!.width);
+  await zoom.selectOption("0.5");
+  await expectLogicalWidth(page, 1280);
+  await expect.poll(async () => (await iframe.boundingBox())!.width).toBe(640);
+  expect(await canvas.locator("html").evaluate(element => element.ownerDocument.defaultView!.matchMedia("(min-width:1280px)").matches)).toBe(true);
+  await expect(canvas.locator('header .landscape\\:flex')).toBeVisible();
+  const hero = canvas.locator('[data-static-field="home.hero_section.display_1"]');
+  await hero.click();
+  const source = await hero.textContent();
+  const overlay = canvas.locator("#three-acts-editor-selection");
+  await expect(overlay).toBeVisible();
+  const targetBounds = (await hero.boundingBox())!;
+  const overlayBounds = (await overlay.boundingBox())!;
+  for (const dimension of ["x", "y", "width", "height"] as const) expect(Math.abs(targetBounds[dimension] - overlayBounds[dimension])).toBeLessThan(2);
+  await hero.dblclick();
+  await expect(hero).toHaveAttribute("contenteditable", "true");
+  await hero.fill("Inline editing at fifty percent zoom");
+  await hero.press("Enter");
+  await expect(page.locator("#selected-text")).toHaveValue("Inline editing at fifty percent zoom");
+  await zoom.selectOption("0.75");
+  await expectLogicalWidth(page, 1280);
+  await expect.poll(async () => (await iframe.boundingBox())!.width).toBe(960);
+  await page.getByRole("button", { name: "Undo edit", exact: true }).click();
+  await expect(hero).toHaveText(source!);
+  await expect(page.getByRole("button", { name: "Undo edit", exact: true })).toBeDisabled();
+  await expectReviewState(page, false);
+  await zoom.selectOption("fit");
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-fit-canvas.png", import.meta.url)), fullPage: true });
+});
+
+test("canvas viewport resizes through zoom-aware drag and keyboard with bounds and cancellation", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const input = page.getByRole("textbox", { name: "Canvas viewport width", exact: true });
+  const zoom = page.getByRole("combobox", { name: "Canvas zoom", exact: true });
+  const grip = page.getByRole("separator", { name: "Resize canvas width", exact: true });
+  await zoom.selectOption("0.5");
+  await setLogicalWidth(page, 900);
+  let bounds = (await grip.boundingBox())!;
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width / 2 + 30, bounds.y + bounds.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expectLogicalWidth(page, 960);
+  await expect(grip).toHaveAttribute("aria-valuenow", "960");
+  await grip.press("ArrowRight");
+  await expectLogicalWidth(page, 970);
+  await grip.press("Shift+ArrowLeft");
+  await expectLogicalWidth(page, 920);
+  await zoom.selectOption("fit");
+  await setLogicalWidth(page, 900);
+  bounds = (await grip.boundingBox())!;
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width / 2 + 20, bounds.y + bounds.height / 2, { steps: 3 });
+  await expect(input).not.toHaveValue("900");
+  await grip.press("Escape");
+  await page.mouse.up();
+  await expectLogicalWidth(page, 900);
+  await expect(zoom).toHaveValue("fit");
+  for (const value of ["319", "3841", "767.5", ""]) {
+    await input.fill(value); await input.press("Enter");
+    await expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(await page.frameLocator('iframe[title="Website canvas"]').locator("html").evaluate(element => element.ownerDocument.defaultView!.innerWidth)).toBe(900);
+    await input.press("Escape");
+    await expect(input).toHaveValue("900");
+  }
+  await setLogicalWidth(page, 320);
+  await grip.press("ArrowLeft");
+  await expectLogicalWidth(page, 320);
+  await setLogicalWidth(page, 3840);
+  await grip.press("Shift+ArrowRight");
+  await expectLogicalWidth(page, 3840);
+  await expect(page.getByRole("button", { name: "Undo edit", exact: true })).toBeDisabled();
+  await expectReviewState(page, false);
+});
+
+test("canvas viewport preferences survive source handoff and adapt to narrow workspace chrome", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const hero = canvas.locator('[data-static-field="home.hero_section.display_1"]');
+  await hero.click();
+  const source = await page.locator("#selected-text").inputValue();
+  await page.locator("#selected-text").fill("Source draft survives viewport preferences");
+  await setLogicalWidth(page, 850);
+  const zoom = page.getByRole("combobox", { name: "Canvas zoom", exact: true });
+  await zoom.selectOption("0.5");
+  await choosePage(page, "Product template");
+  await choosePreviewItem(page, "Web App (Astro Static Site)");
+  const title = canvas.locator('h1[data-cms-bound="products.title"]');
+  const editor = await openBoundCmsSource(page, title, "products", "title");
+  await editor.getByRole("button", { name: "Back to canvas" }).click();
+  await expectLogicalWidth(page, 850);
+  await expect(zoom).toHaveValue("0.5");
+  await expect(title).toHaveAttribute("data-editor-selected", "");
+  await choosePage(page, "Home");
+  await expect(hero).toHaveText("Source draft survives viewport preferences");
+  await page.getByRole("button", { name: "Undo edit", exact: true }).click();
+  await expect(hero).toHaveText(source);
+  await expectLogicalWidth(page, 850);
+  await expect(zoom).toHaveValue("0.5");
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await zoom.selectOption("fit");
+  const toolbar = page.getByLabel("Canvas toolbar", { exact: true });
+  const toolbarBounds = (await toolbar.boundingBox())!;
+  expect(toolbarBounds.height).toBeGreaterThanOrEqual(64);
+  const inputBounds = (await page.getByRole("textbox", { name: "Canvas viewport width", exact: true }).boundingBox())!;
+  const zoomBounds = (await zoom.boundingBox())!;
+  expect(inputBounds.x).toBeGreaterThanOrEqual(toolbarBounds.x);
+  expect(zoomBounds.x + zoomBounds.width).toBeLessThanOrEqual(toolbarBounds.x + toolbarBounds.width);
+  const iframeBounds = (await page.locator('iframe[title="Website canvas"]').boundingBox())!;
+  const areaBounds = (await page.getByLabel("Canvas viewport", { exact: true }).boundingBox())!;
+  expect(iframeBounds.width).toBeLessThan(areaBounds.width);
+  await expectReviewState(page, false);
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-compact-viewport.png", import.meta.url)), fullPage: true });
 });
