@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { FormField, Input, Textarea } from "../atoms";
-import { contentFields, isSafeContentUrl, type ContentObject, type ContentField } from "@three-acts/static-content";
+import { contentFields, isSafeContentUrl, isSafeMediaUrl, type ContentObject, type ContentField } from "@three-acts/static-content";
+import { proseFormatHelp } from "@three-acts/utils";
 import type { CanvasSelection } from "./canvas-types";
 
 type FieldBinding = { id: string; path: string };
@@ -10,8 +11,8 @@ function fieldForBinding(content: ContentObject | null, binding?: FieldBinding):
   return contentFields(content).find((field) => field.path.join(".") === binding.path);
 }
 
-function safeAttributeUrl(value: string): boolean {
-  return value === "" || isSafeContentUrl(value);
+function safeAttributeUrl(value: string, name: string): boolean {
+  return value === "" || (name === "src" ? isSafeMediaUrl(value) : isSafeContentUrl(value));
 }
 
 export function AttributeInput({ id, value, name, disabled, onCommit }: { id: string; value: string; name: string; disabled: boolean; onCommit: (value: string) => void }) {
@@ -21,7 +22,7 @@ export function AttributeInput({ id, value, name, disabled, onCommit }: { id: st
   const cancelBlurCommit = useRef(false);
   function commit() {
     if (cancelBlurCommit.current) { cancelBlurCommit.current = false; return; }
-    if (validateUrl && !safeAttributeUrl(draft)) { setInvalid(true); return; }
+    if (validateUrl && !safeAttributeUrl(draft, name)) { setInvalid(true); return; }
     setInvalid(false);
     if (draft !== value) onCommit(draft);
   }
@@ -30,7 +31,7 @@ export function AttributeInput({ id, value, name, disabled, onCommit }: { id: st
       if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); }
       if (event.key === "Escape") { cancelBlurCommit.current = true; setDraft(value); setInvalid(false); event.currentTarget.blur(); }
     }} aria-invalid={invalid || undefined} className="shadow-none"/>
-    {invalid && <p role="alert" className="m-0 text-ui text-cms-danger">Enter a safe relative or http, mailto, or tel URL.</p>}
+    {invalid && <p role="alert" className="m-0 text-ui text-cms-danger">{name === "src" ? "Enter a site path or HTTP(S) image URL." : "Enter a safe relative or http, mailto, or tel URL."}</p>}
   </>;
 }
 
@@ -77,16 +78,16 @@ export function Inspector({ content, canvasSelection, onChange, resolveField, di
           </div>
         ) : (
           <div className="grid content-start gap-3">
-            <section aria-label={selectedField ? "Text content" : "Element details"} className="grid gap-1">
+            {canvasSelection.tag !== "img" && <section aria-label={selectedField ? "Text content" : "Element details"} className="grid gap-1">
               {!selectedField && <h3 className="m-0 text-ui font-medium text-cms-text">{canvasSelection.category === "cms" ? "CMS field" : canvasSelection.category === "component" ? "Component" : "Element"}</h3>}
               {selectedField ? (
-                <FormField className="mb-0 gap-1" htmlFor="selected-text" label="Text">
+                <FormField className="mb-0 gap-1" htmlFor="selected-text" label={canvasSelection.textFormat === "prose" ? "Body source" : "Text"}>
                   {typeof selectedField.value === "number" ? (
                     <NumericField key={`${selectedField.path.join(".")}:${selectedField.value}`} value={selectedField.value} disabled={disabled} onChange={(value) => onChange(selectedField, value, textBinding?.id)}/>
                   ) : typeof selectedField.value === "boolean" ? (
                     <input id="selected-text" type="checkbox" checked={selectedField.value} disabled={disabled} onChange={(event) => onChange(selectedField, event.target.checked, textBinding?.id)} className="size-4 accent-cms-accent"/>
                   ) : (
-                    <Textarea id="selected-text" rows={String(selectedField.value).length > 120 ? 6 : 2} value={String(selectedField.value)} disabled={disabled} onChange={(event) => onChange(selectedField, event.target.value, textBinding?.id)} className="resize-y shadow-none"/>
+                    <Textarea id="selected-text" rows={String(selectedField.value).length > 120 ? 6 : 2} value={String(selectedField.value)} disabled={disabled} onChange={(event) => onChange(selectedField, event.target.value, textBinding?.id)} className={`resize-y shadow-none ${canvasSelection.textFormat === "prose" ? "min-h-40 leading-5" : ""}`}/>
                   )}
                 </FormField>
               ) : canvasSelection.category === "cms" ? (
@@ -99,15 +100,17 @@ export function Inspector({ content, canvasSelection, onChange, resolveField, di
                 <p className="m-0 text-ui leading-4 text-cms-subtle">This text is not connected to a saved content field.</p>
               )}
               {selectedField && <p className="m-0 text-ui leading-4 text-cms-subtle">Saved in this browser until you review and push.</p>}
-            </section>
+              {canvasSelection.textFormat === "prose" && <p className="m-0 text-ui leading-4 text-cms-subtle">{proseFormatHelp}</p>}
+            </section>}
 
             {canvasSelection.attributes?.length ? <section aria-label="Element attributes" className="grid gap-2">
-              <h3 className="m-0 text-ui font-medium text-cms-text">Attributes</h3>
+              <h3 className="m-0 text-ui font-medium text-cms-text">{canvasSelection.tag === "img" ? "Image" : "Attributes"}</h3>
+              {canvasSelection.tag === "img" && canvasSelection.attributes.some(attribute => attribute.binding) && <p className="m-0 text-ui leading-4 text-cms-subtle">Changes follow this image field wherever it is used. Empty alt text marks a decorative image.</p>}
               {canvasSelection.attributes.map((attribute) => {
                 const field = attribute.binding ? resolveField ? resolveField(attribute.binding) : fieldForBinding(content, attribute.binding) : undefined;
                 const id = `attribute-${attribute.name}`;
                 return <FormField key={attribute.name} className="mb-0 gap-1" htmlFor={id} label={attribute.name}>
-                  {field && typeof field.value === "string" ? <AttributeInput key={`${attribute.name}:${field.value}`} id={id} name={attribute.name} value={field.value} disabled={disabled} onCommit={(value) => onChange(field, value, attribute.binding?.id)}/> : <Input id={id} value={attribute.value} disabled readOnly className="shadow-none"/>}
+                  {field && typeof field.value === "string" ? <AttributeInput key={`${canvasSelection.selector}:${attribute.binding?.id}:${attribute.binding?.path}:${attribute.name}:${field.value}`} id={id} name={attribute.name} value={field.value} disabled={disabled} onCommit={(value) => onChange(field, value, attribute.binding?.id)}/> : <Input id={id} value={attribute.value} disabled readOnly className="shadow-none"/>}
                   {!field && <p className="m-0 text-ui leading-4 text-cms-subtle">Read-only: this attribute is not connected to a saved content field.</p>}
                   {field && typeof field.value !== "string" && <p className="m-0 text-ui leading-4 text-cms-subtle">This attribute has a non-text saved value and is read-only here.</p>}
                 </FormField>;

@@ -1,7 +1,8 @@
 import { createCanvasOutline } from "./canvas-outline.js";
 import { normalizeCmsCollection, readCmsSource } from "@three-acts/cms-schema";
 import { applyStyle, componentBaseClass, componentDefinitions, designCss, emptyDesign, resolveProperties, validateDesign } from "@three-acts/design";
-import { cn, historyShortcut } from "@three-acts/utils";
+import { isSafeContentUrl, isSafeMediaUrl } from "@three-acts/static-content";
+import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
 
 /* Enabled explicitly by the web app, and activated only by the configured editor origin. */
 (() => {
@@ -42,6 +43,17 @@ import { cn, historyShortcut } from "@three-acts/utils";
     const [id, ...path] = element.dataset.staticField.split('.');
     add(id, path.join('.'), element, element, element.dataset.staticAttribute || (element.dataset.staticFormat === 'prose' ? 'prose' : null));
   });
+  // Media object markers bind alt independently of its current value, including
+  // empty alt. Never infer alt from matching text elsewhere on the page.
+  document.querySelectorAll('img[data-static-media]').forEach(element => {
+    if (element.closest('[data-cms-bound]')) return;
+    const [id, ...path] = element.dataset.staticMedia.split('.');
+    const mediaPath = path.join('.');
+    const media = path.reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, definitions.get(id)?.content);
+    if (!media || typeof media.src !== 'string' || typeof media.alt !== 'string') return;
+    add(id, `${mediaPath}.src`, element, element, 'src');
+    add(id, `${mediaPath}.alt`, element, element, 'alt');
+  });
   // Bind structured titles, body paragraphs, array items and navigation labels
   // without changing the layout component's public prop contracts.
   const lookup = new Map();
@@ -72,7 +84,7 @@ import { cn, historyShortcut } from "@three-acts/utils";
   }
   for (const element of document.querySelectorAll('a[href],img[src]')) {
     const attribute = element.tagName === 'A' ? 'href' : 'src';
-    if (element.closest('[data-cms-bound]')) continue;
+    if (element.closest('[data-cms-bound]') || element.hasAttribute('data-static-media')) continue;
     const value = element.getAttribute(attribute);
     const matches = relevant.flatMap(doc => fields(doc.content).map(field => ({id: doc.id, ...field}))).filter(field => field.value === value && /^(href|src)(_|$)/.test(field.path.split('.').at(-1)));
     const match = matches.length === 1 ? matches[0] : null;
@@ -224,6 +236,11 @@ import { cn, historyShortcut } from "@three-acts/utils";
     const root = componentRoot(element);
     if (!root || (element !== root && element.closest('[data-cms-bound]'))) return element;
     if (editingComponent?.name === root.dataset.editorComponent) return element.closest('[data-editor-part]') || element;
+    if (!root.dataset.editorComponent.startsWith('Button.')) {
+      const prose = element.closest('[data-static-format="prose"][data-static-field]');
+      if (prose && formattedTextField(prose)) return prose;
+      if (element.matches('img[data-static-media]') && bindingFor(element)) return element;
+    }
     if (element !== root && element.hasAttribute('data-static-field') && !root.dataset.editorComponent.startsWith('Button.')) return element;
     return root;
   }
@@ -260,12 +277,22 @@ import { cn, historyShortcut } from "@three-acts/utils";
       breadcrumbs.unshift({selector:selectorFor(current), label: description.label || humanize(current.tagName.toLowerCase())});
     }
     breadcrumbs.unshift({selector:'body', label:'Body'});
-    const textField = info.category === 'cms' ? null : directTextField(element);
+    const proseField = info.category === 'cms' ? null : formattedTextField(element);
+    const textField = info.category === 'cms' ? null : proseField || directTextField(element);
     const attributes = elementAttributes(element, info.category === 'cms');
-    const textState = textField ? 'editable' : element.childElementCount ? 'structured' : normalize(element.textContent || '') ? 'unbound' : 'empty';
-    return {selector:selectorFor(element), visibility:outline.visibilityFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), ...(info.cmsSource ? {cmsSource:info.cmsSource} : {}), category:mainPart && info.category !== 'cms' ? 'element' : info.category, ...(component && !mainPart ? {component} : {}), ...(editingComponent ? {editingComponent:editingComponent.name} : {}), ...(designTarget ? {designTarget} : {}), sourceClasses:(element.dataset.editorBaseClass || (root === element ? cn(componentBaseClass(root.dataset.editorComponent, resolveProperties(design, root.dataset.editorComponent, root.dataset.editorInstance, JSON.parse(root.dataset.editorSourceProps || '{}'))), root.dataset.editorCallerClass || '') : '')).split(/\s+/).filter(Boolean), ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
+    const textState = proseField ? 'structured' : textField ? 'editable' : element.childElementCount ? 'structured' : normalize(element.textContent || '') ? 'unbound' : 'empty';
+    return {selector:selectorFor(element), visibility:outline.visibilityFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), ...(info.cmsSource ? {cmsSource:info.cmsSource} : {}), category:mainPart && info.category !== 'cms' ? 'element' : info.category, ...(component && !mainPart ? {component} : {}), ...(editingComponent ? {editingComponent:editingComponent.name} : {}), ...(designTarget ? {designTarget} : {}), sourceClasses:(element.dataset.editorBaseClass || (root === element ? cn(componentBaseClass(root.dataset.editorComponent, resolveProperties(design, root.dataset.editorComponent, root.dataset.editorInstance, JSON.parse(root.dataset.editorSourceProps || '{}'))), root.dataset.editorCallerClass || '') : '')).split(/\s+/).filter(Boolean), ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(proseField ? {textFormat:'prose'} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
   }
   const inspectableAttributes = ['href','src','alt','title','target','aria-label'];
+  function formattedTextField(element) {
+    if (element.dataset.staticFormat !== 'prose' || !element.dataset.staticField) return null;
+    const [id, ...path] = element.dataset.staticField.split('.');
+    const fieldPath = path.join('.');
+    const candidates = (bindings.get(`${id}.${fieldPath}`) || []).filter(binding => binding.element === element);
+    if (candidates.length !== 1 || candidates[0].attribute !== 'prose') return null;
+    const value = path.reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, definitions.get(id)?.content);
+    return typeof value === 'string' ? {id, path:fieldPath, value} : null;
+  }
   function directTextField(element) {
     if (element.childElementCount || element.childNodes.length > 1 || (element.firstChild && element.firstChild.nodeType !== Node.TEXT_NODE)) return null;
     const candidates = [];
@@ -359,19 +386,35 @@ import { cn, historyShortcut } from "@three-acts/utils";
     send({type:'three-acts:selection', ...selectionFor(binding.element)});
   }
   function renderProse(container, body) {
-    const blocks = []; let lines = []; let list = [];
-    function flush() {
-      if (lines.length) {const p = document.createElement('p');lines.forEach((line,index) => {if(index) p.append(document.createElement('br'));p.append(document.createTextNode(line));});blocks.push(p);lines=[];}
-      if (list.length) {const ul = document.createElement('ul');ul.className='flex list-disc flex-col gap-2 pl-5 marker:text-ink';for (const item of list){const li=document.createElement('li');li.textContent=item;ul.append(li);}blocks.push(ul);list=[];}
+    function appendText(element, text) {
+      for (const run of proseRuns(text)) {
+        if (!run.href) { element.append(document.createTextNode(run.text)); continue; }
+        const link = document.createElement('a');
+        link.href = run.href; link.textContent = run.text;
+        link.className = 'text-ink underline decoration-1 underline-offset-2 hover:no-underline';
+        if (run.href.startsWith('http')) { link.target = '_blank'; link.rel = 'noopener noreferrer'; }
+        element.append(link);
+      }
     }
-    for (const raw of body.split('\n')) {
-      const line=raw.trim();
-      if (!line) {flush();continue;}
-      if (line.startsWith('## ')) {flush();const h=document.createElement('h2');h.className='mt-2 text-h3 font-medium text-ink first:mt-0';h.textContent=line.slice(3);blocks.push(h);}
-      else if (line.startsWith('- ')) {if(lines.length)flush();list.push(line.slice(2));}
-      else {if(list.length)flush();lines.push(line);}
+    const blocks = parseProse(body).map(block => {
+      const element = document.createElement(block.type === 'ul' ? 'ul' : block.type === 'h2' ? 'h2' : 'p');
+      if (block.type === 'h2') { element.className = 'mt-2 text-h3 font-medium text-ink first:mt-0'; appendText(element, block.text); }
+      else if (block.type === 'ul') {
+        element.className = 'flex list-disc flex-col gap-2 pl-5 marker:text-ink';
+        for (const item of block.items) { const li = document.createElement('li'); appendText(li, item); element.append(li); }
+      } else block.lines.forEach((line, index) => { if (index) element.append(document.createElement('br')); appendText(element, line); });
+      return element;
+    });
+    container.replaceChildren(...blocks);
+  }
+  function updateImageSource(element, value) {
+    // A local image may already have an optimized <picture> source. Keep it
+    // in sync or remove its candidate when the replacement is external.
+    const source = element.parentElement?.tagName === 'PICTURE' ? element.parentElement.querySelector('source[data-image-avif]') : null;
+    if (source) {
+      if (value.startsWith('/') && /\.(png|jpe?g|webp)$/i.test(value)) source.setAttribute('srcset', value.replace(/\.(png|jpe?g|webp)$/i, '.avif'));
+      else source.removeAttribute('srcset');
     }
-    flush();container.replaceChildren(...blocks);
   }
   function validSelector(selector) {
     if (typeof selector !== 'string' || selector.length > 500) return null;
@@ -598,9 +641,10 @@ import { cn, historyShortcut } from "@three-acts/utils";
             renderProse(binding.node, String(resolve(field.value)));
           } else if (binding.attribute) {
             const value = String(resolve(field.value));
-            const safeUrl = value === '' || (/^(\/(?!\/)|#[a-z0-9_-]+$|https?:\/\/|mailto:|tel:)/i.test(value) && !Array.from(value).some(char => char.charCodeAt(0) <= 32 || char.charCodeAt(0) === 127 || char === '\\'));
+            const safeUrl = value === '' || (binding.attribute === 'src' ? isSafeMediaUrl(value) : isSafeContentUrl(value));
             if (binding.attribute === 'href' || binding.attribute === 'src') {
               if (safeUrl) {
+                if (binding.attribute === 'src' && binding.element.tagName === 'IMG') updateImageSource(binding.element, value);
                 if (value) binding.element.setAttribute(binding.attribute, value);
                 else binding.element.removeAttribute(binding.attribute);
               }

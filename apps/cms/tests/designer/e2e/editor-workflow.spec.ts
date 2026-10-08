@@ -1778,3 +1778,116 @@ test("canvas viewport preferences survive source handoff and adapt to narrow wor
   await expectReviewState(page, false);
   await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-compact-viewport.png", import.meta.url)), fullPage: true });
 });
+
+test("explicit formatted bodies edit source without flattening and round trip through GitHub", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  await choosePage(page, "Terms");
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const body = canvas.locator('[data-static-field="terms.terms.sections_2.0.body"]');
+  await body.click();
+  const input = page.getByRole("textbox", { name: "Body source", exact: true });
+  await expect(input).toBeVisible();
+  const source = await input.inputValue();
+  await expect(page.getByText(/Plain source text: blank lines separate paragraphs/)).toBeVisible();
+  const draft = '## Heading /shop/app\n- First https://example.com/path\n- Second\n\nFirst line\nSecond <img src=x onerror=alert(1)>';
+  await input.fill(draft);
+  await expect(body.locator("h2")).toHaveText("Heading /shop/app");
+  await expect(body.locator("ul li")).toHaveCount(2);
+  await expect(body.locator("br")).toHaveCount(1);
+  await expect(body.locator('a[href="https://example.com/path"]')).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(body.locator("img")).toHaveCount(0);
+  await expect(body).toContainText('<img src=x onerror=alert(1)>');
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-body-source.png", import.meta.url)), fullPage: true });
+  await body.locator("h2").dblclick();
+  await expect(body).not.toHaveAttribute("contenteditable", "true");
+  await expect(body.locator("[contenteditable=true]")).toHaveCount(0);
+  await page.getByRole("button", { name: "Undo edit", exact: true }).click();
+  await expect(body).not.toContainText("Heading /shop/app");
+  await page.getByRole("button", { name: "Redo edit", exact: true }).click();
+  await expect(body.locator("h2")).toHaveText("Heading /shop/app");
+  await page.reload();
+  await openDesignerTab(page);
+  await choosePage(page, "Terms");
+  await expect(body.locator("h2")).toHaveText("Heading /shop/app");
+  const review = await openReview(page);
+  await expect(review).toContainText("terms / sections / Item 1 / body");
+  await review.getByRole("button", { name: "Push to GitHub" }).click();
+  await expect(page.getByText("Pushed to GitHub", { exact: true })).toBeVisible();
+  await page.reload();
+  await openDesignerTab(page);
+  await choosePage(page, "Terms");
+  await expect(body.locator("h2")).toHaveText("Heading /shop/app");
+  await expect(body.locator('a[href="/shop/app"]')).toHaveText("/shop/app");
+  expect(source).not.toBe(draft);
+});
+
+test("static image source and empty alt edit together with optimized picture and repeated scope", async ({ page, request }) => {
+  // Exercise the real Intro fallback when product images do not supply the row.
+  // The static test site has products, so inject that rare source-bound markup
+  // before the bridge starts; separate renderer checks cover the production branch.
+  const home = JSON.parse(readFileSync(fileURLToPath(new URL("../../../../../packages/static-content/src/documents/home.json", import.meta.url)), "utf8"));
+  home.intro_section.fallback_image_2.src = "/content/islands.png";
+  await request.post("http://127.0.0.1:5380/__e2e/external-change", { data: { path: "packages/static-content/src/documents/home.json", content: JSON.stringify(home) } });
+  await page.route("http://localhost:5341/", async route => {
+    const response = await route.fetch();
+    const images = Array.from({ length: 3 }, () => '<picture><source data-image-avif="" srcset="/content/islands.avif" type="image/avif"><img data-testid="static-fallback" data-static-media="home.intro_section.fallback_image_2" src="/content/islands.png" alt="" width="120" height="120"></picture>').join("");
+    await route.fulfill({ response, body: (await response.text()).replace("</main>", `${images}</main>`) });
+  });
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const images = canvas.getByTestId("static-fallback");
+  await expect(images).toHaveCount(3);
+  await images.first().click();
+  const alt = page.getByRole("textbox", { name: "alt", exact: true });
+  const src = page.getByRole("textbox", { name: "src", exact: true });
+  await expect(alt).toBeEnabled();
+  await expect(alt).toHaveValue("");
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-image-source.png", import.meta.url)), fullPage: true });
+  await expect.poll(() => images.first().evaluate(image => (image as HTMLImageElement).currentSrc)).toBe("http://localhost:5341/content/islands.avif");
+  await alt.fill("Contextual static image description");
+  await alt.press("Enter");
+  for (const image of await images.all()) await expect(image).toHaveAttribute("alt", "Contextual static image description");
+  await src.fill("mailto:unsafe@example.com");
+  await src.press("Enter");
+  await expect(src).toHaveAttribute("aria-invalid", "true");
+  for (const image of await images.all()) await expect(image).toHaveAttribute("src", "/content/islands.png");
+  await src.press("Escape");
+  await expect(src).toHaveValue("/content/islands.png");
+  await src.fill("http://localhost:5341/content/launch-playbook.png");
+  await src.press("Enter");
+  for (const image of await images.all()) await expect(image).toHaveAttribute("src", "http://localhost:5341/content/launch-playbook.png");
+  for (const image of await images.all()) await expect(image.locator("..").locator("source[data-image-avif]")).not.toHaveAttribute("srcset", /.+/);
+  await expect.poll(() => images.first().evaluate(image => (image as HTMLImageElement).currentSrc)).toBe("http://localhost:5341/content/launch-playbook.png");
+  await page.getByRole("button", { name: "Undo edit", exact: true }).click();
+  for (const image of await images.all()) await expect(image).toHaveAttribute("src", "/content/islands.png");
+  for (const image of await images.all()) await expect(image.locator("..").locator("source[data-image-avif]")).toHaveAttribute("srcset", "/content/islands.avif");
+  await page.getByRole("button", { name: "Redo edit", exact: true }).click();
+  const review = await openReview(page);
+  await expect(review).toContainText("intro section / fallback image / alt");
+  await expect(review).toContainText("intro section / fallback image / src");
+  await review.getByRole("button", { name: "Push to GitHub" }).click();
+  await expect(page.getByText("Pushed to GitHub", { exact: true })).toBeVisible();
+  await page.reload();
+  await openDesignerTab(page);
+  for (const image of await images.all()) await expect(image).toHaveAttribute("alt", "Contextual static image description");
+  for (const image of await images.all()) await expect(image).toHaveAttribute("src", "http://localhost:5341/content/launch-playbook.png");
+});
+
+test("Home media and CMS formatted bodies open the exact source controls", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const image = canvas.locator('[data-editor-id="source.hero-section.7"] img');
+  const editor = await openBoundCmsSource(page, image, "products", "images.0");
+  await expect(editor.locator('[data-cms-field="images"]').getByRole("textbox").first()).toBeVisible();
+  await editor.getByRole("button", { name: "Back to canvas" }).click();
+  await expect(image).toHaveAttribute("data-editor-selected", "");
+  const rowImage = canvas.locator('[data-editor-id="source.intro-section.10"] img').nth(1);
+  const rowEditor = await openBoundCmsSource(page, rowImage, "products", "images.0");
+  await rowEditor.getByRole("button", { name: "Back to canvas" }).click();
+  await choosePage(page, "Product template");
+  await choosePreviewItem(page, "Web App (Astro Static Site)");
+  const body = canvas.locator('[data-cms-bound="products.description"]');
+  const bodyEditor = await openBoundCmsSource(page, body, "products", "description");
+  await expect(bodyEditor.locator('[data-cms-field="description"]')).toContainText("HTML stays literal");
+  await expect(bodyEditor.locator('[data-cms-field="description"]').getByRole("textbox")).toBeFocused();
+});

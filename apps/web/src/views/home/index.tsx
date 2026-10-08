@@ -38,11 +38,11 @@ export function HomePage({ products, categories, articles, testimonials, faqs }:
   const featuredTestimonials = pickFeaturedTestimonials(testimonials, 3, 4);
   const faqTeaser = pickFaqTeaser(faqs, 4);
   const heroImage = featuredProducts[0]?.images[0] ?? FALLBACK_HERO_IMAGE;
-  const rowImages = featuredProducts.flatMap((product) => product.images.slice(0, 1));
+  const rowImages = featuredProducts.flatMap((product) => product.images.slice(0, 1).map((image, index) => ({ ...image, cmsSource: { collectionId: "products", recordId: product.id, label: product.title, field: `images.${index}` } })));
 
   return (
     <>
-      <HeroSection coverImage={heroImage} />
+      <HeroSection coverImage={heroImage} cmsSource={featuredProducts[0] ? { collectionId: "products", recordId: featuredProducts[0].id, label: featuredProducts[0].title } : undefined}/>
       <StatSection />
       <ShopByCategorySection categories={categories} />
       <FeaturedProductsSection products={featuredProducts} />

@@ -1,4 +1,5 @@
 import { elementClass } from "../../lib/design";
+import { cmsAttributes, type CmsSource } from "@three-acts/cms-schema";
 import copy from "@three-acts/static-content/documents/home.json";
 import type { Product } from "@three-acts/ecommerce";
 import { Grid } from "../layout/grid";
@@ -9,7 +10,7 @@ import { Typography } from "../ui/typography";
 
 type IntroSectionProps = {
   /** Up to 3 product images for the closing image row — falls back to a placeholder block when there aren't enough. */
-  images: Product["images"];
+  images: Array<Product["images"][number] & { cmsSource?: CmsSource }>;
 };
 
 const VALUES = copy.intro_section.values_1;
@@ -43,7 +44,7 @@ export function IntroSection({ images }: IntroSectionProps) {
           <Grid.Root data-editor-id="source.intro-section.9" cols={3}>
             {row.map((image, index) => (
               <span data-editor-base-class={"block aspect-tall w-full overflow-hidden bg-block"} data-editor-id="source.intro-section.10" key={index} className={elementClass("source.intro-section.10", "block aspect-tall w-full overflow-hidden bg-block")}>
-                <Image src={image.src} alt={image.alt} width={429} height={602} className="size-full object-cover" />
+                <Image src={image.src} alt={image.alt} {...("cmsSource" in image && image.cmsSource ? cmsAttributes(image.cmsSource, image.cmsSource.field) : {})} data-static-media={image === FALLBACK_IMAGE ? "home.intro_section.fallback_image_2" : undefined} width={429} height={602} className="size-full object-cover" />
               </span>
             ))}
           </Grid.Root>
