@@ -9,8 +9,8 @@ const publicationPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-
  * @param {() => { revision: string; clean: boolean } | null} readGit
  * @param {string} receipt */
 export function buildRevisionMarker(env, readGit, receipt = "") {
-  const requested = env.EDITOR_SOURCE_REVISION;
-  const platform = env.VERCEL_GIT_COMMIT_SHA;
+  const requested = env.EDITOR_SOURCE_REVISION || undefined;
+  const platform = env.VERCEL_GIT_COMMIT_SHA || undefined;
   const publication = env.EDITOR_PUBLICATION_ID || receipt;
   if (requested && !revisionPattern.test(requested)) throw new Error("EDITOR_SOURCE_REVISION must be an exact Git commit SHA.");
   if (platform && !revisionPattern.test(platform)) throw new Error("VERCEL_GIT_COMMIT_SHA must be an exact Git commit SHA.");

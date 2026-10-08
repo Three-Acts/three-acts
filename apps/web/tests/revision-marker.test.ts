@@ -7,6 +7,7 @@ const publicationId = "d280d96c-5b8f-4d43-8b9b-e5dce7f2ce31";
 
 test("public markers identify clean source and the exact reviewed hosted release without exposing environment", () => {
   assert.deepEqual(buildRevisionMarker({}, () => ({ revision, clean: true })), { version: 1, revision, publicationId: null });
+  assert.deepEqual(buildRevisionMarker({ VERCEL_GIT_COMMIT_SHA: "", EDITOR_SOURCE_REVISION: "", EDITOR_PUBLICATION_ID: "" }, () => ({ revision, clean: true })), { version: 1, revision, publicationId: null }, "Explicitly cleared local provider variables cannot emit an empty revision");
   assert.deepEqual(buildRevisionMarker({}, () => ({ revision, clean: false })), { version: 1, revision: null, publicationId: null });
   assert.deepEqual(buildRevisionMarker({}, () => ({ revision, clean: false }), publicationId), { version: 1, revision: null, publicationId: null }, "Normal local builds remain usable after editing a previously published revision");
   const hosted = buildRevisionMarker({ VERCEL_GIT_COMMIT_SHA: revision, EDITOR_SOURCE_REVISION: revision, EDITOR_PUBLICATION_ID: publicationId, SECRET: "must-not-leak" }, () => { throw new Error("Hosted revision should not read local Git"); });
