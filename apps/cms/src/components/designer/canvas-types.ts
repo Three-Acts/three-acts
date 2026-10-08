@@ -1,7 +1,9 @@
 import type { CmsSource } from "@three-acts/cms-schema";
+import type { LayoutSource } from "@three-acts/static-content";
 export type CanvasVisibility = { state: "visible" | "hidden" | "revealed"; reason?: string };
 export type CanvasTreeStatus = { limit: number; maximum: number; loaded: number; total: number; hasMore: boolean; capped: boolean };
 export type CanvasNode = {
+  section?: LayoutSource;
   visibility?: CanvasVisibility;
   selector: string;
   parentSelector: string | null;
@@ -13,6 +15,7 @@ export type CanvasNode = {
 };
 
 export type CanvasSelection = {
+  section?: LayoutSource;
   visibility?: CanvasVisibility;
   cmsSource?: CmsSource;
   selector: string;

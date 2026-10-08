@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Eye, EyeOff, Layers, Search } from "lucide-react";
 import { Button, PanelHeader, ScrollArea } from "../atoms";
 import type { CanvasNode, CanvasTreeStatus } from "./canvas-types";
@@ -12,12 +12,15 @@ type NavigatorProps = {
   disabled: boolean;
   treeStatus?: CanvasTreeStatus | null;
   onLoadMore?: (limit: number) => void;
+  actions?: ReactNode;
+  onMoveSection?: (id: string, delta: number) => void;
+  onReorderSection?: (id: string, targetId: string) => void;
 };
 
 const categoryLabel = { element: "Element", component: "Component", cms: "CMS" } as const;
 
 /** Read-only outline of the preview canvas. */
-export function Navigator({ nodes, selected, selectionVersion = 0, onSelect, disabled, treeStatus, onLoadMore }: NavigatorProps) {
+export function Navigator({ nodes, selected, selectionVersion = 0, onSelect, disabled, treeStatus, onLoadMore, actions, onMoveSection, onReorderSection }: NavigatorProps) {
   const [query, setQuery] = useState("");
   const [disclosureOverrides, setDisclosureOverrides] = useState<Map<string, boolean>>(() => new Map());
   const [lastDisclosureSelection, setLastDisclosureSelection] = useState(selected);
@@ -103,6 +106,9 @@ export function Navigator({ nodes, selected, selectionVersion = 0, onSelect, dis
   }
 
   function handleTreeKeyDown(event: KeyboardEvent<HTMLButtonElement>, node: CanvasNode, hasChildren: boolean, isCollapsed: boolean) {
+    if (!disabled && node.section && onMoveSection && event.altKey && ["ArrowUp", "ArrowDown"].includes(event.key)) {
+      event.preventDefault(); onSelect(node.selector); onMoveSection(node.section.id, event.key === "ArrowUp" ? -1 : 1); return;
+    }
     const tree = event.currentTarget.closest('[role="tree"]');
     if (!tree) return;
     const items = Array.from(tree.querySelectorAll<HTMLButtonElement>('[role="treeitem"]'));
@@ -138,6 +144,7 @@ export function Navigator({ nodes, selected, selectionVersion = 0, onSelect, dis
         <Layers aria-hidden="true" size={14} className="text-cms-subtle" />
         <span className="text-ui font-semibold text-cms-text">Navigator</span>
         <div className="ml-auto flex items-center gap-0.5">
+          {actions}
           <button
             type="button"
             aria-label="Collapse all elements"
@@ -229,6 +236,10 @@ export function Navigator({ nodes, selected, selectionVersion = 0, onSelect, dis
                       else itemRefs.current.delete(node.selector);
                     }}
                     onClick={() => onSelect(node.selector)}
+                    draggable={Boolean(node.section && onReorderSection && !disabled)}
+                    onDragStart={event => { if (node.section && onReorderSection && !disabled) { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("application/three-acts-section", node.section.id); } }}
+                    onDragOver={event => { if (node.section && onReorderSection && !disabled && event.dataTransfer.types.includes("application/three-acts-section")) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } }}
+                    onDrop={event => { if (node.section && onReorderSection && !disabled) { const id = event.dataTransfer.getData("application/three-acts-section"); if (id) { event.preventDefault(); onReorderSection(id, node.section.id); } } }}
                     onKeyDown={(event) => handleTreeKeyDown(event, node, hasChildren, isCollapsed)}
                     className={`flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-sm px-1 text-left text-ui outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-cms-accent disabled:opacity-50 ${isSelected ? "text-cms-text" : node.category === "component" ? "text-emerald-400" : node.category === "cms" ? "text-violet-400" : "text-cms-muted"}`}
                   >

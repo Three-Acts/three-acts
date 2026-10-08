@@ -4,7 +4,8 @@ import { createServer, type Server } from "node:http";
 import test, { type TestContext } from "node:test";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { signSessionToken } from "@three-acts/auth/server";
-import { contentDefinitions, contentPath, serializeContent, type ContentObject, type EditorPushResult, type EditorWorkspace } from "@three-acts/static-content";
+import { contentDefinitions, contentPath, serializeContent, defaultLayout, duplicateSection, type ContentObject, type EditorPushResult, type EditorWorkspace } from "@three-acts/static-content";
+import homeSource from "@three-acts/static-content/documents/home.json";
 import contentRoute from "../../../api/api/editor/content";
 import pushRoute from "../../../api/api/editor/push";
 
@@ -409,6 +410,32 @@ test("validated design changes publish atomically and stale or unsafe design wri
   const unsafe = structuredClone(changed);
   unsafe.customCss = { ".callout": { "background-color": "url(https://example.com)" } };
   const rejected = await invoke(pushRoute, { method: "POST", token, body: { changes: [{ id: "design", sha: result.documents[0].sha, content: unsafe }], message: "Unsafe CSS" } });
+  assert.equal(rejected.status, 400);
+  assert.equal(github.calls.filter(call => call.method === "PATCH").length, 1);
+});
+
+test("composition and scoped design changes commit atomically, with layout validation and SHA protection", async (t) => {
+  const { github, token } = await setup(t);
+  const workspace = resultData<EditorWorkspace>(await invoke(contentRoute, { method: "GET", token }));
+  const layout = workspace.documents.find(document => document.id === "layout")!;
+  const design = workspace.documents.find(document => document.id === "design")!;
+  const composed = duplicateSection(defaultLayout(), "home-cta", "section-copy", homeSource);
+  composed.pages.home.sections["section-copy"].content!.p_1 = "A persisted independent CTA";
+  const styled = structuredClone(design.content);
+  styled.elements = { "composition.section-copy.source.cta-section.1": { utilities: ["pt-4"], customClasses: [] } };
+  const pushed = await invoke(pushRoute, { method: "POST", token, body: { message: "Compose Home", changes: [{ id: "layout", sha: layout.sha, content: composed }, { id: "design", sha: design.sha, content: styled }] } });
+  assert.equal(pushed.status, 200);
+  const result = resultData<EditorPushResult>(pushed);
+  assert.deepEqual(result.documents.find(document => document.id === "layout")?.content, composed);
+  assert.equal(github.calls.filter(call => call.method === "PATCH").length, 1);
+  const readback = resultData<EditorWorkspace>(await invoke(contentRoute, { method: "GET", token }));
+  assert.deepEqual(readback.documents.find(document => document.id === "layout")?.content, composed);
+  assert.deepEqual(readback.documents.find(document => document.id === "design")?.content, styled);
+  const stale = await invoke(pushRoute, { method: "POST", token, body: { message: "Stale layout", changes: [{ id: "layout", sha: layout.sha, content: composed }] } });
+  assert.equal(stale.status, 409);
+  const invalid = structuredClone(composed);
+  Object.assign(invalid.pages.home.sections["section-copy"], { children: [{ type: "script" }] });
+  const rejected = await invoke(pushRoute, { method: "POST", token, body: { message: "Invalid nesting", changes: [{ id: "layout", sha: result.documents.find(document => document.id === "layout")!.sha, content: invalid }] } });
   assert.equal(rejected.status, 400);
   assert.equal(github.calls.filter(call => call.method === "PATCH").length, 1);
 });

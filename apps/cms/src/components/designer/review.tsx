@@ -1,5 +1,6 @@
 import { GitCommitHorizontal } from "lucide-react";
-import { contentFields, type EditorWorkspace } from "@three-acts/static-content";
+import { contentFields, type EditorWorkspace, type HomeCopy } from "@three-acts/static-content";
+import { LayoutReview } from "./layout-review";
 import { Button, FormField, Input, Modal } from "../atoms";
 import { fieldLabel, type Drafts } from "./drafts";
 
@@ -33,6 +34,10 @@ export function Review({ drafts, workspace, message, onMessage, busy, error, onC
 
       <div className="mb-3 grid gap-3">
         {Object.entries(drafts).map(([id, draft]) => {
+          if (id === "layout") {
+            const home = workspace.documents.find(doc => doc.id === "home")?.content;
+            if (home) return <LayoutReview key={id} draft={draft} home={home as HomeCopy}/>;
+          }
           const original = new Map(contentFields(draft.original).map((field) => [field.path.join("."), field.value]));
           const current = new Map(contentFields(draft.content).map(field => [field.path.join("."), field.value]));
           const changed = [...new Set([...original.keys(), ...current.keys()])].filter(path => current.get(path) !== original.get(path)).map(path => ({ path: path.split("."), value: current.get(path) }));
