@@ -10,7 +10,6 @@ import { useSettingsRecord } from "../../hooks/use-settings-record";
 import { Button, FormField, PanelHeader, ScrollArea, StatusPill, Textarea } from "../atoms";
 import { DetailRow, EditorSection, FieldControl } from "../editor";
 import type { SettingsViewProps } from "./index";
-import { MediaSettingsView } from "./redirect-settings-view";
 import { RedirectSettingsView } from "./redirect-settings-view";
 
 /** Field keys per section, in display order. Unknown keys are skipped; unlisted fields land in "Other". */
@@ -24,13 +23,13 @@ const SECTIONS: Array<{ title: string; keys: string[] }> = [
 const SCHEMA_KEY = "schemaMarkup";
 const HIDDEN_KEYS = new Set(["titleTemplate"]);
 
-export function SiteSettingsView({ collection, onDirtyChange, onSaved, redirectCollection, mediaCollection }: SettingsViewProps) {
+export function SiteSettingsView({ collection, onDirtyChange, onSaved, redirectCollection }: SettingsViewProps) {
   const { data } = useCmsBackend();
   const { draft, isDirty, isSaving, load, reportError, save, updateValue, uploadAsset, uploadGallery, uploadGalleryItem, uploadingField } =
     useSettingsRecord({ collection, onDirtyChange, onSaved });
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [activeSection, setActiveSection] = useState<"general" | "redirects" | "media">("general");
+  const [activeSection, setActiveSection] = useState<"general" | "redirects">("general");
 
   // A singleton: whatever the collection holds first is the site's settings.
   useEffect(() => {
@@ -61,16 +60,8 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved, redirectC
 
   if (activeSection === "redirects" && redirectCollection) {
     return (
-      <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showMedia={Boolean(mediaCollection)} showRedirects>
+      <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showRedirects>
         <RedirectSettingsView collection={redirectCollection} onDirtyChange={onDirtyChange} onSaved={onSaved} />
-      </SiteSettingsLayout>
-    );
-  }
-
-  if (activeSection === "media" && mediaCollection) {
-    return (
-      <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showMedia showRedirects={Boolean(redirectCollection)}>
-        <MediaSettingsView collection={mediaCollection} onDirtyChange={onDirtyChange} onSaved={onSaved} />
       </SiteSettingsLayout>
     );
   }
@@ -90,7 +81,7 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved, redirectC
 
   if (isLoading) {
     return (
-      <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showMedia={Boolean(mediaCollection)} showRedirects={Boolean(redirectCollection)}>
+      <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showRedirects={Boolean(redirectCollection)}>
         <SettingsShell title={collection.label}>
         <div aria-busy="true" className="grid flex-1 place-items-center p-8 text-center">
           <p className="m-0 text-ui text-cms-subtle">Loading site settings…</p>
@@ -102,7 +93,7 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved, redirectC
 
   if (!draft) {
     return (
-      <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showMedia={Boolean(mediaCollection)} showRedirects={Boolean(redirectCollection)}>
+      <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showRedirects={Boolean(redirectCollection)}>
         <SettingsShell title={collection.label}>
         <div className="grid flex-1 place-items-center p-8">
           <div className="grid max-w-sm justify-items-center gap-3 text-center">
@@ -164,7 +155,7 @@ export function SiteSettingsView({ collection, onDirtyChange, onSaved, redirectC
   const saveBlocked = !schemaResult.ok;
 
   return (
-    <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showMedia={Boolean(mediaCollection)} showRedirects={Boolean(redirectCollection)}>
+    <SiteSettingsLayout activeSection={activeSection} onSectionChange={setActiveSection} showRedirects={Boolean(redirectCollection)}>
     <SettingsShell
       actions={
         <>
@@ -262,13 +253,11 @@ function SiteSettingsLayout({
   activeSection,
   children,
   onSectionChange,
-  showMedia,
   showRedirects
 }: {
-  activeSection: "general" | "redirects" | "media";
+  activeSection: "general" | "redirects";
   children: ReactNode;
-  onSectionChange: (section: "general" | "redirects" | "media") => void;
-  showMedia: boolean;
+  onSectionChange: (section: "general" | "redirects") => void;
   showRedirects: boolean;
 }) {
   return (
@@ -294,16 +283,6 @@ function SiteSettingsLayout({
               type="button"
             >
               Redirects
-            </button>
-          ) : null}
-          {showMedia ? (
-            <button
-              aria-current={activeSection === "media" ? "page" : undefined}
-              className={cn("h-8 rounded-cms px-2 text-left text-ui", activeSection === "media" ? "bg-cms-raised font-medium text-cms-text" : "text-cms-muted hover:bg-cms-surface hover:text-cms-text")}
-              onClick={() => onSectionChange("media")}
-              type="button"
-            >
-              Media
             </button>
           ) : null}
         </nav>

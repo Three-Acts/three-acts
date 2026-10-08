@@ -85,12 +85,13 @@ async function openCurrentPageDetails(page: import("@playwright/test").Page) {
 
 async function openDesignerTab(page: import("@playwright/test").Page) {
   const workspace = page.getByRole("navigation", { name: "Workspace" });
-  await expect(workspace.getByRole("button")).toHaveText(["Designer", "CMS", "Site"]);
+  await expect(workspace.getByRole("button")).toHaveText(["Designer", "CMS", "Resources", "Site"]);
   await expect(workspace.getByRole("button", { name: "Designer", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("button", { name: "Choose page" })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Preview item" })).toHaveCount(0);
   await expect(page.getByText("Preview item", { exact: true })).toHaveCount(0);
-  // Start these workflows on Content; new leaf selections also choose Content automatically.
+  await expect(page.getByRole("button", {name:"Add element",exact:true})).toBeEnabled();
+  // Start these workflows on Content; these workflows intentionally edit Content.
   await page.getByRole("button", { name: "Content panel" }).click();
 }
 
@@ -298,8 +299,8 @@ test("compact panels keep disclosure choices, reveal canvas selections, and alig
   await expect(page.getByRole("button", { name: "Site & navigation", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Navigator panel" }).click();
 
-  // A nested content leaf cannot receive an instance-only style override.
-  await expect(style.getByText(/no registered design source/)).toBeVisible();
+  // A nested content leaf now exposes its source styling directly.
+  await expect(style.getByRole("combobox", {name:"Padding bottom",exact:true})).toBeEnabled();
   const cta = canvas.locator('[data-editor-id="source.cta-section.1"]');
   await cta.click({ position: { x: 1, y: 1 } });
   await style.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
@@ -1072,7 +1073,7 @@ test("Tailwind design drafts configure component properties, shared parts, custo
   await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("tablet");
   await styles.getByRole("combobox", { name: "Padding bottom", exact: true }).selectOption("pb-24");
   await expect(hero).toHaveClass(/tablet:pb-24/);
-  await styles.getByRole("tab", { name: "Custom CSS" }).click();
+  await styles.getByText("Reusable custom CSS", { exact: true }).click();
   await styles.getByRole("textbox", { name: "Custom selector" }).fill(".editor-callout");
   await styles.getByRole("textbox", { name: "CSS declarations" }).fill("margin-bottom: 16px; color: var(--color-ink);");
   await styles.getByRole("button", { name: "Save and apply class" }).click();
@@ -1215,6 +1216,7 @@ test("editor history reverses individual variants, resets and utilities and clea
   await expect(variant).toHaveValue(changedVariant);
   const cta = canvas.locator('[data-editor-id="source.cta-section.1"]');
   await cta.click({ position: { x: 1, y: 1 } });
+  await page.getByRole("button",{name:"Style panel",exact:true}).click();
   const styles = page.getByRole("complementary", { name: "Style inspector" });
   await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("tablet");
   await styles.getByRole("combobox", { name: "Padding bottom", exact: true }).selectOption("pb-24");
@@ -1228,7 +1230,7 @@ test("editor history reverses individual variants, resets and utilities and clea
   await expect(cta).not.toHaveClass(/tablet:pb-24/);
   await undo.click();
   await expect(cta).toHaveClass(/tablet:pb-24/);
-  await styles.getByRole("tab", { name: "Custom CSS" }).click();
+  await styles.getByText("Reusable custom CSS", { exact: true }).click();
   await styles.getByRole("textbox", { name: "Custom selector" }).fill(".history-callout");
   await styles.getByRole("textbox", { name: "CSS declarations" }).fill("margin-bottom: 24px;");
   await styles.getByRole("button", { name: "Save and apply class" }).click();
@@ -1701,12 +1703,12 @@ test("canvas viewport resizes through zoom-aware drag and keyboard with bounds a
   await page.mouse.down();
   await page.mouse.move(bounds.x + bounds.width / 2 + 30, bounds.y + bounds.height / 2, { steps: 5 });
   await page.mouse.up();
-  await expectLogicalWidth(page, 960);
-  await expect(grip).toHaveAttribute("aria-valuenow", "960");
+  await expectLogicalWidth(page, 1020);
+  await expect(grip).toHaveAttribute("aria-valuenow", "1020");
   await grip.press("ArrowRight");
-  await expectLogicalWidth(page, 970);
+  await expectLogicalWidth(page, 1030);
   await grip.press("Shift+ArrowLeft");
-  await expectLogicalWidth(page, 920);
+  await expectLogicalWidth(page, 980);
   await zoom.selectOption("fit");
   await setLogicalWidth(page, 900);
   bounds = (await grip.boundingBox())!;
@@ -2182,11 +2184,11 @@ test("approved section insertion supports every type and Navigator keyboard and 
   const canvas = page.frameLocator('iframe[title="Website canvas"]');
   const sections = canvas.locator('[data-layout-section]');
   await expect(sections.first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Insert section", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Add element", exact: true })).toBeEnabled();
   const originalCount = await sections.count();
   const types = ["Hero", "Stats", "Shop by category", "Featured products", "Intro", "Journal", "Testimonials", "FAQ teaser", "CTA"];
   for (const [index, label] of types.entries()) {
-    await page.getByRole("button", { name: "Insert section", exact: true }).click();
+    await page.getByRole("button", { name: "Add element", exact: true }).click();
     await page.getByRole("menuitem", { name: label, exact: true }).click();
     await expect(sections).toHaveCount(originalCount + index + 1);
     await expect(canvas.locator('[data-layout-section][data-editor-selected]')).toHaveCount(1);
@@ -2289,6 +2291,7 @@ test("publication reviews source and exact CMS records, deploys the committed re
   await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-16");
   const hero = canvas.locator('[data-static-field="home.hero_section.display_1"]');
   await hero.click();
+  await page.getByRole("button",{name:"Content panel",exact:true}).click();
   await page.locator("#selected-text").fill("A reviewed publication headline");
   const requests: string[] = [];
   page.on("request", request => { const path = new URL(request.url()).pathname; if (request.method() === "POST" && ["/api/editor/push", "/api/cms/publish", "/api/editor/deploy"].includes(path)) requests.push(path); });
@@ -2327,4 +2330,145 @@ test("publication reviews source and exact CMS records, deploys the committed re
   expect(JSON.stringify(snapshot.documents.find(doc => doc.id === "design")!.content)).toContain("secondary");
   writeFileSync(fileURLToPath(new URL("../artifacts/publication-committed.json", import.meta.url)), JSON.stringify({ revision: head, documents: snapshot.documents.map(doc => ({ id: doc.id, content: doc.content })) }, null, 2));
   await page.screenshot({ path: "apps/cms/tests/designer/artifacts/publication-live.png" });
+});
+
+test("direct source styling supports arbitrary Tailwind, remembers the inspector, and adds elements on Privacy", async ({ page }) => {
+  test.setTimeout(90_000);
+  await signInAndOpenDesigner(page);
+  await choosePage(page, "Privacy");
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const footerText = canvas.locator("footer p").first();
+  await footerText.click();
+  await page.getByRole("button", {name:"Style panel"}).click();
+  const style = page.getByRole("complementary", {name:"Style inspector"});
+  await expect(style.getByRole("combobox", {name:"Padding bottom",exact:true})).toBeEnabled();
+  await expect(style.getByRole("tab")).toHaveCount(0);
+  await style.getByRole("combobox", {name:"Style breakpoint"}).selectOption("base");
+  await style.getByRole("combobox", {name:"Padding bottom",exact:true}).selectOption("__custom__");
+  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).fill("7");
+  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).press("Enter");
+  await expect(footerText).toHaveClass(/pb-7/);
+  await expect(footerText).toHaveCSS("padding-bottom","28px");
+  await style.getByRole("combobox", {name:"Padding bottom",exact:true}).selectOption("__custom__");
+  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).fill("999px");
+  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).press("Escape");
+  await expect(footerText).toHaveCSS("padding-bottom","28px");
+  await style.getByRole("combobox", {name:"Padding bottom",exact:true}).selectOption("__custom__");
+  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).fill("calc(3rem + 2px)");
+  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).press("Enter");
+  await expect(footerText).toHaveCSS("padding-bottom","50px");
+  await style.getByRole("combobox", {name:"Style breakpoint"}).selectOption("desktop");
+  await style.getByRole("combobox", {name:"Padding bottom",exact:true}).selectOption("__custom__");
+  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).fill("calc(4rem + 8px)");
+  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).press("Enter");
+  await expect(footerText).toHaveCSS("padding-bottom","72px");
+  await canvas.locator("footer p").nth(1).click();
+  await expect(style).toBeVisible();
+  await footerText.click();
+  await page.getByRole("button", {name:"Content panel"}).click();
+  await canvas.locator("footer p").nth(1).click();
+  await expect(page.getByRole("complementary", {name:"Content inspector"})).toBeVisible();
+  await footerText.click();
+  await page.getByRole("button", {name:"Style panel"}).click();
+  await page.getByRole("button", {name:"Navigator panel",exact:true}).click();
+  await page.getByRole("button", {name:"Add element",exact:true}).click();
+  await page.getByRole("menuitem", {name:"Heading 1",exact:true}).click();
+  const heading = canvas.locator('h1[data-editor-added]');
+  await expect(heading).toHaveCount(1);
+  await heading.click();
+  await page.getByRole("button", {name:"Content panel"}).click();
+  await page.locator("#selected-text").fill("A heading added on Privacy");
+  await expect(heading).toHaveText("A heading added on Privacy");
+  await page.getByRole("button", {name:"Add element",exact:true}).click();
+  await page.getByRole("menuitem", {name:"Button link",exact:true}).click();
+  const button = canvas.locator('[data-editor-added][data-editor-component="Button.Link"]');
+  await expect(button).toHaveCount(1);
+  await button.click();
+  await page.getByRole("complementary", {name:"Component properties"}).getByRole("combobox", {name:"Component variant"}).selectOption("secondary");
+  await expect(button).toHaveClass(/border-line-strong/);
+  await heading.click();
+  await page.getByRole("button",{name:"Element actions",exact:true}).click();
+  await page.getByRole("menuitem",{name:"Duplicate",exact:true}).click();
+  await expect(heading).toHaveCount(2);
+  await expect(button).toHaveCount(1);
+  const duplicateHeading = heading.nth(1);
+  await duplicateHeading.click();
+  const duplicateId = await duplicateHeading.getAttribute("data-editor-id");
+  await page.getByRole("button",{name:"Element actions",exact:true}).click();
+  await page.getByRole("menuitem",{name:"Move up",exact:true}).click();
+  await expect(heading.first()).toHaveAttribute("data-editor-id",duplicateId!);
+  await page.getByRole("button",{name:"Element actions",exact:true}).click();
+  await page.getByRole("menuitem",{name:"Remove element",exact:true}).click();
+  await expect(heading).toHaveCount(1);
+  await expect(button).toHaveCount(1);
+  await footerText.click();
+  await page.getByRole("button",{name:"Add element",exact:true}).click();
+  await page.getByRole("menuitem",{name:"Div",exact:true}).click();
+  const addedDiv = canvas.locator('div[data-editor-added]');
+  await expect(addedDiv).toHaveCount(1);
+  await (await outlineItem(page,addedDiv)).click();
+  await page.getByRole("button",{name:"Add element",exact:true}).click();
+  await page.getByRole("menuitem",{name:"Heading 2",exact:true}).click();
+  const nestedHeading=addedDiv.locator('h2[data-editor-added]');
+  await expect(nestedHeading).toHaveCount(1);
+  await nestedHeading.click();
+  await page.getByRole("button",{name:"Content panel"}).click();
+  await page.locator("#selected-text").fill("Nested content persists in source");
+  await expect(nestedHeading).toHaveText("Nested content persists in source");
+  await page.reload();
+  await openDesignerTab(page);
+  await choosePage(page,"Privacy");
+  await expect(heading).toHaveCount(1);
+  await expect(heading).toHaveText("A heading added on Privacy");
+  await expect(button).toHaveCount(1);
+  await footerText.click();
+  await expect(footerText).toHaveCSS("padding-bottom","72px");
+  const review = await openReview(page);
+  await review.getByRole("textbox", {name:"Commit message"}).fill("Add Privacy elements and direct Tailwind styling");
+  await review.getByRole("button", {name:"Push to GitHub"}).click();
+  await expect(page.getByText("Pushed to GitHub", {exact:true})).toBeVisible();
+  const committed = await page.evaluate(async () => {
+    const {apiFetch}=await import("/src/lib/api-client.ts"); return apiFetch<EditorWorkspace>("/editor/content");
+  });
+  writeFileSync(fileURLToPath(new URL("../artifacts/direct-authoring-committed.json", import.meta.url)), JSON.stringify({documents:committed.documents.map(doc=>({id:doc.id,content:doc.content}))},null,2));
+  await page.screenshot({path:fileURLToPath(new URL("../artifacts/direct-authoring-privacy.png",import.meta.url)),fullPage:true});
+});
+
+test("zoom keeps Privacy viewport height fixed and a canvas drag stays centered", async ({page}) => {
+  await signInAndOpenDesigner(page);
+  await choosePage(page,"Privacy");
+  await setLogicalWidth(page,600);
+  const canvas=page.frameLocator('iframe[title="Website canvas"]');
+  const zoom=page.getByRole("combobox",{name:"Canvas zoom",exact:true});
+  const heights:number[]=[];
+  for (const scale of ["0.25","0.5","1","2"]) {
+    await zoom.selectOption(scale);
+    heights.push(await canvas.locator("html").evaluate(el=>el.ownerDocument.defaultView!.innerHeight));
+  }
+  expect(new Set(heights).size).toBe(1);
+  await expect(zoom.locator('option[value="0.1"]')).toHaveCount(0);
+  await zoom.selectOption("0.5");
+  const grip=page.getByRole("separator",{name:"Resize canvas width"});
+  const frame=page.locator('iframe[title="Website canvas"]');
+  const center=async()=>{const rect=(await frame.boundingBox())!;return rect.x+rect.width/2;};
+  const originalCenter=await center();
+  const bounds=(await grip.boundingBox())!;
+  await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/2);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x+bounds.width/2+35,bounds.y+bounds.height/2,{steps:5});
+  await expectLogicalWidth(page,740);
+  expect(Math.abs(await center()-originalCenter)).toBeLessThan(2);
+  await page.mouse.up();
+  expect(Math.abs(await center()-originalCenter)).toBeLessThan(2);
+});
+
+test("media belongs to Resources and site settings stay separate", async ({page}) => {
+  await signInAndOpenDesigner(page);
+  const workspace=page.getByRole("navigation",{name:"Workspace"});
+  await workspace.getByRole("button",{name:"Resources",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Media Library",exact:true})).toBeVisible();
+  await workspace.getByRole("button",{name:"Site",exact:true}).click();
+  await expect(page.getByRole("navigation",{name:"Site settings sections"}).getByRole("button",{name:"Media",exact:true})).toHaveCount(0);
+  await workspace.getByRole("button",{name:"CMS",exact:true}).click();
+  await expect(page.getByRole("complementary").getByRole("button",{name:"Media Library",exact:true})).toHaveCount(0);
 });

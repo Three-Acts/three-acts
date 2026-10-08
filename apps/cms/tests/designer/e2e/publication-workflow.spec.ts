@@ -7,6 +7,8 @@ async function signIn(page: Page) {
   await page.getByLabel("Password").fill("local-publication-test");
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page.getByRole("button", { name: "Choose page" })).toContainText("Home");
+  await expect(page.getByRole("button",{name:"Add element",exact:true})).toBeEnabled();
+  await page.getByRole("button",{name:"Content panel",exact:true}).click();
   await page.frameLocator('iframe[title="Website canvas"]').locator('[data-static-field="home.hero_section.display_1"]').click();
   await expect(page.locator("#selected-text")).toBeVisible();
 }

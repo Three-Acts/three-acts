@@ -28,8 +28,8 @@ test("instance properties use the same variant definition as rendering and prese
 });
 test("rejects unsupported utilities, unknown parts, selectors, malformed CSS and prototype keys", () => {
   const doc = emptyDesign();
-  doc.elements["home.title"] = { utilities: ["pb-999999"], customClasses: [] };
-  assert.throws(() => validateDesign(doc), /supported Tailwind/);
+  doc.elements["home.title"] = { utilities: ["pb-[url(javascript:alert(1))]"], customClasses: [] };
+  assert.throws(() => validateDesign(doc), /valid Tailwind/);
   delete doc.elements["home.title"];
   doc.components["Button.Link"] = { parts: { arbitrary: { utilities: [], customClasses: [] } } };
   assert.throws(() => validateDesign(doc), /Unknown component part/);
@@ -59,4 +59,58 @@ test("merges named project spacing and container tokens with numeric overrides",
   assert.equal(applyStyle("py-section-sm landscape:py-section-md desktop:py-section", { utilities: ["pt-4", "landscape:pb-8"], customClasses: [] }), "py-section-sm landscape:py-section-md desktop:py-section pt-4 landscape:pb-8");
   assert.equal(applyStyle("gap-x-gap gap-y-gap-y", { utilities: ["gap-4"], customClasses: [] }), "gap-4");
   assert.equal(applyStyle("max-w-content", { utilities: ["max-w-3xl"], customClasses: [] }), "max-w-3xl");
+});
+
+test("arbitrary Tailwind values replace only their property and breakpoint", async () => {
+  const { propertyUtility, utilityProperty, utilityScope } = await import("./index");
+  assert.equal(propertyUtility("paddingBottom", "7"), "pb-7");
+  assert.equal(propertyUtility("paddingBottom", "calc(3rem + 2px)"), "pb-[calc(3rem_+_2px)]");
+  assert.equal(propertyUtility("fontSize", "var(--heading-size)"), "text-[length:var(--heading-size)]");
+  assert.equal(utilityProperty("text-[length:var(--heading-size)]"), "fontSize");
+  assert.equal(utilityProperty("bg-linear-to-r"), null);
+  assert.equal(utilityScope("tablet:[padding-bottom:calc(3rem+2px)]"), "tablet:");
+  assert.equal(utilityProperty("tablet:pb-[calc(3rem+2px)]"), "paddingBottom");
+  const style = {utilities:["pb-[31px]", "tablet:pb-[42px]", "hover:pb-8", "pt-4"],customClasses:[]};
+  const next = setUtility(style, "paddingBottom", "base", "pb-[var(--space)]");
+  assert.deepEqual(next.utilities, ["tablet:pb-[42px]", "hover:pb-8", "pt-4", "pb-[var(--space)]"]);
+  assert.deepEqual(setUtility(next, "paddingBottom", "base", "").utilities, style.utilities.slice(1));
+  const doc = emptyDesign(); doc.elements.example = next;
+  assert.deepEqual(validateDesign(doc).elements.example, next);
+});
+
+test("added elements preserve source anchors and reject cycles, scripts and unsafe attributes", async () => {
+  const { validateAdditions } = await import("./index");
+  const node = { id:"added-one",type:"h1",position:"inside",text:"My heading",attributes:{} };
+  const additions = { "auto.source.heading": [node], "added-one": [{...node,id:"added-two",type:"Button.Link",position:"after",attributes:{href:"/shop"}}] };
+  assert.deepEqual(validateAdditions(additions), additions);
+  assert.throws(() => validateAdditions({source:[{...node,type:"script"}]}), /supported/);
+  assert.throws(() => validateAdditions({source:[{...node,attributes:{href:"javascript:alert(1)"}}]}), /attributes/);
+  assert.throws(() => validateAdditions({source:[{...node,attributes:{onload:"alert(1)"}}]}), /attributes/);
+  assert.throws(() => validateAdditions({...additions,"added-two":[{...node,id:"added-three"}],"added-three":[{...node,id:"added-one"}]}), /distinct/);
+  assert.throws(() => validateAdditions({"added-one":[{...node,id:"added-two"}],"added-two":[node]}), /cycle/);
+});
+
+
+test("added sibling operations preserve independent siblings and clean nested removals", async () => {
+  const {insertAddition,moveAddition,removeAddition,validateAdditions}=await import("./index");
+  const node={id:"added-heading",type:"h1",position:"inside" as const,text:"Heading",attributes:{}};
+  const additions={source:[node]} as Record<string, import("./index").AddedElement[]>;
+  insertAddition(additions,node.id,{...node,id:"added-button",type:"Button.Root",position:"after"});
+  assert.deepEqual(additions.source.map(n=>n.id),["added-heading","added-button"]);
+  insertAddition(additions,node.id,{...node,id:"added-child",type:"span",position:"inside"});
+  moveAddition(additions,"added-button",-1);
+  assert.deepEqual(additions.source.map(n=>n.id),["added-button","added-heading"]);
+  assert.deepEqual(removeAddition(additions,node.id),["added-heading","added-child"]);
+  assert.deepEqual(additions.source.map(n=>n.id),["added-button"]);
+  assert.deepEqual(validateAdditions(additions),additions);
+});
+
+
+test("arbitrary CSS properties replace equivalent source utilities before Tailwind compilation", async () => {
+  const {propertyUtility}=await import("./index");
+  assert.equal(applyStyle("pb-8 pt-4 tablet:pb-12",{utilities:["[padding-bottom:50px]"],customClasses:[]}),"pt-4 tablet:pb-12 [padding-bottom:50px]");
+  assert.equal(propertyUtility("color","text-blue-500"),"text-blue-500");
+  assert.equal(propertyUtility("fontSize","text-2xl"),"text-2xl");
+  assert.equal(propertyUtility("paddingBottom","pb-[var(--space)]"),"pb-[var(--space)]");
+  assert.equal(propertyUtility("width","w-1/2"),"w-1/2");
 });

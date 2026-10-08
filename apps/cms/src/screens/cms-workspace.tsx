@@ -12,7 +12,7 @@ import { CollectionSidebar, RecordListPane, RecordsToolbar, RecordTable, TopBar 
 import type { WorkspaceTab } from "../components/workspace";
 import { RecordEditor } from "../components/editor";
 import { ImportDialog } from "../components/import";
-import { SiteSettingsView } from "../components/settings";
+import { MediaSettingsView, SiteSettingsView } from "../components/settings";
 import { PagesWorkspace } from "../components/designer/pages-workspace";
 import type { PublicationSource } from "../components/designer/publication-source";
 import type { PublicationStatus } from "../hooks/use-publication";
@@ -22,6 +22,7 @@ import type { PublicationStatus } from "../hooks/use-publication";
 const availableTabs: WorkspaceTab[] = [
   ...(collectionRegistry.some((collection) => collection.settingsView === "pages") ? (["page-settings"] as const) : []),
   "cms",
+  ...(collectionRegistry.some(collection => collection.settingsView === "media") ? (["resources"] as const) : []),
   ...(collectionRegistry.some((collection) => collection.settingsView === "site") ? (["site-settings"] as const) : [])
 ];
 
@@ -99,7 +100,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   const mediaCollection = settingsCollections.find((collection) => collection.settingsView === "media");
   const pageSettingsCollection = settingsCollections.find((collection) => collection.settingsView === "pages");
   const settingsCollection =
-    activeTab === "site-settings" ? siteSettingsCollection : activeTab === "page-settings" ? pageSettingsCollection : undefined;
+    activeTab === "resources" ? mediaCollection : activeTab === "site-settings" ? siteSettingsCollection : activeTab === "page-settings" ? pageSettingsCollection : undefined;
 
   useEffect(() => {
     if (!error) {
@@ -250,14 +251,13 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
           // Settings tabs take the whole workspace below the top bar; the
           // collections sidebar belongs to the CMS tab only.
           <main className="relative flex min-h-0 min-w-0 flex-1">
-              <SiteSettingsView
+              {activeTab === "resources" ? <MediaSettingsView collection={settingsCollection} key={`${settingsCollection.id}-${publishRevision}`} onDirtyChange={setIsSettingsDirty} onSaved={refreshCollections}/> : <SiteSettingsView
                 collection={settingsCollection}
                 key={`${settingsCollection.id}-${publishRevision}`}
                 onDirtyChange={setIsSettingsDirty}
                 onSaved={refreshCollections}
-                mediaCollection={mediaCollection}
                 redirectCollection={redirectRulesCollection}
-              />
+              />}
           </main>
         ) : activeCollection ? (
           <main className="relative flex min-h-0 min-w-0 flex-1">
