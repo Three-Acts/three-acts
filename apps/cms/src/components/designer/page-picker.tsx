@@ -19,6 +19,9 @@ type PagePickerProps = {
   onSelectPage: (document: EditorDocument) => void;
   onSelectPreview: (id: string) => void;
   onOpenDetails: (document: EditorDocument) => void;
+  previewVersion: "published" | "draft";
+  onPreviewVersion: (version: "published" | "draft") => void;
+  onRetryPreviews: () => void;
 };
 
 function matches(query: string, ...values: (string | undefined)[]) {
@@ -38,6 +41,9 @@ export function PagePicker({
   onSelectPage,
   onSelectPreview,
   onOpenDetails,
+  previewVersion,
+  onPreviewVersion,
+  onRetryPreviews,
 }: PagePickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -140,12 +146,13 @@ export function PagePicker({
                 className={`h-6 flex-1 rounded-cms px-2 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${bodyMode === "items" ? "bg-cms-raised text-cms-text" : "text-cms-muted hover:bg-cms-raised hover:text-cms-text"}`}
               >Items</button>
             </div>}
+            {currentIsTemplate && <label className="flex items-center justify-between gap-2 border-b border-cms-line px-3 py-2 text-ui text-cms-muted">CMS snapshot<select aria-label="CMS preview snapshot" value={previewVersion} disabled={disabled} onChange={event => onPreviewVersion(event.target.value as "published" | "draft")} title="CMS values only. Browser template and design drafts are shown in both views." className="h-6 rounded-cms border border-cms-line bg-cms-bg px-1 text-ui text-cms-text"><option value="published" disabled={!chosenPreview?.liveRoute}>Published{!chosenPreview?.liveRoute ? " (unavailable)" : ""}</option><option value="draft">Saved CMS draft</option></select></label>}
             <div className="shrink-0 border-b border-cms-line p-2">
               <SearchInput ariaLabel="Search picker pages" inputRender={<input ref={searchRef} />} placeholder="Search pages and items…" value={query} onChange={setQuery} />
             </div>
             <div className="min-h-0 overflow-y-auto p-1">
               {showPreviewItems && (!searching || visiblePreviewItems.length > 0 || previewsLoading || previewsError) && <section aria-label="CMS preview items">
-                {previewsLoading ? <p role="status" className="px-2 py-2 text-ui text-cms-muted">Loading items…</p> : previewsError ? <p role="alert" className="px-2 py-2 text-ui text-cms-danger">{previewsError}</p> : visiblePreviewItems.length ? (
+                {previewsLoading ? <p role="status" className="px-2 py-2 text-ui text-cms-muted">Loading items…</p> : previewsError ? <div className="px-2 py-2 text-ui"><p role="alert" className="text-cms-danger">{previewsError}</p><button type="button" className="text-cms-accent" onClick={onRetryPreviews} disabled={disabled}>Try again</button></div> : visiblePreviewItems.length ? (
                   <ul className="space-y-px">
                     {visiblePreviewItems.map((item) => (
                       <li key={item.id}>
@@ -167,7 +174,7 @@ export function PagePicker({
                       </li>
                     ))}
                   </ul>
-                ) : <p className="px-2 py-2 text-ui text-cms-muted">{searching ? "No items match your search." : "No published items."}</p>}
+                ) : <p className="px-2 py-2 text-ui text-cms-muted">{searching ? "No items match your search." : "No CMS items."}</p>}
               </section>}
 
               {showPageLists && <>

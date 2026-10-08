@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import type { CmsDraftPreview } from "@three-acts/cms-schema";
 
 const email = "e2e-designer@example.com";
 const password = "e2e-password";
@@ -724,7 +725,7 @@ test("the canvas page picker previews CMS records and shares editable template c
   await expect(reloadedPanel.getByLabel(/what you get/i)).toHaveValue(editedDetail);
 });
 
-test("content stays selection-only when a CMS template has no published preview items", async ({ page }) => {
+test("content stays selection-only when a CMS template has no preview items", async ({ page }) => {
   await page.route("**/api/cms/collections/products/records**", async (route) => {
     const response = await route.fetch();
     const payload = await response.json() as { data: { records: unknown[]; total: number } };
@@ -734,11 +735,11 @@ test("content stays selection-only when a CMS template has no published preview 
   });
   await signInAndOpenDesigner(page);
   await choosePage(page, "Product template");
-  await expect(page.getByRole("heading", { name: "No published items to preview" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No CMS items to preview" })).toBeVisible();
   await expect(page.locator('iframe[title="Website canvas"]')).toHaveCount(0);
   const picker = await openPagePicker(page);
   await picker.getByRole("button", { name: "Browse collection items", exact: true }).click();
-  await expect(picker.getByText("No published items.", { exact: true })).toBeVisible();
+  await expect(picker.getByText("No CMS items.", { exact: true })).toBeVisible();
   await expect(picker.getByRole("button", { name: /^Preview item / })).toHaveCount(0);
   await page.keyboard.press("Escape");
   const content = page.getByRole("complementary", { name: "Content inspector" });
@@ -1890,4 +1891,213 @@ test("Home media and CMS formatted bodies open the exact source controls", async
   const bodyEditor = await openBoundCmsSource(page, body, "products", "description");
   await expect(bodyEditor.locator('[data-cms-field="description"]')).toContainText("HTML stays literal");
   await expect(bodyEditor.locator('[data-cms-field="description"]').getByRole("textbox")).toBeFocused();
+});
+
+test("unpublished CMS products render a private saved draft without creating a public route", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  await page.getByRole("navigation", { name: "Workspace" }).getByRole("button", { name: "CMS", exact: true }).click();
+  await page.getByRole("complementary", { name: "CMS collections" }).getByRole("button", { name: /^Products / }).click();
+  await page.getByRole("button", { name: "New Product", exact: true }).click();
+  const editor = page.locator('[data-cms-record-editor][data-cms-collection="products"]');
+  await expect(editor).toBeVisible();
+  const id = await editor.getAttribute("data-cms-record-editor");
+  await editor.locator('[data-cms-field="title"]').getByRole("textbox").fill("Unpublished private canvas product");
+  await editor.locator('[data-cms-field="slug"]').getByRole("textbox").fill("unpublished-private-canvas-product");
+  await editor.locator('[data-cms-field="description"]').getByRole("textbox").fill("## Private draft body\n- First item\n- Second item");
+  const saved = page.waitForResponse(response => response.request().method() === "PUT" && new URL(response.url()).pathname.endsWith(`/products/records/${id}`));
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  expect((await saved).ok()).toBe(true);
+  await page.getByRole("navigation", { name: "Workspace" }).getByRole("button", { name: "Designer", exact: true }).click();
+  await choosePage(page, "Product template");
+  await choosePreviewItem(page, "Unpublished private canvas product");
+  const iframe = page.locator('iframe[title="Website canvas"]');
+  await expect(iframe).toHaveAttribute("src", /\/editor-preview\/cms\/\?/);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const title = canvas.locator(`h1[data-cms-item-id="${id}"]`);
+  await expect(title).toHaveText("Unpublished private canvas product");
+  await expect(canvas.locator(`[data-cms-bound="products.description"][data-cms-item-id="${id}"] h2`)).toHaveText("Private draft body");
+  await expect(page.getByLabel("CMS preview snapshot", { exact: true })).toHaveText("Saved CMS draft");
+  await expect(page.getByRole("link", { name: "View site", exact: true })).toHaveCount(0);
+  await expect(canvas.getByRole("button", { name: "Add to cart", exact: true })).toBeDisabled();
+  expect((await page.request.get("http://localhost:5341/shop/unpublished-private-canvas-product")).status()).toBe(404);
+  expect((await page.request.get(`/api/content/collections/products/records/${id}`)).status()).toBe(404);
+  await title.click();
+  await expect(page.getByRole("button", { name: "Edit CMS item", exact: true })).toBeEnabled();
+});
+
+async function chooseCmsSnapshot(page: import("@playwright/test").Page, version: "published" | "draft") {
+  const picker = await openPagePicker(page);
+  await picker.getByRole("combobox", { name: "CMS preview snapshot" }).selectOption(version);
+  await page.keyboard.press("Escape");
+  await expect(picker).toHaveCount(0);
+}
+
+test("saved CMS snapshots refresh after source return while published values and editor preferences remain", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const hero = canvas.locator('[data-static-field="home.hero_section.display_1"]');
+  await hero.click();
+  const originalHero = await page.locator("#selected-text").inputValue();
+  await page.locator("#selected-text").fill("Browser draft survives saved CMS preview");
+  await choosePage(page, "Product template");
+  await choosePreviewItem(page, "Web App (Astro Static Site)");
+  const title = canvas.locator('h1[data-cms-bound="products.title"]');
+  const publishedTitle = await title.textContent();
+  const id = await title.getAttribute("data-cms-item-id");
+  const publicUrl = await page.getByRole("link", { name: "View site", exact: true }).getAttribute("href");
+  await chooseCmsSnapshot(page, "draft");
+  await expect(title).toHaveAttribute("data-cms-item-id", id!);
+  await setLogicalWidth(page, 850);
+  const zoom = page.getByRole("combobox", { name: "Canvas zoom", exact: true });
+  await zoom.selectOption("0.5");
+  const editor = await openBoundCmsSource(page, title, "products", "title");
+  await editor.locator('[data-cms-field="title"]').getByRole("textbox").fill("Saved preview product title");
+  await editor.locator('[data-cms-field="slug"]').getByRole("textbox").fill("saved-preview-new-slug");
+  await editor.locator('[data-cms-field="description"]').getByRole("textbox").fill("## Saved preview body\n- Saved list item");
+  const saved = page.waitForResponse(response => response.request().method() === "PUT" && new URL(response.url()).pathname.endsWith(`/products/records/${id}`));
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  expect((await saved).ok()).toBe(true);
+  await editor.getByRole("button", { name: "Back to canvas" }).click();
+  await expect(title).toHaveText("Saved preview product title");
+  await expect(title).toHaveAttribute("data-editor-selected", "");
+  await expect(canvas.locator(`[data-cms-bound="products.description"][data-cms-item-id="${id}"] h2`)).toHaveText("Saved preview body");
+  await expectLogicalWidth(page, 850);
+  await expect(zoom).toHaveValue("0.5");
+  await expect(page.getByRole("link", { name: "View site", exact: true })).toHaveAttribute("href", publicUrl!);
+  expect((await page.request.get("http://localhost:5341/shop/saved-preview-new-slug")).status()).toBe(404);
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-saved-draft-preview.png", import.meta.url)), fullPage: true });
+  await chooseCmsSnapshot(page, "published");
+  await expect(title).toHaveText(publishedTitle!);
+  await expect(page.locator('iframe[title="Website canvas"]')).toHaveAttribute("src", publicUrl!);
+  await chooseCmsSnapshot(page, "draft");
+  await expect(title).toHaveText("Saved preview product title");
+  const image = canvas.locator(`img[data-cms-bound="products.images.0"][data-cms-item-id="${id}"]`).first();
+  const imageEditor = await openBoundCmsSource(page, image, "products", "images.0", false);
+  const replacementUrl = "http://localhost:5341/content/launch-playbook.png";
+  await page.route("**/api/cms/collections/products/assets/images", route => route.fulfill({ contentType: "application/json", json: { ok: true, data: { path: "preview-test/replacement.png", url: replacementUrl, fileName: "replacement.png", size: 68 } } }));
+  await imageEditor.locator('[data-cms-field="images"]').locator('input[type="file"][id$="-0"]').setInputFiles({ name: "replacement.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aA3sAAAAASUVORK5CYII=", "base64") });
+  await expect(imageEditor.locator('[data-cms-field="images"] img').first()).toHaveAttribute("src", replacementUrl);
+  await imageEditor.locator('[data-cms-field="images"]').getByPlaceholder("Alt text…").first().fill("Saved preview image alt");
+  const imageSaved = page.waitForResponse(response => response.request().method() === "PUT" && new URL(response.url()).pathname.endsWith(`/products/records/${id}`));
+  await imageEditor.getByRole("button", { name: "Save", exact: true }).click();
+  expect((await imageSaved).ok()).toBe(true);
+  await imageEditor.getByRole("button", { name: "Back to canvas" }).click();
+  await expect(image).toHaveAttribute("alt", "Saved preview image alt");
+  await expect(image).toHaveAttribute("src", replacementUrl);
+  await expect.poll(() => image.evaluate(element => (element as HTMLImageElement).currentSrc)).toBe(replacementUrl);
+  await expect(image).toHaveAttribute("data-editor-selected", "");
+  await page.getByRole("button", { name: "Preview mode", exact: true }).click();
+  const category = canvas.locator('[data-cms-bound="product-categories.name"]').first();
+  const categoryId = await category.getAttribute("data-cms-item-id");
+  await category.locator("xpath=ancestor::a[1]").click();
+  await expect(canvas.locator(`:is(h1,h2) [data-cms-bound="product-categories.name"][data-cms-item-id="${categoryId}"]`)).toBeVisible();
+  await expect(page.getByLabel("CMS preview snapshot", { exact: true })).toHaveText("Saved CMS draft");
+  await page.getByRole("button", { name: "Design mode", exact: true }).click();
+  await choosePage(page, "Home");
+  await expect(hero).toHaveText("Browser draft survives saved CMS preview");
+  await page.getByRole("button", { name: "Undo edit", exact: true }).click();
+  await expect(hero).toHaveText(originalHero);
+  await expectLogicalWidth(page, 850);
+  await expect(zoom).toHaveValue("0.5");
+});
+
+test("unpublished and incomplete drafts render in every CMS template family", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const families = [
+    { collection: "articles", template: "Article template", slug: "/blog/", field: "title", label: "Unpublished draft article" },
+    { collection: "authors", template: "Author template", slug: "/authors/", field: "name", label: "Unpublished draft author" },
+    { collection: "product-categories", template: "Product category template", slug: "/shop/category/", field: "name", label: "Unpublished draft shop category" },
+    { collection: "article-categories", template: "Article category template", slug: "/blog/category/", field: "name", label: "Unpublished draft journal category" },
+  ];
+  for (const family of families) {
+    // Fixture creation uses the same authenticated client as the record editor.
+    const id = await page.evaluate(async ({ collection, field, label }) => {
+      const { apiFetch } = await import("/src/lib/api-client.ts");
+      const record = await apiFetch(`/cms/collections/${collection}/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values: { [field]: label, slug: "unpublished-family-fixture" } }) });
+      return record.id as string;
+    }, family);
+    await choosePage(page, family.template);
+    await choosePreviewItem(page, family.label);
+    const canvas = page.frameLocator('iframe[title="Website canvas"]');
+    await expect(canvas.locator(`[data-cms-bound="${family.collection}.${family.field}"][data-cms-item-id="${id}"]`).first()).toHaveText(family.label);
+    expect((await page.request.get(`http://localhost:5341${family.slug}unpublished-family-fixture`)).status()).toBe(404);
+    expect((await page.request.get(`/api/content/collections/${family.collection}/records/${id}`)).status()).toBe(404);
+    const incompleteId = await page.evaluate(async collection => {
+      const { apiFetch } = await import("/src/lib/api-client.ts");
+      const record = await apiFetch(`/cms/collections/${collection}/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values: {} }) });
+      return record.id as string;
+    }, family.collection);
+    // Return from CMS refreshes the catalogue without resetting canvas preferences.
+    await page.getByRole("navigation", { name: "Workspace" }).getByRole("button", { name: "CMS", exact: true }).click();
+    await page.getByRole("navigation", { name: "Workspace" }).getByRole("button", { name: "Designer", exact: true }).click();
+    await choosePreviewItem(page, `Untitled item · ${incompleteId}`);
+    await expect(canvas.getByRole("status")).toContainText("preview placeholders");
+    await expect(canvas.locator(`[data-cms-bound="${family.collection}.${family.field}"][data-cms-item-id="${incompleteId}"]`).first()).toContainText("Untitled");
+    await expect(page.getByRole("link", { name: "View site", exact: true })).toHaveCount(0);
+  }
+});
+
+test("private preview recovers from missing records and a direct shell exposes no draft values", async ({ page, context }) => {
+  await signInAndOpenDesigner(page);
+  await choosePage(page, "Product template");
+  await choosePreviewItem(page, "Web App (Astro Static Site)");
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const title = canvas.locator('h1[data-cms-bound="products.title"]');
+  const id = await title.getAttribute("data-cms-item-id");
+  await page.route(`**/api/cms/collections/products/records/${id}`, route => route.fulfill({ status: 404, contentType: "application/json", json: { ok: false, error: { code: "record_not_found", message: "The selected draft was removed." } } }));
+  await chooseCmsSnapshot(page, "draft");
+  await expect(canvas.getByRole("alert")).toContainText("The selected draft was removed");
+  await page.unroute(`**/api/cms/collections/products/records/${id}`);
+  await canvas.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(title).toBeVisible();
+  await expect(title).toHaveAttribute("data-cms-item-id", id!);
+  const shell = await context.newPage();
+  await shell.goto((await page.locator('iframe[title="Website canvas"]').getAttribute("src"))!);
+  await expect(shell.getByText("Open saved CMS drafts from the authenticated designer.")).toBeVisible();
+  await expect(shell.locator('[data-cms-item-id]')).toHaveCount(0);
+  await shell.close();
+  await page.getByRole("button", { name: `Sign out ${email}`, exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Back of house." })).toBeVisible();
+  await expect(page.locator('iframe[title="Website canvas"]')).toHaveCount(0);
+});
+
+test("private preview rejects sibling, foreign-origin, wrong-session and stale packets", async ({ page }) => {
+  await page.addInitScript(() => {
+    const state = window as unknown as { __testCmsPackets: CmsDraftPreview[] };
+    state.__testCmsPackets = [];
+    window.addEventListener("message", event => {
+      if (event.data?.type === "three-acts:cms-preview") state.__testCmsPackets.push(event.data.preview);
+    });
+  });
+  await signInAndOpenDesigner(page);
+  await choosePage(page, "Product template");
+  await choosePreviewItem(page, "Web App (Astro Static Site)");
+  await chooseCmsSnapshot(page, "draft");
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const title = canvas.locator('h1[data-cms-bound="products.title"]');
+  await expect(title).toBeVisible();
+  const expected = await title.textContent();
+  const packet = await canvas.locator("body").evaluate(() => (window as unknown as { __testCmsPackets: CmsDraftPreview[] }).__testCmsPackets.at(-1)!);
+  expect(packet).toBeTruthy();
+  const forged = structuredClone(packet);
+  forged.sequence += 100;
+  forged.collections.products.find(record => record.id === forged.recordId)!.values.title = "Forged preview title";
+  // A message sent from the website itself has the wrong origin and source.
+  await canvas.locator("body").evaluate((_body, preview) => window.postMessage({ type: "three-acts:cms-preview", preview }, window.location.origin), forged);
+  // A CMS-origin sibling still cannot impersonate the selected frame's parent.
+  await page.evaluate(preview => {
+    const target = (document.querySelector('iframe[title="Website canvas"]') as HTMLIFrameElement).contentWindow!;
+    const sibling = document.createElement("iframe"); document.body.append(sibling);
+    sibling.contentWindow!.eval("window.sendPreview = (target, packet) => target.postMessage(packet, 'http://localhost:5341')");
+    (sibling.contentWindow as unknown as { sendPreview: (target: Window, packet: unknown) => void }).sendPreview(target, { type: "three-acts:cms-preview", preview });
+    sibling.remove();
+  }, forged);
+  await page.evaluate(preview => {
+    const target = (document.querySelector('iframe[title="Website canvas"]') as HTMLIFrameElement).contentWindow!;
+    target.postMessage({ type: "three-acts:cms-preview", preview: { ...preview, session: "different-preview-session" } }, "http://localhost:5341");
+    target.postMessage({ type: "three-acts:cms-preview", preview: { ...preview, sequence: preview.sequence - 100 } }, "http://localhost:5341");
+  }, forged);
+  await expect.poll(() => canvas.locator("body").evaluate(() => (window as unknown as { __testCmsPackets: CmsDraftPreview[] }).__testCmsPackets.length)).toBeGreaterThanOrEqual(5);
+  await expect(title).toHaveText(expected!);
+  await expect(canvas.getByText("Forged preview title", { exact: true })).toHaveCount(0);
 });

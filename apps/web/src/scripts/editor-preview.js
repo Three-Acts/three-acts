@@ -31,66 +31,77 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       return /^\[[^/]+\]$/.test(part) ? Boolean(pathPart) : part === pathPart;
     });
   }
-  const relevant = [...documents.filter(doc => doc.id !== 'shared' && doc.id !== 'design' && routeMatches(doc.route, route)), ...documents.filter(doc => doc.id === 'shared')];
+  let previewCollection = null;
+  let latestPreviewDocuments = null;
+  let cmsRendering = false;
+  let cmsSelectionAnchor = null;
   function add(id, path, element, node, attribute) {
     const key = `${id}.${path}`;
     const list = bindings.get(key) || [];
     if (!list.some(binding => binding.node === node && binding.attribute === attribute)) list.push({element, node, attribute});
     bindings.set(key, list);
   }
-  document.querySelectorAll('[data-static-field]').forEach(element => {
-    if (element.closest('[data-cms-bound]')) return;
-    const [id, ...path] = element.dataset.staticField.split('.');
-    add(id, path.join('.'), element, element, element.dataset.staticAttribute || (element.dataset.staticFormat === 'prose' ? 'prose' : null));
-  });
-  // Media object markers bind alt independently of its current value, including
-  // empty alt. Never infer alt from matching text elsewhere on the page.
-  document.querySelectorAll('img[data-static-media]').forEach(element => {
-    if (element.closest('[data-cms-bound]')) return;
-    const [id, ...path] = element.dataset.staticMedia.split('.');
-    const mediaPath = path.join('.');
-    const media = path.reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, definitions.get(id)?.content);
-    if (!media || typeof media.src !== 'string' || typeof media.alt !== 'string') return;
-    add(id, `${mediaPath}.src`, element, element, 'src');
-    add(id, `${mediaPath}.alt`, element, element, 'alt');
-  });
-  // Bind structured titles, body paragraphs, array items and navigation labels
-  // without changing the layout component's public prop contracts.
-  const lookup = new Map();
-  for (const doc of relevant) for (const field of fields(doc.content)) {
-    if (typeof field.value !== 'string' || !field.value.trim()) continue;
-    const text = normalize(resolve(field.value));
-    if (!lookup.has(text)) lookup.set(text, {id: doc.id, path: field.path});
-    else lookup.set(text, null);
-  }
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  let node;
-  while ((node = walker.nextNode())) {
-    const element = node.parentElement;
-    if (!element || element.closest('script,style,[data-static-field],[data-cms-bound]')) continue;
-    const match = lookup.get(normalize(node.textContent));
-    if (match) add(match.id, match.path, element, node, null);
-  }
-  // Prose splits body fields into paragraphs and lists. Bind the container so
-  // the whole plain-text field stays selectable and edits retain paragraph order.
-  for (const doc of relevant) for (const field of fields(doc.content)) {
-    if (typeof field.value !== 'string' || !field.value.includes('\n')) continue;
-    const firstParagraph = normalize(resolve(field.value).split('\n\n')[0]);
-    for (const element of document.querySelectorAll('p')) {
-      if (!element.closest('[data-cms-bound]') && normalize(element.textContent) === firstParagraph && element.parentElement?.children.length > 1) {
-        add(doc.id, field.path, element.parentElement, element.parentElement, 'prose');
+  function scanBindings(collectionId = previewCollection) {
+    previewCollection = collectionId;
+    bindings.clear();
+    const currentDocuments = [...definitions.values()];
+    const relevant = [...currentDocuments.filter(doc => doc.id !== 'shared' && doc.id !== 'design' && (previewCollection ? doc.collectionId === previewCollection : routeMatches(doc.route, route))), ...currentDocuments.filter(doc => doc.id === 'shared')];
+    document.querySelectorAll('[data-static-field]').forEach(element => {
+      if (element.closest('[data-cms-bound]')) return;
+      const [id, ...path] = element.dataset.staticField.split('.');
+      add(id, path.join('.'), element, element, element.dataset.staticAttribute || (element.dataset.staticFormat === 'prose' ? 'prose' : null));
+    });
+    // Media object markers bind alt independently of its current value, including
+    // empty alt. Never infer alt from matching text elsewhere on the page.
+    document.querySelectorAll('img[data-static-media]').forEach(element => {
+      if (element.closest('[data-cms-bound]')) return;
+      const [id, ...path] = element.dataset.staticMedia.split('.');
+      const mediaPath = path.join('.');
+      const media = path.reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, definitions.get(id)?.content);
+      if (!media || typeof media.src !== 'string' || typeof media.alt !== 'string') return;
+      add(id, `${mediaPath}.src`, element, element, 'src');
+      add(id, `${mediaPath}.alt`, element, element, 'alt');
+    });
+    // Bind structured titles, body paragraphs, array items and navigation labels
+    // without changing the layout component's public prop contracts.
+    const lookup = new Map();
+    for (const doc of relevant) for (const field of fields(doc.content)) {
+      if (typeof field.value !== 'string' || !field.value.trim()) continue;
+      const text = normalize(resolve(field.value));
+      if (!lookup.has(text)) lookup.set(text, {id: doc.id, path: field.path});
+      else lookup.set(text, null);
+    }
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const element = node.parentElement;
+      if (!element || element.closest('script,style,[data-static-field],[data-cms-bound]')) continue;
+      const match = lookup.get(normalize(node.textContent));
+      if (match) add(match.id, match.path, element, node, null);
+    }
+    // Prose splits body fields into paragraphs and lists. Bind the container so
+    // the whole plain-text field stays selectable and edits retain paragraph order.
+    for (const doc of relevant) for (const field of fields(doc.content)) {
+      if (typeof field.value !== 'string' || !field.value.includes('\n')) continue;
+      const firstParagraph = normalize(resolve(field.value).split('\n\n')[0]);
+      for (const element of document.querySelectorAll('p')) {
+        if (!element.closest('[data-cms-bound]') && normalize(element.textContent) === firstParagraph && element.parentElement?.children.length > 1) {
+          add(doc.id, field.path, element.parentElement, element.parentElement, 'prose');
+        }
       }
     }
+    for (const element of document.querySelectorAll('a[href],img[src]')) {
+      const attribute = element.tagName === 'A' ? 'href' : 'src';
+      if (element.closest('[data-cms-bound]') || element.hasAttribute('data-static-media')) continue;
+      const value = element.getAttribute(attribute);
+      const matches = relevant.flatMap(doc => fields(doc.content).map(field => ({id: doc.id, ...field}))).filter(field => field.value === value && /^(href|src)(_|$)/.test(field.path.split('.').at(-1)));
+      const match = matches.length === 1 ? matches[0] : null;
+      if (match) add(match.id, match.path, element, element, attribute);
+    }
   }
-  for (const element of document.querySelectorAll('a[href],img[src]')) {
-    const attribute = element.tagName === 'A' ? 'href' : 'src';
-    if (element.closest('[data-cms-bound]') || element.hasAttribute('data-static-media')) continue;
-    const value = element.getAttribute(attribute);
-    const matches = relevant.flatMap(doc => fields(doc.content).map(field => ({id: doc.id, ...field}))).filter(field => field.value === value && /^(href|src)(_|$)/.test(field.path.split('.').at(-1)));
-    const match = matches.length === 1 ? matches[0] : null;
-    if (match) add(match.id, match.path, element, element, attribute);
-  }
-  function send(data) { window.parent.postMessage(data, origin); }
+  scanBindings();
+  const frameSession = new URLSearchParams(window.location.search).get('session') || undefined;
+  function send(data) { window.parent.postMessage({...data, ...(frameSession ? {session:frameSession} : {})}, origin); }
   function humanize(value) {
     return String(value || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, char => char.toUpperCase());
   }
@@ -334,6 +345,8 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     if (!element || !element.isConnected) return;
     outline.reveal(element);
     selectedCandidate = describe(element);
+    const source = selectedCandidate.cmsSource;
+    cmsSelectionAnchor = source ? { source, tag:element.tagName, ordinal:Math.max(0, cmsTargets(source, element.tagName).indexOf(element)) } : null;
     buildTree();
     drawOverlay(selectedCandidate);
     element.setAttribute('data-editor-selected','');
@@ -416,6 +429,69 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       else source.removeAttribute('srcset');
     }
   }
+  function applyPreviewContent(previewDocuments) {
+      Object.assign(brand, previewDocuments.find(doc => doc.id === 'shared')?.content.site ?? {});
+      for (const doc of previewDocuments) {
+        if (!definitions.has(doc.id)) continue;
+        definitions.set(doc.id, {...definitions.get(doc.id), content:doc.content});
+        for (const field of fields(doc.content)) for (const binding of bindings.get(`${doc.id}.${field.path}`) || []) {
+          if (binding.element.isContentEditable) continue;
+          if (binding.attribute === 'prose') {
+            renderProse(binding.node, String(resolve(field.value)));
+          } else if (binding.attribute) {
+            const value = String(resolve(field.value));
+            const safeUrl = value === '' || (binding.attribute === 'src' ? isSafeMediaUrl(value) : isSafeContentUrl(value));
+            if (binding.attribute === 'href' || binding.attribute === 'src') {
+              if (safeUrl) {
+                if (binding.attribute === 'src' && binding.element.tagName === 'IMG') updateImageSource(binding.element, value);
+                if (value) binding.element.setAttribute(binding.attribute, value);
+                else binding.element.removeAttribute(binding.attribute);
+              }
+            } else if (inspectableAttributes.includes(binding.attribute)) binding.element.setAttribute(binding.attribute, value);
+          } else {
+            // A text marker on a container must never flatten its child elements.
+            if (binding.node === binding.element && binding.element.childElementCount) continue;
+            if (!binding.node.isConnected && binding.element.isConnected) binding.node = binding.element;
+            binding.node.textContent = String(resolve(field.value));
+          }
+        }
+      }
+  }
+  function cmsTargets(source, tag) {
+    const matches = [];
+    const seen = new Set();
+    for (const root of document.querySelectorAll('[data-cms-bound]')) {
+      const current = describe(root).cmsSource;
+      if (!current || current.collectionId !== source.collectionId || current.recordId !== source.recordId || current.field !== source.field) continue;
+      for (const candidate of [root, ...root.querySelectorAll(tag)]) {
+        if (candidate.tagName !== tag || seen.has(candidate)) continue;
+        const own = describe(candidate).cmsSource;
+        if (own?.collectionId === source.collectionId && own.recordId === source.recordId && own.field === source.field) { seen.add(candidate); matches.push(candidate); }
+      }
+    }
+    return matches;
+  }
+  document.addEventListener('three-acts:cms-rendering', () => { cmsRendering = true; });
+  document.addEventListener('three-acts:cms-rendered', event => {
+    const collectionId = event.detail?.collectionId;
+    if (!['products', 'articles', 'authors', 'product-categories', 'article-categories'].includes(collectionId)) return;
+    cmsRendering = false;
+    scanBindings(collectionId);
+    if (!active) return;
+    renderDesign(design);
+    if (latestPreviewDocuments) applyPreviewContent(latestPreviewDocuments);
+    if (cmsSelectionAnchor && !selectedCandidate?.element?.isConnected) {
+      const matches = cmsTargets(cmsSelectionAnchor.source, cmsSelectionAnchor.tag);
+      const source = cmsSelectionAnchor.source;
+      const container = Array.from(document.querySelectorAll('[data-cms-bound]')).find(element => {
+        const own = describe(element).cmsSource;
+        return own?.collectionId === source.collectionId && own.recordId === source.recordId && own.field === source.field;
+      });
+      const restored = matches[Math.min(cmsSelectionAnchor.ordinal, matches.length - 1)] || container;
+      if (restored) publishSelection(restored);
+    }
+    refreshOutline();
+  });
   function validSelector(selector) {
     if (typeof selector !== 'string' || selector.length > 500) return null;
     const identified = outline.resolveSelector(selector);
@@ -435,6 +511,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     buildTree();
     document.addEventListener('click', event => {
       const initialTarget = event.target?.nodeType === Node.TEXT_NODE ? event.target.parentElement : event.target;
+      if (initialTarget instanceof Element && initialTarget.closest('[data-three-acts-editor-ui]')) return;
       if (activeEditor && initialTarget instanceof Node && (initialTarget === activeEditor.target || activeEditor.target.contains(initialTarget))) return;
       if (mode === 'preview') {
         const target = initialTarget;
@@ -557,6 +634,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
         return;
       }
       if (event.key !== 'Escape' || mode !== 'design' || document.activeElement?.isContentEditable) return;
+      cmsSelectionAnchor = null;
       selectedCandidate = null;
       outline.restore();
       buildTree();
@@ -569,7 +647,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     new MutationObserver(records => {
       if (records.every(record => record.target instanceof Element && !safeElement(record.target))) return;
       if (outlineFrame) cancelAnimationFrame(outlineFrame);
-      outlineFrame = requestAnimationFrame(() => { outlineFrame = 0; if (!activeEditor) refreshOutline(); });
+      outlineFrame = requestAnimationFrame(() => { outlineFrame = 0; if (!activeEditor && !cmsRendering) refreshOutline(); });
     }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'open', 'aria-hidden'] });
     window.addEventListener('scroll', () => drawOverlay(hoverCandidate || selectedCandidate), true);
     let resizeFrame = 0;
@@ -584,6 +662,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
   }
     window.addEventListener('message', event => {
     if (event.source !== window.parent || event.origin !== origin || !event.data || typeof event.data !== 'object') return;
+    if (frameSession ? event.data.session !== frameSession : event.data.session !== undefined) return;
     if (event.data.type === 'three-acts:mode' && ['design','preview','locked'].includes(event.data.mode)) {
       const nextMode = event.data.mode;
       if (activeEditor && nextMode !== mode) activeEditor.finish(nextMode === 'preview' && mode === 'design');
@@ -595,6 +674,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       return;
     }
     if (event.data.type === 'three-acts:clear-selection') {
+      cmsSelectionAnchor = null;
       editingComponent = null;
       selectedCandidate = null;
       outline.restore();
@@ -631,32 +711,8 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       activate();
       const nextDesign = event.data.documents.find(doc => doc.id === 'design');
       if (nextDesign) { try { renderDesign(nextDesign.content); } catch { return; } }
-      Object.assign(brand, event.data.documents.find(doc => doc.id === 'shared')?.content.site ?? {});
-      for (const doc of event.data.documents) {
-        if (!definitions.has(doc.id)) continue;
-        definitions.set(doc.id, {...definitions.get(doc.id), content:doc.content});
-        for (const field of fields(doc.content)) for (const binding of bindings.get(`${doc.id}.${field.path}`) || []) {
-          if (binding.element.isContentEditable) continue;
-          if (binding.attribute === 'prose') {
-            renderProse(binding.node, String(resolve(field.value)));
-          } else if (binding.attribute) {
-            const value = String(resolve(field.value));
-            const safeUrl = value === '' || (binding.attribute === 'src' ? isSafeMediaUrl(value) : isSafeContentUrl(value));
-            if (binding.attribute === 'href' || binding.attribute === 'src') {
-              if (safeUrl) {
-                if (binding.attribute === 'src' && binding.element.tagName === 'IMG') updateImageSource(binding.element, value);
-                if (value) binding.element.setAttribute(binding.attribute, value);
-                else binding.element.removeAttribute(binding.attribute);
-              }
-            } else if (inspectableAttributes.includes(binding.attribute)) binding.element.setAttribute(binding.attribute, value);
-          } else {
-            // A text marker on a container must never flatten its child elements.
-            if (binding.node === binding.element && binding.element.childElementCount) continue;
-            if (!binding.node.isConnected && binding.element.isConnected) binding.node = binding.element;
-            binding.node.textContent = String(resolve(field.value));
-          }
-        }
-      }
+      latestPreviewDocuments = event.data.documents;
+      applyPreviewContent(event.data.documents);
       buildTree();
       drawOverlay(hoverCandidate || selectedCandidate);
       if (selectedCandidate?.element?.isConnected) send({type:'three-acts:selection', ...selectionFor(selectedCandidate.element)});
