@@ -1,5 +1,5 @@
 import { applyStyle, componentBaseClass, componentDefinitions, designCss, emptyDesign, resolveProperties, validateDesign } from "@three-acts/design";
-import { cn } from "@three-acts/utils";
+import { cn, historyShortcut } from "@three-acts/utils";
 
 /* Enabled explicitly by the web app, and activated only by the configured editor origin. */
 (() => {
@@ -355,7 +355,8 @@ import { cn } from "@three-acts/utils";
     overlay.style.top = `${rect.top}px`;
     overlay.style.width = `${rect.width}px`;
     overlay.style.height = `${rect.height}px`;
-    overlay.dataset.label = candidate.label;
+    const affordance = candidate.category === 'component' ? 'Properties' : isSafeEditable(candidate.element, candidate.binding) ? 'Edit text' : elementAttributes(candidate.element, candidate.category === 'cms').some(attribute => attribute.binding) ? candidate.element.tagName === 'IMG' ? 'Edit image' : 'Edit attributes' : '';
+    overlay.dataset.label = candidate.label + (affordance ? ` · ${affordance}` : '');
     overlay.dataset.category = candidate.category;
   }
   function clearHover() {
@@ -528,6 +529,12 @@ import { cn } from "@three-acts/utils";
       target.addEventListener('blur', finish);
     }, true);
     document.addEventListener('keydown', event => {
+      const command = historyShortcut(event);
+      if (command && mode === 'design' && !(event.target instanceof Element && event.target.closest('input,textarea,[contenteditable]'))) {
+        event.preventDefault();
+        send({type:'three-acts:history', command});
+        return;
+      }
       if (event.key !== 'Escape' || mode !== 'design' || document.activeElement?.isContentEditable) return;
       selectedCandidate = null;
       document.querySelectorAll('[data-editor-selected]').forEach(element => element.removeAttribute('data-editor-selected'));
