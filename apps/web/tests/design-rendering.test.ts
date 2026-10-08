@@ -1,3 +1,6 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createElement } from "react";
@@ -30,4 +33,21 @@ test("static rendering consumes saved utility, component instance and shared par
     assert.match(grid, /landscape:grid-cols-2/);
     assert.doesNotMatch(grid, /desktop:grid-cols-4/);
   } finally { Object.assign(source, original as unknown as DesignDocument); }
+});
+
+test("authored element identities cannot collide across independent source files", () => {
+  const owners = new Map<string, string>();
+  for (const folder of ["../src/views", "../src/components/home"]) {
+    const root = fileURLToPath(new URL(folder, import.meta.url));
+    for (const name of readdirSync(root, { recursive: true })) {
+      if (typeof name !== "string" || !name.endsWith(".tsx")) continue;
+      const path = join(root, name);
+      const markup = readFileSync(path, "utf8");
+      for (const [, id] of markup.matchAll(/data-editor-id="(source\.[^"]+)"/g)) {
+        assert.ok(!owners.has(id) || owners.get(id) === path, `${id} belongs to both ${owners.get(id)} and ${path}`);
+        owners.set(id, path);
+      }
+    }
+  }
+  assert.ok(owners.size > 100, "source registration check must cover real page elements");
 });
