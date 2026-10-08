@@ -1,6 +1,7 @@
+import { validateAdditions, type AddedElement } from "./additions";
+export { additionLocation, insertAddition, moveAddition, removeAddition, basicElements, insertableComponents, validateAdditions, type AddedElement } from "./additions";
 import { cn, cv } from "@three-acts/utils";
 import utilities from "./utilities.json";
-import candidates from "./utility-candidates.json";
 import { buttonConfig, gridConfig } from "./components";
 export type ButtonVariant = keyof typeof buttonConfig.variants.variant;
 export type ButtonSize = keyof typeof buttonConfig.variants.size;
@@ -47,9 +48,68 @@ export type DesignDocument = {
   components: Record<string, { parts: Record<string, StyleChange> }>;
   instances: Record<string, { component: string; props: Record<string, string> }>;
   customCss: Record<string, Record<string, string>>;
+  additions?: Record<string, AddedElement[]>;
 };
 export const emptyDesign = (): DesignDocument => ({ version: 1, elements: {}, components: {}, instances: {}, customCss: {} });
-const candidateSet = new Set(candidates);
+/** Tailwind's dynamic grammar, including arbitrary CSS values/properties.
+ * Values are compiled by Tailwind; this boundary excludes markup/rule escapes. */
+export function validateUtility(value: unknown): string {
+  if (typeof value !== "string" || !value || value.length > 500 || /[\s;{}<>\\]|\/\*|\*\/|javascript|expression\s*\(|url\s*\(/i.test(value)) throw new Error("Use a valid Tailwind utility or arbitrary value.");
+  let depth = 0;
+  for (const character of value) {
+    if (character === "[") depth++;
+    if (character === "]") depth--;
+    if (depth < 0) throw new Error("Unbalanced Tailwind arbitrary value.");
+  }
+  if (depth !== 0) throw new Error("Unbalanced Tailwind arbitrary value.");
+  return value;
+}
+export const utilityPrefixes: Record<UtilityProperty, string> = {
+  paddingTop: "pt", paddingRight: "pr", paddingBottom: "pb", paddingLeft: "pl",
+  marginTop: "mt", marginRight: "mr", marginBottom: "mb", marginLeft: "ml", display: "display",
+  flexDirection: "flex-direction", alignItems: "align-items", justifyContent: "justify-content", gap: "gap",
+  width: "w", height: "h", maxWidth: "max-w", fontSize: "text", fontWeight: "font", textAlign: "text-align",
+  color: "color", backgroundColor: "bg", borderRadius: "rounded"
+};
+export function propertyUtility(property: UtilityProperty, value: string): string {
+  const raw = value.trim();
+  if (!raw) return "";
+  if ((utilityControls[property].classes as string[]).includes(raw)) return raw;
+  if (utilityScope(raw) === "" && utilityProperty(raw) === property) return validateUtility(raw);
+  const named = property === "color" ? `text-${raw}` : property === "backgroundColor" ? `bg-${raw}` : "";
+  if (named && (utilityControls[property].classes as string[]).includes(named)) return named;
+  const prefix = utilityPrefixes[property];
+  if (property === "fontSize") return validateUtility(`text-[length:${/^\d+(?:\.\d+)?$/.test(raw) ? raw + "px" : raw.replaceAll(" ", "_")}]`);
+  if (property === "borderRadius" && /^\d+(?:\.\d+)?$/.test(raw)) return validateUtility(`rounded-[${raw}px]`);
+  if (["display", "flex-direction", "align-items", "justify-content", "text-align", "color"].includes(prefix)) return validateUtility(`[${prefix}:${raw.replaceAll(" ", "_")}]`);
+  if (/^-?\d+(?:\.\d+)?$/.test(raw) && !["fontSize", "fontWeight", "borderRadius"].includes(property)) return validateUtility(`${raw.startsWith("-") ? "-" : ""}${prefix}-${raw.replace(/^-/, "")}`);
+  return validateUtility(`${prefix}-[${raw.replaceAll(" ", "_")}]`);
+}
+export function utilityProperty(value: string): UtilityProperty | null {
+  const utility = value.slice(utilityScope(value).length).replace(/^!|!$/g, "");
+  for (const [property, control] of Object.entries(utilityControls)) {
+    if ((control.classes as string[]).includes(utility)) return property as UtilityProperty;
+    const prefix = utilityPrefixes[property as UtilityProperty];
+    const cssProperty = property.replace(/[A-Z]/g, letter => "-" + letter.toLowerCase());
+    if (utility.startsWith(`[${prefix}:`) || utility.startsWith(`[${cssProperty}:`)) return property as UtilityProperty;
+    if (/^(?:pt|pr|pb|pl|mt|mr|mb|ml|gap|w|h|max-w|rounded)-/.test(utility.replace(/^-/, "")) && utility.replace(/^-/, "").startsWith(prefix + "-")) return property as UtilityProperty;
+    if (property === "fontSize" && /^text-\[(?:length:|\d|calc\(|clamp\(|var\(--text)/.test(utility)) return "fontSize";
+    if (property === "fontSize" && /^text-(?:xs|sm|base|lg|xl|\d+xl)$/.test(utility)) return "fontSize";
+    if (property === "fontWeight" && /^font-(?:thin|extralight|light|normal|medium|semibold|bold|extrabold|black|\d|\[(?!family-name:|family:))/.test(utility)) return "fontWeight";
+    if (property === "backgroundColor" && utility.startsWith("bg-") && !/^bg-(?:none$|(?:linear|radial|conic|gradient|clip|origin|repeat)-|(?:cover|contain|auto|fixed|local|scroll|center|top|bottom|left|right)$|\[(?:image|url|length|position):)/.test(utility)) return "backgroundColor";
+    if (property === "color" && (/^text-\[(?:color:|#)/.test(utility) || /^text-(?!\[|(?:left|right|center|justify|start|end|ellipsis|clip|wrap|nowrap|balance|pretty)$)/.test(utility))) return "color";
+  }
+  return null;
+}
+export function utilityScope(value: string): string {
+  let depth = 0, boundary = -1;
+  for (let index = 0; index < value.length; index++) {
+    if (value[index] === "[") depth++;
+    else if (value[index] === "]") depth--;
+    else if (value[index] === ":" && depth === 0) boundary = index;
+  }
+  return value.slice(0, boundary + 1);
+}
 const identifier = /^[a-zA-Z][a-zA-Z0-9_.:-]{0,179}$/;
 const forbiddenKeys = new Set(["__proto__", "constructor", "prototype"]);
 const cssSelector = /^\.[a-zA-Z][a-zA-Z0-9_-]{0,79}(?::(?:hover|focus|focus-visible|active))?$/;
@@ -64,7 +124,8 @@ function keys(value: Record<string, unknown>, allowed: string[], name: string) {
 }
 function style(value: unknown): StyleChange {
   const entry = object(value, "Style"); keys(entry, ["utilities", "customClasses"], "Style");
-  if (!Array.isArray(entry.utilities) || entry.utilities.length > 100 || entry.utilities.some(c => typeof c !== "string" || !candidateSet.has(c))) throw new Error("Choose a supported Tailwind utility.");
+  if (!Array.isArray(entry.utilities) || entry.utilities.length > 100) throw new Error("Choose at most 100 Tailwind utilities.");
+  entry.utilities.forEach(validateUtility);
   if (!Array.isArray(entry.customClasses) || entry.customClasses.length > 20 || entry.customClasses.some(c => typeof c !== "string" || !cssSelector.test(`.${c}`) || c.includes(":"))) throw new Error("Use a simple custom class name.");
   return { utilities: cn(...entry.utilities).split(/\s+/).filter(Boolean), customClasses: [...new Set(entry.customClasses)] };
 }
@@ -91,7 +152,7 @@ export function parseDeclarations(text: string): Record<string, string> {
   return validateDeclarations(result);
 }
 export function validateDesign(input: unknown): DesignDocument {
-  const doc = object(input, "Design"); keys(doc, ["version", "elements", "components", "instances", "customCss"], "Design");
+  const doc = object(input, "Design"); keys(doc, ["version", "elements", "components", "instances", "customCss", "additions"], "Design");
   if (doc.version !== 1) throw new Error("Unsupported design document version.");
   const next = emptyDesign();
   for (const [id, entry] of Object.entries(object(doc.elements, "Elements"))) {
@@ -123,6 +184,7 @@ export function validateDesign(input: unknown): DesignDocument {
     if (!cssSelector.test(selector)) throw new Error("Use a class selector, optionally with :hover, :focus, :focus-visible or :active.");
     next.customCss[selector] = validateDeclarations(value);
   }
+  if (doc.additions !== undefined) next.additions = validateAdditions(doc.additions);
   if (JSON.stringify(next).length > 100000) throw new Error("Design document is too large.");
   return next;
 }
@@ -137,11 +199,18 @@ export function componentBaseClass(name: string, props: Record<string, string>):
   return cn(componentStylers[name]?.(props) ?? "");
 }
 export function applyStyle(base: string, change?: StyleChange): string {
-  return cn(base, ...(change?.utilities ?? []), ...(change?.customClasses ?? []));
+  const properties = new Set((change?.utilities ?? []).flatMap(utility => {
+    const property = utilityProperty(utility);
+    return property ? [utilityScope(utility) + property] : [];
+  }));
+  const inherited = base.split(/\s+/).filter(utility => {
+    const property = utilityProperty(utility);
+    return !property || !properties.has(utilityScope(utility) + property);
+  });
+  return cn(...inherited, ...(change?.utilities ?? []), ...(change?.customClasses ?? []));
 }
 export function setUtility(change: StyleChange, property: UtilityProperty, breakpoint: Breakpoint, utility: string): StyleChange {
   const prefix = breakpoint === "base" ? "" : `${breakpoint}:`;
-  const options = new Set(utilityControls[property].classes.map(c => prefix+c));
-  const remaining = change.utilities.filter(c => !options.has(c));
+  const remaining = change.utilities.filter(c => !(utilityScope(c) === prefix && utilityProperty(c) === property));
   return { ...change, utilities: utility ? cn(...remaining, prefix+utility).split(/\s+/).filter(Boolean) : remaining };
 }

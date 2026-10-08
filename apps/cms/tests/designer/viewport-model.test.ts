@@ -22,10 +22,21 @@ test("Fit and manual zoom reserve the grip without subtracting pixels from the s
   assert.equal(canvasGeometry(1280, 0.5, 972, 900).visualWidth, 640);
   assert.equal(readCanvasZoom("fit"), "fit");
   assert.equal(readCanvasZoom("0.5"), 0.5);
-  for (const value of ["", "0", "3", "NaN", "Infinity"]) assert.equal(readCanvasZoom(value), null);
+  for (const value of ["", "0", "0.1", "3", "NaN", "Infinity"]) assert.equal(readCanvasZoom(value), null);
 });
 test("physical drag distances produce logical widths at any visual scale and clamp at bounds", () => {
-  assert.equal(resizedViewportWidth(768, 75, 0.75), 868);
+  assert.equal(resizedViewportWidth(768, 75, 0.75), 968);
   assert.equal(resizedViewportWidth(390, -40, 0.5), 320);
   assert.equal(resizedViewportWidth(3800, 100, 2), 3840);
+});
+
+test("zoom preserves logical height and canvas centering across fitted and overflowing widths", () => {
+  const base = canvasGeometry(1280, 1, 972, 900);
+  for (const zoom of [0.25, 0.5, 1, 2] as const) {
+    const geometry = canvasGeometry(1280, zoom, 972, 900);
+    assert.equal(geometry.logicalHeight, base.logicalHeight);
+    assert.equal(geometry.marginLeft - geometry.scrollLeft + geometry.visualWidth / 2, 480);
+    assert.equal(geometry.visualHeight, 900 * zoom);
+  }
+  assert.equal(canvasGeometry(3840, "fit", 500, 900).scale, 0.25);
 });

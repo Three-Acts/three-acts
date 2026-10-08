@@ -6,7 +6,7 @@ import { useCmsDraftPreview } from "./use-cms-draft-preview";
 import { resolveCmsDraftRoute } from "./cms-draft-preview";
 import { CmsSourceInspector } from "./cms-source-inspector";
 import { isCanvasSelection, readCanvasNodes, readCanvasTreeStatus } from "./canvas-contract";
-import { componentDefinitions, emptyDesign, validateDesign, type Breakpoint, type DesignDocument, type StyleChange } from "@three-acts/design";
+import { additionLocation, insertAddition, moveAddition, removeAddition, componentDefinitions, emptyDesign, validateDesign, type Breakpoint, type DesignDocument, type StyleChange } from "@three-acts/design";
 import { historyShortcut, type HistoryCommand } from "@three-acts/utils";
 import { useDraftHistory } from "./use-draft-history";
 import type { HistoryEdit } from "./history";
@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowUpRight, CheckCircle2, Eye, File, GitBranch, Globe, Info, Layers, MousePointer2, RefreshCw, Settings, SlidersHorizontal, Type, Undo2, Redo2, RotateCcw, X } from "lucide-react";
 import { contentFields, validateContent, defaultLayout, duplicateSection, insertSection, moveSection, homeSections, layoutLimits, layoutSources, readLayoutSource, validateLayout, type HomeCopy, type HomeSectionType, type LayoutDocument, type ContentField, type ContentObject, type EditorChange, type EditorDocument, type EditorPushResult, type EditorWorkspace } from "@three-acts/static-content";
-import { InsertSection, SectionActions } from "./composition-controls";
+import { AddedElementActions, InsertElement, SectionActions } from "./composition-controls";
 import { copySectionDesign } from "./composition-model";
 import { reconcilePublication, type PublicationSource } from "./publication-source";
 import type { PublicationStatus } from "../../hooks/use-publication";
@@ -83,7 +83,14 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   const [canvasNodes, setCanvasNodes] = useState<CanvasNode[]>([]);
   const [treeStatus, setTreeStatus] = useState<CanvasTreeStatus | null>(null);
   const [leftPanel, setLeftPanel] = useState<"pages" | "navigator">("navigator");
-  const [rightPanel, setRightPanel] = useState<"content" | "style">("style");
+  const inspectorKey = `three-acts:editor:inspector:v1:${user.id}`;
+  const [rightPanel, setRightPanel] = useState<"content" | "style">(() => {
+    try { return localStorage.getItem(inspectorKey) === "content" ? "content" : "style"; } catch { return "style"; }
+  });
+  function chooseRightPanel(panel: "content" | "style") {
+    setRightPanel(panel);
+    try { localStorage.setItem(inspectorKey, panel); } catch { /* The current tab still retains the preference. */ }
+  }
   const [canvasMode, setCanvasMode] = useState<"design" | "preview">("design");
   const [breakpoint, setBreakpoint] = useState<Breakpoint>("desktop");
   const [editingComponent, setEditingComponent] = useState<string | null>(null);
@@ -218,6 +225,48 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     if (sameContent(validated, original)) delete nextDrafts.design;
     else nextDrafts.design = { content: validated, sha: nextDrafts.design?.sha ?? designDocument.sha, original };
     persist(nextDrafts, { label: "design change" });
+  }
+  const insertionAnchor = canvasSelection?.designTarget?.kind === "element" ? canvasSelection.designTarget.id : canvasSelection?.component?.instanceId;
+  const insertionEnabled = Boolean(insertionAnchor && designDocument && active && !busy && !loading && !reviewing && !cmsDraft.loading && previewReady && canvasMode === "design" && !editingComponent);
+  const selectedAddition = insertionAnchor ? additionLocation(design.additions ?? {}, insertionAnchor) : null;
+  const additionPeers = selectedAddition ? (design.additions?.[selectedAddition.anchor] ?? []).filter(node => node.position === selectedAddition.node.position) : [];
+  function additionAction(action: "up" | "down" | "duplicate" | "remove") {
+    if (!selectedAddition || !insertionEnabled) return;
+    updateDesign(next => {
+      const additions = next.additions!;
+      const id = selectedAddition.node.id;
+      if (action === "up" || action === "down") moveAddition(additions, id, action === "up" ? -1 : 1);
+      else if (action === "remove") {
+        for (const removed of removeAddition(additions, id)) { delete next.elements[removed]; delete next.instances[removed]; }
+        if (!Object.keys(additions).length) delete next.additions;
+      } else {
+        const clone = (sourceId: string): string => {
+          const location = additionLocation(additions, sourceId)!;
+          const copyId = `added-${crypto.randomUUID()}`;
+          const children = structuredClone(additions[sourceId] ?? []);
+          insertAddition(additions, sourceId, {...structuredClone(location.node), id:copyId, position:"after"});
+          if (next.elements[sourceId]) next.elements[copyId] = structuredClone(next.elements[sourceId]);
+          if (next.instances[sourceId]) next.instances[copyId] = structuredClone(next.instances[sourceId]);
+          for (const child of children) {
+            const childId = clone(child.id);
+            const cloned = additionLocation(additions, childId)!;
+            additions[cloned.anchor].splice(cloned.index,1);
+            (additions[copyId] ??= []).push({...cloned.node,position:child.position});
+          }
+          return copyId;
+        };
+        clone(id);
+      }
+    });
+  }
+  function addElement(type: string) {
+    if (!insertionEnabled || !insertionAnchor || !canvasSelection) return;
+    const inside = (["div", "section", "main", "header", "footer", "nav", "article", "aside", "li"].includes(canvasSelection.tag) || canvasSelection.tag === "ul" && type === "li") && (!canvasSelection.component || ["Grid.Root", "Section.Root", "Section.Container"].includes(canvasSelection.component.name));
+    const id = `added-${crypto.randomUUID()}`;
+    updateDesign(next => {
+      next.additions ??= {};
+      insertAddition(next.additions, insertionAnchor, { id, type, position: inside ? "inside" : "after", text: ["div", "section", "ul", "img", "Grid.Root", "Section.Root", "Section.Container"].includes(type) ? "" : type === "p" ? "New paragraph" : type === "a" || type.startsWith("Button.") ? "New link" : "New heading", attributes: type === "img" ? { src: "/og-default.png", alt: "" } : type === "a" || type === "Button.Link" ? { href: "/" } : {} });
+    });
   }
   function writeSelectedStyle(next: DesignDocument, style: StyleChange) {
     const target = canvasSelection?.designTarget;
@@ -424,6 +473,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
         }
       }
       if (!active) return;
+      if (event.data.type === "three-acts:design-error" && typeof event.data.message === "string") setError(event.data.message.slice(0,300));
       if (event.data.type === "three-acts:navigate" && canvasMode === "preview" && !busy && !reviewing && typeof event.data.href === "string") {
         try {
           const url = new URL(event.data.href);
@@ -460,7 +510,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
       if (event.data.type === "three-acts:selection" && !busy && !reviewing && canvasMode === "design" && isCanvasSelection(event.data)) {
         if (canvasSelection?.selector !== event.data.selector) {
           endGroup();
-          setRightPanel(event.data.editingComponent ? "style" : event.data.textField || event.data.attributes?.some((attribute: { binding?: unknown }) => attribute.binding) || event.data.category === "cms" || !event.data.designTarget ? "content" : "style");
+          if (event.data.editingComponent) setRightPanel("style");
         }
         setCanvasSelection(event.data);
         setEditingComponent(event.data.editingComponent ?? null);
@@ -605,7 +655,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
         <button type="button" className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-1 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${leftPanel === "pages" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Pages panel" aria-pressed={leftPanel === "pages"} onClick={() => setLeftPanel("pages")}><File size={13}/>Pages</button>
         <button type="button" className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-1 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${leftPanel === "navigator" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Navigator panel" aria-pressed={leftPanel === "navigator"} onClick={() => setLeftPanel("navigator")}><Layers size={13}/>Navigator</button>
       </div>
-      {leftPanel === "navigator" ? <Navigator actions={page === "home" && layoutDocument ? <InsertSection disabled={!compositionEnabled || layout.pages.home.order.length >= layoutLimits.sections} onInsert={insert}/> : null} onMoveSection={compositionEnabled ? move : undefined} onReorderSection={compositionEnabled ? reorder : undefined} nodes={canvasNodes} treeStatus={treeStatus} onLoadMore={limit => postCanvas({ type: "three-acts:tree-limit", limit })} selected={canvasSelection?.selector ?? null} selectionVersion={selectionVersion} onSelect={(selector) => postCanvas({ type: "three-acts:select-node", selector })} disabled={busy || canvasMode === "preview" || !previewReady}/> : <aside className="flex min-h-0 flex-1 flex-col" aria-label="Pages">
+      {leftPanel === "navigator" ? <Navigator actions={<InsertElement disabled={!insertionEnabled && !compositionEnabled} elementsDisabled={!insertionEnabled} onInsert={addElement} onSection={compositionEnabled && layout.pages.home.order.length < layoutLimits.sections ? insert : undefined}/> } onMoveSection={compositionEnabled ? move : undefined} onReorderSection={compositionEnabled ? reorder : undefined} nodes={canvasNodes} treeStatus={treeStatus} onLoadMore={limit => postCanvas({ type: "three-acts:tree-limit", limit })} selected={canvasSelection?.selector ?? null} selectionVersion={selectionVersion} onSelect={(selector) => postCanvas({ type: "three-acts:select-node", selector })} disabled={busy || canvasMode === "preview" || !previewReady}/> : <aside className="flex min-h-0 flex-1 flex-col" aria-label="Pages">
       <PanelHeader className="h-8 min-h-8 gap-2 px-2"><File size={14}/><strong className="font-semibold">Pages</strong></PanelHeader>
       <div className="border-b border-cms-line px-2 py-1"><SearchInput ariaLabel="Search pages" placeholder="Find a page…" value={query} onChange={setQuery}/></div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -676,7 +726,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
         {stale.length > 0 && <div className="shrink-0 border-b border-cms-pending/40 bg-cms-pending/10 px-3 py-2 text-ui text-cms-text" role="alert">{stale.map((doc) => doc.label).join(", ")} changed on GitHub. Your drafts are preserved. Discard the affected drafts and reapply your edits before pushing.</div>}
         {!workspace ? <div className="grid min-h-0 flex-1 place-items-center p-6 text-center"><div className="max-w-sm"><Layers size={28} className="mx-auto text-cms-muted"/><h2 className="mt-3 text-ui-lg font-semibold">{loading ? "Opening your workspace…" : "Your content couldn't be loaded"}</h2><p className="my-2 text-ui text-cms-muted">The designer connects through the Three Acts API.</p><Button onClick={() => void load()} disabled={loading}>Try again</Button></div></div> : <>
           <CanvasViewport width={viewportWidth} zoom={canvasZoom} disabled={controlsDisabled} unavailable={!frameUrl} onWidth={changeViewportWidth} onZoom={changeCanvasZoom} onScale={setResolvedZoom}>
-              {frameUrl ? <iframe key={frameRevision} ref={frame} title="Website canvas" src={frameUrl} sandbox="allow-scripts allow-same-origin" onLoad={sendPreview} className="h-full w-full border-0 bg-white"/> : <div className="grid h-full place-items-center p-6 text-center"><div>
+              {frameUrl ? <iframe key={frameRevision} ref={frame} title="Website canvas" src={frameUrl} style={{pointerEvents:previewReady ? undefined : "none"}} sandbox="allow-scripts allow-same-origin" onLoad={sendPreview} className="h-full w-full border-0 bg-white"/> : <div className="grid h-full place-items-center p-6 text-center"><div>
                 {currentTemplate && (!chosenPreview || canvasRoute !== chosenPreview.route) ? <>
                   <Layers size={28} className="mx-auto text-cms-muted"/>
                   <h2 className="mt-3 text-ui-lg font-semibold">{previews.loading || (chosenPreview && canvasRoute !== chosenPreview.route) ? "Loading preview…" : previews.error ? "Preview items couldn't be loaded" : "No CMS items to preview"}</h2>
@@ -692,8 +742,8 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     <div className="flex min-h-0 w-64 shrink-0 flex-col border-l border-cms-line-strong bg-cms-bg max-sm:w-60">
       <div className="flex h-8 shrink-0 items-stretch gap-4 border-b border-cms-line px-2" aria-label="Right panel">
         {isComponentSelection ? <span className="flex items-center border-b-2 border-cms-text px-0.5 text-ui text-cms-text">Properties</span> : <>
-          <button type="button" className={`flex items-center gap-1.5 border-b-2 px-0.5 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${rightPanel === "style" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Style panel" aria-pressed={rightPanel === "style"} onClick={() => setRightPanel("style")}><SlidersHorizontal size={12}/>Style</button>
-          <button type="button" className={`flex items-center gap-1.5 border-b-2 px-0.5 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${rightPanel === "content" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Content panel" aria-pressed={rightPanel === "content"} onClick={() => setRightPanel("content")}><Type size={12}/>Content</button>
+          <button type="button" className={`flex items-center gap-1.5 border-b-2 px-0.5 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${rightPanel === "style" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Style panel" aria-pressed={rightPanel === "style"} onClick={() => chooseRightPanel("style")}><SlidersHorizontal size={12}/>Style</button>
+          <button type="button" className={`flex items-center gap-1.5 border-b-2 px-0.5 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${rightPanel === "content" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Content panel" aria-pressed={rightPanel === "content"} onClick={() => chooseRightPanel("content")}><Type size={12}/>Content</button>
         </>}
       </div>
       {editingComponent && <div aria-label="Main component editing" className="grid gap-1 border-b border-cms-line bg-cms-success/10 px-2 py-2 text-ui"><div className="flex items-center justify-between gap-2"><strong className="min-w-0 truncate font-medium">Editing {componentDefinitions[editingComponent]?.label ?? editingComponent}</strong><Tooltip content="Exit main component editing"><IconButton aria-label="Done editing component" className="size-5 shrink-0 border-transparent bg-transparent p-0 shadow-none" disabled={controlsDisabled} onClick={() => postCanvas({ type: "three-acts:exit-component" })}><X size={12}/></IconButton></Tooltip></div><span className="text-cms-muted">Changes apply to all instances</span></div>}
@@ -701,11 +751,12 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
         <elementPresentation.Icon aria-hidden="true" size={13} className={`shrink-0 ${elementPresentation.color}`}/>
         <span className="min-w-0 flex-1 truncate" title={canvasSelection?.label}>{canvasSelection?.label ?? "No selection"}</span>
         {canvasSelection && <span className="shrink-0 font-mono text-[10px] text-cms-subtle">{canvasSelection.tag}</span>}
+        {selectedAddition && <AddedElementActions disabled={!insertionEnabled} first={additionPeers[0]?.id === selectedAddition.node.id} last={additionPeers.at(-1)?.id === selectedAddition.node.id} onAction={additionAction}/>}
         {selectedSection && canvasSelection?.component?.name.startsWith("Layout.") && <SectionActions disabled={!compositionEnabled} hidden={layout.pages.home.sections[selectedSection].hidden} first={layout.pages.home.order[0] === selectedSection} last={layout.pages.home.order.at(-1) === selectedSection} onMove={delta => move(selectedSection, delta)} onDuplicate={duplicate} onToggle={toggleSection}/>}
       </div>
       {canvasSelection?.visibility && canvasSelection.visibility.state !== "visible" && <p role="status" aria-label="Selection visibility" className="m-0 border-b border-cms-line px-2 py-2 text-[10px] leading-4 text-cms-muted">{canvasSelection.visibility.reason}. {canvasSelection.section?.hidden ? canvasSelection.component?.name.startsWith("Layout.") ? "Use Section actions to show it." : "Select its section in Navigator to show it." : canvasSelection.visibility.state === "revealed" ? "Preview restores the disclosure state." : "Select another width or change its source styling to make it visible."}</p>}
-      {canvasSelection?.category === "cms" && <CmsSourceInspector source={canvasSelection.cmsSource} disabled={controlsDisabled || canvasMode === "preview"} onOpen={onOpenCmsRecord}/>}
-      {canvasSelection && !isComponentSelection && rightPanel === "content" && <p aria-label="Editing scope" className="m-0 border-b border-cms-line px-2 py-2 text-[10px] text-cms-muted">{canvasSelection.category === "cms" ? "CMS record content" : contentDocument?.id === "layout" ? "This section instance" : contentDocument?.id === "shared" ? "Shared across the site" : contentDocument?.collectionId ? `All pages using ${contentDocument.label}` : "This page"}</p>}
+      {(canvasSelection?.category === "cms" || canvasSelection?.cmsSource) && <CmsSourceInspector source={canvasSelection.cmsSource} disabled={controlsDisabled || canvasMode === "preview"} onOpen={onOpenCmsRecord}/>}
+      {canvasSelection && !isComponentSelection && rightPanel === "content" && <p aria-label="Editing scope" className="m-0 border-b border-cms-line px-2 py-2 text-[10px] text-cms-muted">{canvasSelection.category === "cms" ? "CMS record content" : contentDocument?.id === "design" ? "Shared source element" : contentDocument?.id === "layout" ? "This section instance" : contentDocument?.id === "shared" ? "Shared across the site" : contentDocument?.collectionId ? `All pages using ${contentDocument.label}` : "This page"}</p>}
       {isComponentSelection && canvasSelection ? <ComponentInspector contentScope={canvasSelection.component?.fields.some(field => field.id === "layout") ? "Content applies to this section instance." : canvasSelection.component?.fields.some(field => field.id === "shared") ? "Content is shared across the site." : currentTemplate ? `Content applies to all pages using ${currentTemplate.label}.` : null} templateInstance={Boolean(currentTemplate)} selection={canvasSelection} onResetProperty={key => updateDesign(next => {
         const id = canvasSelection.component?.instanceId;
         if (!id || !next.instances[id]) return;

@@ -1,14 +1,15 @@
-import { Database, PanelsTopLeft, Settings2 } from "lucide-react";
+import { Database, Images, PanelsTopLeft, Settings2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@three-acts/utils";
 import { focusRing } from "../atoms";
 
 /** Top-level workspace areas, switched from the top bar (Webflow's Design | CMS | Insights). */
-export type WorkspaceTab = "cms" | "site-settings" | "page-settings";
+export type WorkspaceTab = "cms" | "site-settings" | "page-settings" | "resources";
 
 const tabs: Array<{ id: WorkspaceTab; label: string; icon: LucideIcon }> = [
   { id: "page-settings", label: "Designer", icon: PanelsTopLeft },
   { id: "cms", label: "CMS", icon: Database },
+  { id: "resources", label: "Resources", icon: Images },
   { id: "site-settings", label: "Site", icon: Settings2 }
 ];
 

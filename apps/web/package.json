@@ -17,21 +17,23 @@
     "@three-acts/auth": "*",
     "@three-acts/cms-schema": "*",
     "@three-acts/content": "*",
+    "@three-acts/design": "*",
     "@three-acts/ecommerce": "*",
     "@three-acts/forms": "*",
+    "@three-acts/static-content": "*",
     "@three-acts/utils": "*",
     "astro": "^7.2.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "tailwindcss": "^4.3.1",
-    "@three-acts/static-content": "*",
-    "@three-acts/design": "*"
+    "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@astrojs/compiler": "^2.13.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vercel/config": "^0.5.5",
+    "magic-string": "^0.30.21",
     "sharp": "^0.35.3",
     "vite": "^8.1.0"
   }

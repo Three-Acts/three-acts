@@ -5,6 +5,8 @@ import { createContentClient, createSeedContentFetch } from "@three-acts/content
 import { defineConfig } from "astro/config";
 import { loadEnv } from "vite";
 import { revisionMarkerIntegration } from "./scripts/revision-marker.mjs";
+import { editorSourcePlugin } from "./scripts/editor-source.mjs";
+import { fileURLToPath } from "node:url";
 
 const env = loadEnv(process.env.NODE_ENV ?? "production", process.cwd(), "");
 const apiOrigin = env.API_ORIGIN;
@@ -96,7 +98,7 @@ export default defineConfig({
   redirects,
   integrations: [react(), revisionMarkerIntegration(env)],
   vite: {
-    plugins: [tailwindcss()],
+    plugins: [editorSourcePlugin(fileURLToPath(new URL("./", import.meta.url))), tailwindcss()],
     // Same-origin `/api/*` in dev, proxied to the API app (Vercel rewrite in prod).
     server: apiOrigin
       ? {

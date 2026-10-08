@@ -1,8 +1,13 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server.browser";
+import { Prose } from "../components/ui/prose/prose";
+import { renderAddedElements } from "./editor-additions.js";
 import { createCanvasOutline } from "./canvas-outline.js";
+import { compileEditorUtilities } from "./editor-utilities.js";
 import { normalizeCmsCollection, readCmsSource } from "@three-acts/cms-schema";
 import { applyStyle, componentBaseClass, componentDefinitions, designCss, emptyDesign, resolveProperties, validateDesign } from "@three-acts/design";
 import { isSafeContentUrl, isSafeMediaUrl, readLayoutSource, homeSections, homeSectionFieldLabels } from "@three-acts/static-content";
-import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
+import { cn, historyShortcut } from "@three-acts/utils";
 
 /* Enabled explicitly by the web app, and activated only by the configured editor origin. */
 (() => {
@@ -20,6 +25,9 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
   function contentLeaves(value, path = []) {
     if (value && typeof value === 'object') return Object.entries(value).flatMap(([key, child]) => contentLeaves(child, [...path, key]));
     return [{ path: path.join('.'), value }];
+  }
+  function sourceValue(id, path) {
+    return contentLeaves(definitions.get(id)?.content).find(field => field.path === path)?.value;
   }
   const route = window.location.pathname.replace(/\/$/, '') || '/';
   function routeMatches(template, pathname) {
@@ -47,6 +55,9 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     bindings.clear();
     const currentDocuments = [...definitions.values()];
     const relevant = [...currentDocuments.filter(doc => doc.id !== 'shared' && doc.id !== 'design' && (previewCollection ? doc.collectionId === previewCollection : routeMatches(doc.route, route))), ...currentDocuments.filter(doc => doc.id === 'shared')];
+    document.querySelectorAll('[data-editor-added-path]').forEach(element => {
+      for (const name of ['href','src','alt','title','aria-label']) if (element.hasAttribute(name)) add('design', `${element.dataset.editorAddedPath}.attributes.${name}`, element, element, name);
+    });
     document.querySelectorAll('[data-static-field]').forEach(element => {
       if (element.closest('[data-cms-bound]')) return;
       const [id, ...path] = element.dataset.staticField.split('.');
@@ -139,7 +150,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       const owner = cms.closest('[data-cms-item-id],[data-record-id]');
       const ownerCollection = owner?.dataset.cmsCollection || owner?.dataset.cmsBound?.split('.')[0];
       const cmsSource = owner && normalizeCmsCollection(ownerCollection || '') === collectionId ? readCmsSource({ collectionId, recordId: owner.dataset.cmsItemId || owner.dataset.recordId, label: owner.dataset.cmsItemLabel, ...(path ? { field: path } : {}) }) : null;
-      return { category: 'cms', element, ...(cmsSource ? { cmsSource } : {}), binding: { ...(cms.dataset.cmsItemId || cms.dataset.recordId ? {id: cms.dataset.cmsItemId || cms.dataset.recordId} : {}), path, collectionId, field: path || undefined }, label: explicitLabel || `${humanize(collectionId)}${path ? ` · ${humanize(path.split('.').at(-1))}` : ''}` };
+      return { category: element.tagName === 'IMG' ? 'element' : 'cms', element, ...(cmsSource ? { cmsSource } : {}), binding: { ...(cms.dataset.cmsItemId || cms.dataset.recordId ? {id: cms.dataset.cmsItemId || cms.dataset.recordId} : {}), path, collectionId, field: path || undefined }, label: explicitLabel || (element.tagName === 'IMG' ? semanticLabel(element) : `${humanize(collectionId)}${path ? ` · ${humanize(path.split('.').at(-1))}` : ''}`) };
     }
     const binding = bindingFor(element);
     const key = binding ? `${binding.id}.${binding.path}` : null;
@@ -236,7 +247,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     const fields = Array.from(root.querySelectorAll('[data-static-field]')).filter(element => !element.closest('[data-cms-bound]')).flatMap(element => {
       const binding = bindingFor(element);
       if (!binding || (!element.dataset.staticAttribute && !directTextField(element))) return [];
-      const value = binding.path.split('.').reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, definitions.get(binding.id)?.content);
+      const value = sourceValue(binding.id, binding.path);
       return typeof value === 'string' ? [{ ...binding, label: element.dataset.staticAttribute || (name.startsWith('Button.') ? 'Text' : humanize(binding.path.split('.').at(-1).replace(/_\d+$/, ''))), value }] : [];
     });
     if (name.startsWith('Layout.')) {
@@ -254,9 +265,9 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       }
     }
     const ownBinding = bindingFor(root);
-    if (ownBinding && root.dataset.staticAttribute) {
-      const value = ownBinding.path.split('.').reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, definitions.get(ownBinding.id)?.content);
-      if (typeof value === 'string') fields.unshift({ ...ownBinding, label: root.dataset.staticAttribute, value });
+    if (ownBinding) {
+      const value = sourceValue(ownBinding.id, ownBinding.path);
+      if (typeof value === 'string') fields.unshift({ ...ownBinding, label: root.dataset.staticAttribute || "Text", value });
     }
     return { name, ...(instanceId ? { instanceId } : {}), sourceProps: { ...componentDefinitions[name].defaultVariants, ...props }, props: resolvedProps, fields: fields.filter((field, index) => fields.findIndex(candidate => candidate.id === field.id && candidate.path === field.path) === index).slice(0, 100) };
   }
@@ -267,9 +278,9 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       if (part && componentRoot(part) === root && Object.hasOwn(componentDefinitions[editingComponent.name].parts, part.dataset.editorPart)) {
         return { kind: 'component', component: editingComponent.name, part: part.dataset.editorPart };
       }
-      return null;
+      return element.dataset.editorId ? { kind: 'element', id: element.dataset.editorId } : null;
     }
-    if (editingComponent || (root && root !== element)) return null;
+    if (editingComponent) return null;
     return element.dataset.editorId ? { kind: 'element', id: element.dataset.editorId } : null;
   }
   function selectableTarget(element) {
@@ -285,7 +296,15 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     return root;
   }
   function renderDesign(next) {
+    const selectedId = selectedCandidate?.element?.dataset.editorId;
     design = validateDesign(next);
+    definitions.set('design', {...definitions.get('design'), content:design});
+    renderAddedElements(design);
+    scanBindings();
+    if (selectedId && !selectedCandidate?.element?.isConnected) {
+      const restored = Array.from(document.querySelectorAll('[data-editor-id]')).find(element => element.dataset.editorId === selectedId);
+      if (restored) selectedCandidate = describe(restored);
+    }
     document.querySelectorAll('[data-editor-id]:not([data-editor-component])').forEach(element => {
       element.setAttribute('class', applyStyle(element.dataset.editorBaseClass || '', design.elements[element.dataset.editorId]));
     });
@@ -304,6 +323,14 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     });
     const sheet = document.getElementById('three-acts-design-css');
     if (sheet) sheet.textContent = designCss(design);
+    const current = design;
+    void compileEditorUtilities(current).then(css => {
+      if (current !== design) return;
+      let utilities = document.getElementById('three-acts-editor-utilities');
+      if (!utilities) { utilities = document.createElement('style'); utilities.id = 'three-acts-editor-utilities'; document.head.append(utilities); }
+      utilities.textContent = css;
+      if (selectedCandidate?.element?.isConnected) send({ type: 'three-acts:selection', ...selectionFor(selectedCandidate.element) });
+    }).catch(error => { if (current === design) send({type:'three-acts:design-error',message:error instanceof Error ? error.message : 'Tailwind could not compile these values.'}); });
   }
   function selectionFor(element) {
     const info = describe(element);
@@ -343,7 +370,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     if (candidates.length !== 1) return null;
     const [id, ...path] = candidates[0].key.split('.');
     const fieldPath = path.join('.');
-    const value = fieldPath.split('.').filter(Boolean).reduce((current, part) => current && typeof current === 'object' ? current[part] : undefined, definitions.get(id)?.content);
+    const value = sourceValue(id, fieldPath);
     return typeof value === 'string' ? {id, path:fieldPath, value} : null;
   }
   function elementAttributes(element, readOnly = false) {
@@ -429,26 +456,12 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     send({type:'three-acts:selection', ...selectionFor(binding.element)});
   }
   function renderProse(container, body) {
-    function appendText(element, text) {
-      for (const run of proseRuns(text)) {
-        if (!run.href) { element.append(document.createTextNode(run.text)); continue; }
-        const link = document.createElement('a');
-        link.href = run.href; link.textContent = run.text;
-        link.className = 'text-ink underline decoration-1 underline-offset-2 hover:no-underline';
-        if (run.href.startsWith('http')) { link.target = '_blank'; link.rel = 'noopener noreferrer'; }
-        element.append(link);
-      }
-    }
-    const blocks = parseProse(body).map(block => {
-      const element = document.createElement(block.type === 'ul' ? 'ul' : block.type === 'h2' ? 'h2' : 'p');
-      if (block.type === 'h2') { element.className = 'mt-2 text-h3 font-medium text-ink first:mt-0'; appendText(element, block.text); }
-      else if (block.type === 'ul') {
-        element.className = 'flex list-disc flex-col gap-2 pl-5 marker:text-ink';
-        for (const item of block.items) { const li = document.createElement('li'); appendText(li, item); element.append(li); }
-      } else block.lines.forEach((line, index) => { if (index) element.append(document.createElement('br')); appendText(element, line); });
-      return element;
-    });
-    container.replaceChildren(...blocks);
+    // Reuse the actual source renderer and inferred IDs when content changes.
+    // React escapes text and URLs; only its own generated markup is parsed.
+    const template = document.createElement('template');
+    template.innerHTML = renderToStaticMarkup(createElement(Prose.Root, {body}));
+    const root = template.content.firstElementChild;
+    if (root) container.replaceChildren(...root.childNodes);
   }
   function updateImageSource(element, value) {
     // A local image may already have an optimized <picture> source. Keep it
@@ -508,8 +521,8 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     cmsRendering = false;
     scanBindings(collectionId);
     if (!active) return;
-    renderDesign(design);
     if (latestPreviewDocuments) applyPreviewContent(latestPreviewDocuments);
+    renderDesign(design);
     if (cmsSelectionAnchor && !selectedCandidate?.element?.isConnected) {
       const matches = cmsTargets(cmsSelectionAnchor.source, cmsSelectionAnchor.tag);
       const source = cmsSelectionAnchor.source;
@@ -530,8 +543,8 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     cmsRendering = false;
     scanBindings();
     if (!active) { announceReady(); return; }
-    renderDesign(design);
     if (latestPreviewDocuments) applyPreviewContent(latestPreviewDocuments);
+    renderDesign(design);
     if (compositionSelectionAnchor && !selectedCandidate?.element?.isConnected) {
       const restored = Array.from(document.querySelectorAll('[data-editor-id]')).find(element => element.dataset.editorId === compositionSelectionAnchor);
       if (restored) publishSelection(restored);
@@ -758,9 +771,9 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     if (event.data.type === 'three-acts:preview' && Array.isArray(event.data.documents)) {
       activate();
       const nextDesign = event.data.documents.find(doc => doc.id === 'design');
-      if (nextDesign) { try { renderDesign(nextDesign.content); } catch { return; } }
       latestPreviewDocuments = event.data.documents;
       applyPreviewContent(event.data.documents);
+      if (nextDesign) { try { renderDesign(nextDesign.content); } catch { return; } }
       buildTree();
       drawOverlay(hoverCandidate || selectedCandidate);
       if (selectedCandidate?.element?.isConnected) send({type:'three-acts:selection', ...selectionFor(selectedCandidate.element)});
