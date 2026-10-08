@@ -17,14 +17,14 @@ function FieldLabel({ id, label, changed, disabled, onReset }: { id: string; lab
   </div>;
 }
 
-export function ComponentInspector({ selection, disabled, onProperty, onResetProperty, onField, resolveField, resolveSourceField, onEnter, templateInstance }: {
+export function ComponentInspector({ selection, disabled, onProperty, onResetProperty, onField, resolveField, resolveSourceField, onEnter, templateInstance, contentScope }: {
   selection: CanvasSelection; disabled: boolean;
   onProperty: (key: string, value: string) => void;
   onResetProperty: (key: string) => void;
-  onField: (field: ContentField, value: string, documentId: string) => void;
+  onField: (field: ContentField, value: string, documentId: string, typing?: boolean) => void;
   resolveField: (binding: { id: string; path: string }) => ContentField | undefined;
   resolveSourceField: (binding: { id: string; path: string }) => ContentField | undefined;
-  onEnter: () => void; templateInstance: boolean;
+  onEnter: () => void; templateInstance: boolean; contentScope?: string | null;
 }) {
   const component = selection.component;
   const definition = component && Object.hasOwn(componentDefinitions, component.name) ? componentDefinitions[component.name] : null;
@@ -37,7 +37,7 @@ export function ComponentInspector({ selection, disabled, onProperty, onResetPro
             <BareIconButton aria-label="Edit main component" disabled={disabled} onClick={onEnter} className="size-6 shrink-0"><SquarePen size={13}/></BareIconButton>
           </Tooltip>
         </div>
-        <p className="m-0 text-ui leading-4 text-cms-subtle">Properties affect this instance.{templateInstance && " On this template, they apply across generated pages."}</p>
+        <p className="m-0 text-ui leading-4 text-cms-subtle">{Object.keys(definition.variants).length > 0 ? <>Variants affect this instance.{templateInstance && " On this template, they apply across generated pages."}</> : "Content uses its registered source."}{contentScope && ` ${contentScope}`}</p>
       </div>
       {Object.entries(definition.variants).map(([property, options]) => {
         const id = `component-property-${property}`;
@@ -58,9 +58,9 @@ export function ComponentInspector({ selection, disabled, onProperty, onResetPro
         const id = `component-${binding.id}-${binding.path}`;
         const changed = sourceField !== undefined && field.value !== sourceField.value;
         return <div key={`${binding.id}.${binding.path}`} className="grid gap-1">
-          <FieldLabel id={id} label={binding.label} changed={changed} disabled={disabled} onReset={() => { if (sourceField && typeof sourceField.value === "string") onField(field, sourceField.value, binding.id); }}/>
+          <FieldLabel id={id} label={binding.label} changed={changed} disabled={disabled} onReset={() => { if (sourceField && typeof sourceField.value === "string") onField(field, sourceField.value, binding.id, false); }}/>
           {["href", "src"].includes(binding.label) ? (
-            <AttributeInput key={`${binding.id}:${binding.path}:${field.value}`} id={id} value={field.value} name={binding.label} disabled={disabled} onCommit={value => onField(field, value, binding.id)}/>
+            <AttributeInput key={`${binding.id}:${binding.path}:${field.value}`} id={id} value={field.value} name={binding.label} disabled={disabled} onCommit={value => onField(field, value, binding.id, false)}/>
           ) : (
             <Textarea id={id} aria-label={`Component ${binding.label}`} rows={2} value={field.value} disabled={disabled} onChange={event => onField(field, event.target.value, binding.id)} className="resize-y text-cms-text"/>
           )}

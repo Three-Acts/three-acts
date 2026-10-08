@@ -98,7 +98,7 @@ export function Inspector({ content, canvasSelection, onChange, resolveField, di
               ) : (
                 <p className="m-0 text-ui leading-4 text-cms-subtle">This text is not connected to a saved content field.</p>
               )}
-              {selectedField && <p className="m-0 text-ui leading-4 text-cms-subtle">Changes are saved in your draft until you push.</p>}
+              {selectedField && <p className="m-0 text-ui leading-4 text-cms-subtle">Saved in this browser until you review and push.</p>}
             </section>
 
             {canvasSelection.attributes?.length ? <section aria-label="Element attributes" className="grid gap-2">

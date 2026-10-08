@@ -1,9 +1,12 @@
 import { isCanvasSelection, readCanvasNodes } from "./canvas-contract";
 import { componentDefinitions, emptyDesign, validateDesign, type Breakpoint, type DesignDocument, type StyleChange } from "@three-acts/design";
+import { historyShortcut, type HistoryCommand } from "@three-acts/utils";
+import { useDraftHistory } from "./use-draft-history";
+import type { HistoryEdit } from "./history";
 import { ComponentInspector } from "./component-inspector";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowUpRight, CheckCircle2, Eye, File, GitBranch, Globe, Info, Layers, Monitor, MousePointer2, RefreshCw, Settings, SlidersHorizontal, Smartphone, Tablet, Type, Undo2, X } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Eye, File, GitBranch, Globe, Info, Layers, Monitor, MousePointer2, RefreshCw, Settings, SlidersHorizontal, Smartphone, Tablet, Type, Undo2, Redo2, RotateCcw, X } from "lucide-react";
 import { contentFields, validateContent, type ContentField, type ContentObject, type EditorChange, type EditorDocument, type EditorPushResult, type EditorWorkspace } from "@three-acts/static-content";
 import type { AuthUser } from "@three-acts/auth";
 import { Button, ConfirmDialog, IconButton, PanelHeader, SearchInput, Tooltip, type ToastOptions } from "../atoms";
@@ -52,7 +55,10 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   onViewSiteUrlChange?: (url: string | null) => void;
 }) {
   const [workspace, setWorkspace] = useState<EditorWorkspace | null>(null);
-  const [drafts, setDrafts] = useState<Drafts>({});
+  const history = useDraftHistory();
+  const drafts = history.drafts;
+  const { reset: resetHistory, endGroup, undo: undoDrafts, redo: redoDrafts } = history;
+  const root = useRef<HTMLDivElement>(null);
   const [recovery, setRecovery] = useState<string | null>(null);
   const [page, setPage] = useState("home");
   const [canvasRoute, setCanvasRoute] = useState("/");
@@ -116,7 +122,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     const original = nextDrafts.design?.original ?? designDocument.content;
     if (sameContent(validated, original)) delete nextDrafts.design;
     else nextDrafts.design = { content: validated, sha: nextDrafts.design?.sha ?? designDocument.sha, original };
-    persist(nextDrafts);
+    persist(nextDrafts, { label: "design change" });
   }
   function writeSelectedStyle(next: DesignDocument, style: StyleChange) {
     const target = canvasSelection?.designTarget;
@@ -162,9 +168,10 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       setFrameRevision((revision) => revision + 1);
       resetCanvasState();
       setWorkspace(next);
+      setCommit(null);
       setLastSynced(new Date());
       const saved = readDrafts(draftKey(next, user.email));
-      setDrafts(unsavedStorageDrafts.current ?? saved.drafts);
+      resetHistory(unsavedStorageDrafts.current ?? saved.drafts);
       setRecovery(saved.recovery);
       const firstPage = next.documents.find((document) => document.id === preferredPage && document.kind !== "design" && document.id !== "shared") ?? next.documents.find((document) => document.kind !== "design" && document.id !== "shared");
       setPage(firstPage?.id ?? "shared");
@@ -174,7 +181,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       setError(message);
       setConnectionError(message);
     } finally { setLoading(false); }
-  }, [user.email]);
+  }, [user.email, resetHistory]);
 
   useEffect(() => { void Promise.resolve().then(() => load()); }, [load]);
   useEffect(() => { onBusyChange?.(busy || loading || reviewing); }, [busy, loading, reviewing, onBusyChange]);
@@ -206,8 +213,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     return () => window.removeEventListener("beforeunload", warn);
   }, [changedCount]);
 
-  function persist(next: Drafts) {
-    setDrafts(next);
+  const saveDrafts = useCallback((next: Drafts) => {
     if (!key) return;
     try {
       localStorage.setItem(key, JSON.stringify(next));
@@ -218,9 +224,33 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       setStorageUnavailable(true);
       setError("Browser storage is unavailable. Keep this tab open until you push your changes.");
     }
-  }
+  }, [key]);
 
-  function changeField(field: ContentField, value: string | number | boolean, id = page) {
+  function persist(next: Drafts, edit: HistoryEdit | null) {
+    if (edit) history.record(next, edit);
+    else resetHistory(next);
+    saveDrafts(next);
+  }
+  const runHistory = useCallback((command: HistoryCommand) => {
+    if (busy || loading || reviewing || canvasMode !== "design") return;
+    saveDrafts(command === "undo" ? undoDrafts() : redoDrafts());
+  }, [busy, loading, reviewing, canvasMode, saveDrafts, undoDrafts, redoDrafts]);
+
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      const command = historyShortcut(event);
+      const target = event.target;
+      if (!command || !(target instanceof Element) || target.closest("input,textarea,[contenteditable],[role=dialog],[role=alertdialog]")) return;
+      if (!root.current?.contains(target) && target !== document.body) return;
+      if (busy || loading || reviewing || canvasMode !== "design" || document.querySelector("[role=dialog],[role=alertdialog]")) return;
+      event.preventDefault();
+      runHistory(command);
+    };
+    document.addEventListener("keydown", keydown);
+    return () => document.removeEventListener("keydown", keydown);
+  }, [runHistory, busy, loading, reviewing, canvasMode]);
+
+  function changeField(field: ContentField, value: string | number | boolean, id = page, typing = true) {
     const document = workspace?.documents.find((item) => item.id === id);
     const targetContent = drafts[id]?.content ?? document?.content;
     if (!document || !targetContent || busy) return;
@@ -229,7 +259,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     const original = next[id]?.original ?? document.content;
     if (sameContent(updated, original)) delete next[id];
     else next[id] = { content: updated, sha: next[id]?.sha ?? document.sha, original };
-    persist(next);
+    persist(next, { label: "content change", ...(typing && typeof value === "string" ? { group: `${id}:${field.path.join(".")}` } : {}) });
   }
 
   const sendPreview = useCallback(() => {
@@ -250,6 +280,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (!publicSite || event.origin !== publicSite.origin || event.source !== frame.current?.contentWindow || !event.data || typeof event.data !== "object") return;
+      if (event.data.type === "three-acts:history" && ["undo", "redo"].includes(event.data.command)) runHistory(event.data.command);
       if (event.data.type === "three-acts:ready") { setPreviewReady(true); sendPreview(); }
       if (event.data.type === "three-acts:navigate" && canvasMode === "preview" && !busy && !reviewing && typeof event.data.href === "string") {
         try {
@@ -268,6 +299,10 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       }
       if (event.data.type === "three-acts:clear-selection" || (event.data.type === "three-acts:selection" && event.data.selection === null)) setCanvasSelection(null);
       if (event.data.type === "three-acts:selection" && !busy && !reviewing && canvasMode === "design" && isCanvasSelection(event.data)) {
+        if (canvasSelection?.selector !== event.data.selector) {
+          endGroup();
+          setRightPanel(event.data.editingComponent ? "style" : event.data.textField || event.data.attributes?.some((attribute: { binding?: unknown }) => attribute.binding) || event.data.category === "cms" || !event.data.designTarget ? "content" : "style");
+        }
         setCanvasSelection(event.data);
         setEditingComponent(event.data.editingComponent ?? null);
         setSelectionVersion((version) => version + 1);
@@ -287,14 +322,14 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
         const doc = workspace?.documents.find((item) => item.id === event.data.id);
         if (!doc) return;
         const field = contentFields(drafts[doc.id]?.content ?? doc.content).find((item) => item.path.join(".") === event.data.path);
-        if (field && typeof field.value === "string") changeField(field, event.data.value, doc.id);
+        if (field && typeof field.value === "string") changeField(field, event.data.value, doc.id, false);
       }
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
     // The handler must read the current draft, not a captured earlier version.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspace, drafts, page, content, busy, reviewing, canvasMode, previews.items, sendPreview, notify]);
+  }, [workspace, drafts, page, content, busy, reviewing, canvasMode, previews.items, sendPreview, notify, canvasSelection?.selector, endGroup, runHistory]);
 
   function downloadRecovery() {
     if (!recovery) return;
@@ -308,6 +343,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
 
   function selectPage(id: string) {
     if (busy) return;
+    endGroup();
     const next = workspace?.documents.find((doc) => doc.id === id);
     postCanvas({ type: "three-acts:clear-selection" });
     if (next && !next.collectionId && id !== "shared" && next.route !== canvasRoute) { setPreviewReady(false); setCanvasRoute(next.route); resetCanvasState(); }
@@ -324,6 +360,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
 
   function choosePreview(id: string) {
     if (busy || !currentTemplate) return;
+    endGroup();
     const item = previews.items.find((preview) => preview.id === id);
     if (!item) return;
     setPreviewIds((previous) => ({ ...previous, [currentTemplate.id]: id }));
@@ -347,7 +384,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       const result: EditorPushResult = await pushDesignerChanges(changes, message);
       const replacements = new Map(result.documents.map((doc) => [doc.id, doc]));
       setWorkspace((previous) => previous ? { ...previous, headSha: result.sha, documents: previous.documents.map((doc) => replacements.get(doc.id) ?? doc) } : previous);
-      persist({});
+      persist({}, null);
       setReviewing(false);
       setCommit(result.url);
       setLastSynced(new Date());
@@ -364,6 +401,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   }, [frameUrl, onViewSiteUrlChange]);
   const elementPresentation = getElementPresentation(canvasSelection?.tag ?? "div", canvasSelection?.category ?? "element");
   const controlsDisabled = busy || loading || reviewing;
+  const saveState = storageUnavailable ? "Not saved in this browser" : loading ? "Loading source…" : !workspace ? "Source unavailable" : changedCount ? "Saved in this browser · Awaiting push" : commit ? "Committed to GitHub" : "Source loaded";
   const connectionStatus = loading ? "Checking GitHub" : connectionError ? "Connection check failed" : workspace?.connected ? "Connected to GitHub" : "GitHub not connected";
   const reload = () => void load(page, canvasRoute);
   const toolbarActions = <section aria-label="GitHub source" className="grid gap-3 p-3">
@@ -382,7 +420,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       <Button aria-label="Review & push" disabled={!changedCount || controlsDisabled} onClick={() => { onClosePublish?.(); setReviewing(true); setError(""); }}><span>Review &amp; push</span><ArrowUpRight size={13}/></Button>
     </div>
   </section>;
-  return <div className="designer-workspace flex min-h-0 min-w-0 flex-1 overflow-hidden bg-cms-bg text-cms-text">
+  return <div ref={root} onBlurCapture={endGroup} className="designer-workspace flex min-h-0 min-w-0 flex-1 overflow-hidden bg-cms-bg text-cms-text">
     {toolbarHost && createPortal(toolbarActions, toolbarHost)}
     {notification && <div role="status" className={`${popupClass} fixed bottom-3.5 right-3.5 z-100 flex w-80 max-w-viewport-tight items-start gap-2.5 bg-cms-surface px-3 py-2.5 text-ui`}>
       {notification.tone === "success" ? <CheckCircle2 size={14} className="mt-px shrink-0 text-cms-success"/> : <Info size={14} className="mt-px shrink-0 text-cms-muted"/>}
@@ -440,7 +478,8 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       <PanelHeader className="h-8 min-h-8 gap-1.5 px-2" render={<header aria-label="Canvas toolbar"/>}>
         <div className="flex min-w-0 flex-1 items-center gap-2 text-ui">
           <PagePicker pageStates={pageStates} documents={workspace?.documents ?? []} current={current} previewItems={previews.items} chosenPreview={chosenPreview} previewsLoading={previews.loading} previewsError={previews.error} disabled={busy || loading || !workspace} onSelectPage={choosePage} onSelectPreview={choosePreview} onOpenDetails={(document) => onOpenPageDetails?.(document.route, () => selectPage(document.id))}/>
-          <span className="hidden min-w-0 truncate text-cms-muted md:inline" title={canvasRoute}>{canvasRoute}</span>
+          <span className="hidden min-w-0 truncate text-cms-muted lg:inline" title={canvasRoute}>{canvasRoute}</span>
+          <span aria-label="Draft save state" aria-live="polite" className={`inline-flex shrink-0 items-center gap-1 text-[10px] ${storageUnavailable ? "text-cms-danger" : changedCount ? "text-cms-accent" : "text-cms-subtle"}`} title={storageUnavailable ? "Keep this tab open until you push. Browser storage is unavailable." : changedCount ? `${changedCount} document${changedCount === 1 ? "" : "s"} awaiting push; these changes are not live.` : "The loaded source is separate from your hosting deployment."}>{storageUnavailable ? <Info size={12} aria-hidden="true"/> : <CheckCircle2 size={12} aria-hidden="true"/>}<span className="sr-only md:not-sr-only">{saveState}</span></span>
         </div>
         <div className="flex shrink-0 items-center gap-0.5" aria-label="Canvas mode">
           <IconButton className={`size-6 border-transparent bg-transparent shadow-none ${canvasMode === "design" ? "text-cms-accent" : ""}`} aria-label="Design mode" title="Design mode" aria-pressed={canvasMode === "design"} disabled={controlsDisabled} onClick={() => setCanvasMode("design")}><MousePointer2 size={14}/></IconButton>
@@ -449,7 +488,11 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
         <span className="mx-0.5 h-4 shrink-0 border-r border-cms-line" aria-hidden="true"/>
         <div className="flex shrink-0 items-center gap-0.5" aria-label="Canvas width">{([{ id: "desktop", Icon: Monitor }, { id: "tablet", Icon: Tablet }, { id: "landscape", Icon: Tablet }, { id: "mobile", Icon: Smartphone }] as const).map(({ id, Icon }) => <IconButton key={id} className={`size-6 border-transparent bg-transparent shadow-none ${device === id ? "text-cms-accent" : ""}`} aria-label={`${id} preview`} title={`${id[0].toUpperCase()}${id.slice(1)} preview`} aria-pressed={device === id} onClick={() => { setDevice(id); setBreakpoint(id === "mobile" ? "base" : id); }}><Icon size={14}/></IconButton>)}</div>
         <span className="mx-0.5 h-4 shrink-0 border-r border-cms-line" aria-hidden="true"/>
-        <IconButton aria-label="Discard drafts" title={`Discard all ${changedCount} content drafts`} className="size-6 border-transparent bg-transparent p-1 shadow-none" disabled={!changedCount || controlsDisabled} onClick={() => setDiscarding(true)}><Undo2 size={14}/></IconButton>
+        <div className="flex shrink-0 items-center gap-0.5" aria-label="Edit history">
+          <Tooltip content={history.undoLabel ? `Undo ${history.undoLabel} (⌘/Ctrl+Z)` : "Nothing to undo"}><IconButton aria-label="Undo edit" className="size-6 border-transparent bg-transparent p-1 shadow-none" disabled={!history.undoLabel || controlsDisabled || canvasMode === "preview"} onClick={() => runHistory("undo")}><Undo2 size={14}/></IconButton></Tooltip>
+          <Tooltip content={history.redoLabel ? `Redo ${history.redoLabel} (Shift+⌘/Ctrl+Z)` : "Nothing to redo"}><IconButton aria-label="Redo edit" className="size-6 border-transparent bg-transparent p-1 shadow-none" disabled={!history.redoLabel || controlsDisabled || canvasMode === "preview"} onClick={() => runHistory("redo")}><Redo2 size={14}/></IconButton></Tooltip>
+          <Tooltip content={`Discard all ${changedCount} browser drafts`}><IconButton aria-label="Discard drafts" className="size-6 border-transparent bg-transparent p-1 shadow-none" disabled={!changedCount || controlsDisabled} onClick={() => setDiscarding(true)}><RotateCcw size={14}/></IconButton></Tooltip>
+        </div>
       </PanelHeader>
       <div className="flex min-h-0 flex-1 flex-col">
         {error && !reviewing && <div className="flex shrink-0 items-center gap-2 border-b border-cms-danger/40 bg-cms-danger/10 px-3 py-2 text-ui text-cms-danger" role="alert">{error}<Button variant="ghost" className="ml-auto" onClick={() => void load()} disabled={busy}>Retry</Button></div>}
@@ -485,7 +528,8 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
         <span className="min-w-0 flex-1 truncate" title={canvasSelection?.label}>{canvasSelection?.label ?? "No selection"}</span>
         {canvasSelection && <span className="shrink-0 font-mono text-[10px] text-cms-subtle">{canvasSelection.tag}</span>}
       </div>
-      {isComponentSelection && canvasSelection ? <ComponentInspector templateInstance={Boolean(currentTemplate)} selection={canvasSelection} onResetProperty={key => updateDesign(next => {
+      {canvasSelection && !isComponentSelection && rightPanel === "content" && <p aria-label="Editing scope" className="m-0 border-b border-cms-line px-2 py-2 text-[10px] text-cms-muted">{canvasSelection.category === "cms" ? "CMS record content" : contentDocument?.id === "shared" ? "Shared across the site" : contentDocument?.collectionId ? `All pages using ${contentDocument.label}` : "This page"}</p>}
+      {isComponentSelection && canvasSelection ? <ComponentInspector contentScope={canvasSelection.component?.fields.some(field => field.id === "shared") ? "Content is shared across the site." : currentTemplate ? `Content applies to all pages using ${currentTemplate.label}.` : null} templateInstance={Boolean(currentTemplate)} selection={canvasSelection} onResetProperty={key => updateDesign(next => {
         const id = canvasSelection.component?.instanceId;
         if (!id || !next.instances[id]) return;
         delete next.instances[id].props[key];
@@ -493,7 +537,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       })} resolveSourceField={binding => {
         const document = workspace?.documents.find(document => document.id === binding.id);
         return document ? contentFields(document.content).find(field => field.path.join(".") === binding.path) : undefined;
-      }} disabled={controlsDisabled || canvasMode === "preview"} resolveField={resolveSelectedField} onField={(field, value, id) => changeField(field, value, id)} onProperty={(key, value) => {
+      }} disabled={controlsDisabled || canvasMode === "preview"} resolveField={resolveSelectedField} onField={(field, value, id, typing) => changeField(field, value, id, typing)} onProperty={(key, value) => {
         const component = canvasSelection.component;
         if (!component?.instanceId) return;
         updateDesign(next => {
@@ -509,6 +553,6 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     </div>
     {reviewing && workspace && <Review drafts={drafts} workspace={workspace} message={message} onMessage={setMessage} busy={busy} error={error} onClose={() => { setReviewing(false); setError(""); }} onPush={() => void push()}/>}
     {connectionOpen && <GitHubConnection workspace={workspace} loading={loading} error={connectionError} lastSynced={lastSynced} lastCommit={commit} onReload={reload} onClose={() => setConnectionOpen(false)}/>}
-    <ConfirmDialog open={discarding} onOpenChange={setDiscarding} title="Discard drafts?" description={`Discard all ${changedCount} content drafts and return to the latest loaded source? This includes shared content and drafts on other pages.`} confirmLabel="Discard drafts" onConfirm={() => { persist({}); notify({ title: "Drafts discarded", duration: 4500 }); }}/>
+    <ConfirmDialog open={discarding} onOpenChange={setDiscarding} title="Discard drafts?" description={`Discard all ${changedCount} content drafts and return to the latest loaded source? This includes shared content and drafts on other pages.`} confirmLabel="Discard drafts" onConfirm={() => { persist({}, null); notify({ title: "Drafts discarded", duration: 4500 }); }}/>
   </div>;
 }
