@@ -13,6 +13,7 @@
     "dev:web": "npm run dev -w @three-acts/web",
     "dev:cms": "npm run dev -w @three-acts/cms",
     "dev:api": "npm run dev -w @three-acts/api",
+    "dev:editor": "node scripts/local-editor.mjs",
     "build": "npm run build -w ./apps --if-present",
     "build:web": "npm run build -w @three-acts/web",
     "build:cms": "npm run build -w @three-acts/cms",

@@ -10,6 +10,8 @@ import contentRoute from "../../../api/api/editor/content";
 import pushRoute from "../../../api/api/editor/push";
 import deployRoute from "../../../api/api/editor/deploy";
 import cmsPublishRoute from "../../../api/api/cms/publish";
+import recordsRoute from "../../../api/api/cms/collections/[collectionId]/records";
+import { listRecordsQuery } from "@three-acts/cms-schema";
 
 const AUTH_SECRET = "editor-api-integration-secret";
 const ENV_KEYS = [
@@ -138,7 +140,7 @@ class GithubStub {
     if (request.method === "PATCH" && path === "/git/refs/heads/content") {
       if (this.rejectRefUpdate) return send(422, { message: "branch moved" });
       const input = body as { sha?: string; force?: boolean };
-      if (input.force !== false || !input.sha || !this.commits.has(input.sha)) return send(422, { message: "invalid ref update" });
+      if (input.force !== false || !input.sha || this.commits.get(input.sha)?.parent !== this.head) return send(422, { message: "invalid or non-fast-forward ref update" });
       this.head = input.sha;
       send(200, { object: { sha: this.head } });
       return;
@@ -169,6 +171,7 @@ async function invoke(handler: (request: VercelRequest, response: VercelResponse
   method: string;
   token?: string;
   body?: unknown;
+  query?: Record<string, unknown>;
 }): Promise<ApiResult> {
   const headers: Record<string, string> = {};
   let status = 200;
@@ -183,7 +186,7 @@ async function invoke(handler: (request: VercelRequest, response: VercelResponse
     method: options.method,
     headers: options.token ? { authorization: `Bearer ${options.token}` } : {},
     body: options.body ?? {},
-    query: {}
+    query: options.query ?? {}
   } as unknown as VercelRequest;
   await handler(request, response);
   return { status, body: result, headers };
@@ -259,7 +262,7 @@ test("publication push retries reconcile the same commit after a lost response a
   const home = workspace.documents.find(doc => doc.id === "home")!;
   const content = structuredClone(home.content);
   (content.hero_section as ContentObject).display_1 = "A reviewed release";
-  const body = { requestId: "d280d96c-5b8f-4d43-8b9b-e5dce7f2ce31", message: "Publish reviewed source", changes: [{ id: home.id, sha: home.sha, content }] };
+  const body = { requestId: "d280d96c-5b8f-4d43-8b9b-e5dce7f2ce31", expectedHead: workspace.headSha, message: "Publish reviewed source", changes: [{ id: home.id, sha: home.sha, content }] };
   const committed = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body }));
   const firstRetry = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body }));
   assert.deepEqual(firstRetry, committed);
@@ -298,6 +301,38 @@ test("content route reads all documents from the configured branch without cachi
   assert.deepEqual(data.documents.map(({ id }) => id), contentDefinitions.map(({ id }) => id));
   assert.equal(response.headers["cache-control"], "no-store");
   assert.equal(github.calls.filter(({ method }) => method === "GET").length, contentDefinitions.length + 1);
+});
+
+test("publication review rejects an advanced branch even when its changed document is untouched", async t => {
+  const { github, token } = await setup(t);
+  const workspace = resultData<EditorWorkspace>(await invoke(contentRoute, { method: "GET", token }));
+  const faq = workspace.documents.find(doc => doc.id === "faq")!;
+  const faqContent = structuredClone(faq.content);
+  (faqContent.faq as ContentObject).title_2 = "A concurrent FAQ change";
+  const later = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body: { message: "Change FAQ", changes: [{ id: faq.id, sha: faq.sha, content: faqContent }] } }));
+  const home = workspace.documents.find(doc => doc.id === "home")!;
+  const homeContent = structuredClone(home.content);
+  (homeContent.hero_section as ContentObject).display_1 = "Reviewed against the old branch";
+  const writes = github.calls.filter(call => call.method !== "GET").length;
+  const rejected = await invoke(pushRoute, { method: "POST", token, body: { requestId: "d280d96c-5b8f-4d43-8b9b-e5dce7f2ce31", expectedHead: workspace.headSha, message: "Publish old review", changes: [{ id: home.id, sha: home.sha, content: homeContent }] } });
+  assert.equal(rejected.status, 409);
+  assert.equal(errorCode(rejected), "publication_revision_conflict");
+  assert.equal(github.head, later.sha);
+  assert.equal(github.calls.filter(call => call.method !== "GET").length, writes, "No tree or commit may incorporate unreviewed branch changes");
+});
+
+test("record list REST query retains the publication filter and rejects malformed statuses", async t => {
+  const { token } = await setup(t);
+  const query = Object.fromEntries(new URLSearchParams(listRecordsQuery({ publishStatus: "queued_to_publish", limit: 100, offset: 0 })));
+  const result = await invoke(recordsRoute, { method: "GET", token, query: { collectionId: "articles", ...query } });
+  assert.equal(result.status, 200);
+  const data = resultData<{ records: Array<{ publishStatus: string }>; total: number }>(result);
+  assert.ok(data.records.length > 0);
+  assert.ok(data.records.every(record => record.publishStatus === "queued_to_publish"));
+  assert.equal(data.total, data.records.length);
+  for (const status of ["unknown", "", ["published", "draft"]]) {
+    assert.equal((await invoke(recordsRoute, { method: "GET", token, query: { collectionId: "articles", publishStatus: status } })).status, 400);
+  }
 });
 
 test("push creates one commit for multiple documents, preserves untouched files, and reads committed content back", async (t) => {

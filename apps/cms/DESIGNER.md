@@ -105,6 +105,12 @@ The opt-in `/editor-preview/cms/` shell contains no draft values; normal builds 
 
 ## Extend the editing contract
 
+The toolbar's **Publish → Review & publish** captures browser content, styles and composition together with the complete queued CMS record list. Save or discard open record/page/site settings forms first. The review displays source diffs and the exact saved record identities; newly queued records remain outside that release. **Review & push** remains available for a source-only commit.
+
+Publication checks configuration before writing, creates one source commit with a release receipt, promotes only the reviewed CMS versions, and requests a build of that exact revision. A changed branch or CMS record pauses the release without promoting newer values. Source retries recover the original commit after a lost response; failed builds retry the committed revision. Progress survives reload in storage scoped to the editor, repository and branch. Starting another release preserves the prior receipt as downloadable recovery. Browser drafts take priority over committed/deploying/live labels, and status checks preserve subsequent draft history.
+
+**Live revision verified** requires the production origin's revision marker to match the commit and publication identity. A completed provider build alone cannot establish live status. Local testing needs no Vercel configuration: bundled source and browser edits still work, and publication stays unavailable until a source connection and deployment target are configured. The browser test suite simulates the provider entirely through local fixtures; it never creates a hosted deployment.
+
 Home supports approved section composition through the Navigator's **Insert section** icon and the selected section's compact **Section actions** menu. Insert Hero, Stats, Shop by category, Featured products, Intro, Journal, Testimonials, FAQ teaser or CTA sections; duplicate, hide/show and reorder them. Drag a root section onto another root section, or focus it in Navigator and use Alt+↑/↓. Hidden sections remain listed and editable; Preview and normal builds respect their hidden state.
 
 Original sections retain their Home source bindings. Inserted and duplicated sections own independent validated copy in `packages/static-content/src/documents/layout.json`, and copied element utilities/component variants get distinct identities. Shared main-component styling and reusable CSS classes remain shared. The properties inspector reads each section's actual source, including fields in a section whose CMS data is currently empty. Changed fields use blue labels, small reset icons and Alt-click reset, with the main-component edit icon at the top.
@@ -126,6 +132,8 @@ CMS template definitions include a `collectionId` and a route such as `/shop/[sl
 
 ## Tests
 
+For the complete local editor without configuring GitHub or Vercel, run `npm run dev:editor` from the repository root. It builds the opt-in canvas and starts CMS at `http://localhost:5184`, canvas at `http://localhost:5183`, and a file-backed API at `http://localhost:5185`. Sign in with any email and non-empty password. Browser drafts and CMS records persist locally; source pushing and deployment are disabled in this mode. Stop it with Ctrl+C. Re-run after changing canonical website source files. Optional `LOCAL_EDITOR_CMS_PORT`, `LOCAL_EDITOR_WEB_PORT`, `LOCAL_EDITOR_API_PORT` and `LOCAL_EDITOR_DATA_DIR` override the defaults.
+
 Run the Designer browser tests with:
 
 ```sh
@@ -137,3 +145,5 @@ This uses `apps/cms/tests/designer/playwright.config.ts`. The API's GitHub trans
 ```sh
 npx tsx --test apps/cms/tests/designer/editor-api.integration.test.ts
 ```
+
+To rebuild the complete locally simulated publication as normal desktop/mobile output, run `npm run test:e2e:designer -- --grep 'publication reviews source'` followed by `npx tsx --tsconfig tsconfig.base.json apps/cms/tests/designer/verify-publication-build.ts`. It verifies reviewed copy, component variants, composition and responsive Tailwind styles, the captured revision marker, and the absence of private editor output, then restores canonical source files. Rebuild afterward to restore output for your current checkout.

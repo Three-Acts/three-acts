@@ -43,6 +43,7 @@ export const MAX_ASSET_UPLOAD_BYTES = 4 * 1024 * 1024;
 export function listRecordsQuery(options?: ListRecordsOptions): string {
   const params = new URLSearchParams();
   if (options?.search) params.set("search", options.search);
+  if (options?.publishStatus) params.set("publishStatus", options.publishStatus);
   if (options?.sort) {
     params.set("sortKey", options.sort.key);
     params.set("sortDirection", options.sort.direction);

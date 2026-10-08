@@ -27,10 +27,10 @@ export async function loadDesignerWorkspace(): Promise<EditorWorkspace> {
   return { repository: null, branch: null, connected: false, source: "local", headSha: null, connectionMode: "none", documents };
 }
 
-export function pushDesignerChanges(changes: EditorChange[], message: string): Promise<EditorPushResult> {
+export function pushDesignerChanges(changes: EditorChange[], message: string, requestId?: string, expectedHead?: string): Promise<EditorPushResult> {
   if (import.meta.env.VITE_CMS_BACKEND !== "rest") return Promise.reject(new Error("Connect an authenticated GitHub workspace before pushing."));
   return apiFetch<EditorPushResult>("/editor/push", {
     method: "POST",
-    body: JSON.stringify({ changes, message })
+    body: JSON.stringify({ changes, message, requestId, expectedHead })
   });
 }

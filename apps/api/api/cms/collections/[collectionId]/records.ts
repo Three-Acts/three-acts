@@ -1,4 +1,4 @@
-import type { CreateRecordBody, ListRecordsOptions } from "@three-acts/cms-schema";
+import { publishStatuses, type CreateRecordBody, type ListRecordsOptions, type PublishStatus } from "@three-acts/cms-schema";
 import { ApiError, ok, readJsonBody, withApi } from "../../../_lib/http";
 import { requireAuth } from "../../../_lib/auth";
 import { createRecord, listRecords } from "../../../_lib/cms/service";
@@ -34,6 +34,10 @@ export default withApi(["GET", "POST"], async (request, response) => {
     const search = readStringParam(request.query.search);
     const sortKey = readStringParam(request.query.sortKey);
     const sortDirectionRaw = readStringParam(request.query.sortDirection);
+    const publishStatus = readStringParam(request.query.publishStatus);
+    if (request.query.publishStatus !== undefined && (!publishStatus || !publishStatuses.includes(publishStatus as PublishStatus))) {
+      throw new ApiError(400, "invalid_query", "publishStatus must be a valid publication status.");
+    }
 
     if (sortDirectionRaw !== undefined && sortDirectionRaw !== "asc" && sortDirectionRaw !== "desc") {
       throw new ApiError(400, "invalid_query", "sortDirection must be 'asc' or 'desc'.");
@@ -44,6 +48,7 @@ export default withApi(["GET", "POST"], async (request, response) => {
 
     const options: ListRecordsOptions = {
       search: search || undefined,
+      publishStatus: publishStatus as PublishStatus | undefined,
       sort: sortKey ? { key: sortKey, direction: sortDirectionRaw === "asc" ? "asc" : "desc" } : undefined,
       limit,
       offset

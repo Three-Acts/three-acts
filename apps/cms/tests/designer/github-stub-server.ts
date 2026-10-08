@@ -12,7 +12,7 @@ for (const definition of contentDefinitions) {
 }
 const snapshots = new Map([[initialHead, files]]);
 const trees = new Map([["2222222222222222222222222222222222222222", new Map(files)]]);
-const commits = new Map([[initialHead, { tree: "2222222222222222222222222222222222222222" }]]);
+const commits = new Map<string, { tree: string; parent?: string; message?: string }>([[initialHead, { tree: "2222222222222222222222222222222222222222" }]]);
 let head = initialHead;
 let nextId = 1;
 
@@ -45,7 +45,7 @@ const server = createServer(async (request, response) => {
     const tree = (nextId++).toString(16).padStart(40, "0");
     trees.set(tree, updated);
     const sha = (nextId++).toString(16).padStart(40, "0");
-    commits.set(sha, { tree });
+    commits.set(sha, { tree, parent: head });
     snapshots.set(sha, updated);
     head = sha;
     send(200, { sha });
@@ -55,6 +55,21 @@ const server = createServer(async (request, response) => {
   if (request.method === "GET" && path === "/git/ref/heads/content") {
     send(200, { object: { sha: head } });
     return;
+  }
+  if (request.method === "GET" && path === "/commits") {
+    const history = [];
+    let sha: string | undefined = url.searchParams.get("sha") ?? head;
+    while (sha && history.length < 100) {
+      const commit = commits.get(sha); if (!commit) break;
+      history.push({ sha, commit: { message: commit.message ?? "Initial content" } }); sha = commit.parent;
+    }
+    send(200, history); return;
+  }
+  const compare = path.match(/^\/compare\/([a-f0-9]{40})\.\.\.([a-f0-9]{40})$/);
+  if (request.method === "GET" && compare) {
+    let sha: string | undefined = compare[2];
+    while (sha && sha !== compare[1]) sha = commits.get(sha)?.parent;
+    send(200, { merge_base_commit: { sha: sha ?? initialHead } }); return;
   }
   const commitMatch = path.match(/^\/git\/commits\/([a-f0-9]{40})$/);
   if (request.method === "GET" && commitMatch) {
@@ -82,19 +97,19 @@ const server = createServer(async (request, response) => {
     return;
   }
   if (request.method === "POST" && path === "/git/commits") {
-    const input = body as { tree?: string; parents?: string[] };
+    const input = body as { tree?: string; parents?: string[]; message?: string };
     const tree = input.tree ?? "";
     const snapshot = trees.get(tree);
     if (!snapshot) return send(422, { message: "tree not found" });
     const sha = (nextId++).toString(16).padStart(40, "0");
-    commits.set(sha, { tree });
+    commits.set(sha, { tree, parent: input.parents?.[0], message: input.message });
     snapshots.set(sha, new Map(snapshot));
     send(201, { sha, html_url: `https://github.com/test/site/commit/${sha}` });
     return;
   }
   if (request.method === "PATCH" && path === "/git/refs/heads/content") {
     const input = body as { sha?: string; force?: boolean };
-    if (input.force !== false || !input.sha || !commits.has(input.sha)) return send(422, { message: "invalid ref update" });
+    if (input.force !== false || !input.sha || commits.get(input.sha)?.parent !== head) return send(422, { message: "invalid or non-fast-forward ref update" });
     head = input.sha;
     send(200, { object: { sha: head } });
     return;

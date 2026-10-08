@@ -100,13 +100,14 @@ export async function pushEditorContent(input: unknown): Promise<EditorPushResul
   const settings = config();
   if (!settings) throw new ApiError(503, "github_unconfigured", "Connect GitHub in the API's environment settings before pushing.");
   if (!input || typeof input !== "object") throw new ApiError(400, "invalid_request", "Invalid push request.");
-  const { changes, message, requestId } = input as { changes?: unknown; message?: unknown; requestId?: unknown };
+  const { changes, message, requestId, expectedHead } = input as { changes?: unknown; message?: unknown; requestId?: unknown; expectedHead?: unknown };
   if (!Array.isArray(changes) || changes.length < 1 || changes.length > contentDefinitions.length || typeof message !== "string" || !message.trim() || message.length > 200) {
     throw new ApiError(400, "invalid_request", "Choose changed pages and enter a commit message under 200 characters.");
   }
   if (message.includes("Editor-Request:") || requestId !== undefined && (typeof requestId !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(requestId))) {
     throw new ApiError(400, "invalid_request", "Use a valid publication request identity and a plain commit message.");
   }
+  if (expectedHead !== undefined && (typeof expectedHead !== "string" || !/^[a-f0-9]{40}$/.test(expectedHead))) throw new ApiError(400, "invalid_request", "Review an exact source branch revision.");
   if (Buffer.byteLength(JSON.stringify(input)) > 512000) throw new ApiError(413, "content_too_large", "This update is too large. Push fewer pages at a time.");
   const ids = new Set<string>();
   const validated: EditorChange[] = changes.map((change) => {
@@ -118,7 +119,7 @@ export async function pushEditorContent(input: unknown): Promise<EditorPushResul
   const parent = await head(settings);
   // The commit is the durable receipt. Reconcile a lost push response before
   // comparing old blob SHAs, including when a teammate advanced the branch.
-  const fingerprint = requestId ? createHash("sha256").update(JSON.stringify({ message: message.trim(), changes: [...validated].sort((a, b) => a.id.localeCompare(b.id)) })).digest("hex") : null;
+  const fingerprint = requestId ? createHash("sha256").update(JSON.stringify({ message: message.trim(), changes: [...validated].sort((a, b) => a.id.localeCompare(b.id)), expectedHead })).digest("hex") : null;
   const receipt = requestId ? `Editor-Request: ${requestId} ${fingerprint}` : null;
   if (receipt) {
     const history = await github<Array<{ sha: string; commit: { message: string } }>>(settings, `/commits?sha=${encodeURIComponent(parent)}&per_page=100`);
@@ -130,6 +131,7 @@ export async function pushEditorContent(input: unknown): Promise<EditorPushResul
       return { sha: previous.sha, url: `https://github.com/${settings.repository}/commit/${previous.sha}`, documents };
     }
   }
+  if (expectedHead !== undefined && parent !== expectedHead) throw new ApiError(409, "publication_revision_conflict", "The source branch changed after this publication was reviewed. Reload and review a new release; these drafts are preserved.");
   const originals = await Promise.all(validated.map((change) => readDocument(settings, change.id, parent)));
   if (validated.some((change, index) => change.sha !== originals[index].sha)) throw new ApiError(409, "content_conflict", "A page changed on GitHub since you started editing. Reload and review your drafts.");
   const commit = await github<{ tree: { sha: string } }>(settings, `/git/commits/${parent}`);

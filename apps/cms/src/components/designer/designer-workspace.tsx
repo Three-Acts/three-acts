@@ -17,6 +17,8 @@ import { ArrowUpRight, CheckCircle2, Eye, File, GitBranch, Globe, Info, Layers, 
 import { contentFields, validateContent, defaultLayout, duplicateSection, insertSection, moveSection, homeSections, layoutLimits, layoutSources, readLayoutSource, validateLayout, type HomeCopy, type HomeSectionType, type LayoutDocument, type ContentField, type ContentObject, type EditorChange, type EditorDocument, type EditorPushResult, type EditorWorkspace } from "@three-acts/static-content";
 import { InsertSection, SectionActions } from "./composition-controls";
 import { copySectionDesign } from "./composition-model";
+import { reconcilePublication, type PublicationSource } from "./publication-source";
+import type { PublicationStatus } from "../../hooks/use-publication";
 import type { AuthUser } from "@three-acts/auth";
 import { Button, ConfirmDialog, IconButton, PanelHeader, SearchInput, Tooltip, type ToastOptions } from "../atoms";
 import { popupClass } from "../atoms/styles";
@@ -47,7 +49,7 @@ function siteUrl(): URL | null {
 
 const publicSite = siteUrl();
 
-export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPagePathChange, onBusyChange, onUnsavedChange, onOpenPageDetails, onSelectPage, pageDetailsPath, pageDetailsDirty = false, pagePublishStatuses, onTemplateDetailsChange, toolbarHost, onClosePublish, onViewSiteUrlChange }: {
+export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPagePathChange, onBusyChange, onUnsavedChange, onOpenPageDetails, onSelectPage, pageDetailsPath, pageDetailsDirty = false, pagePublishStatuses, onTemplateDetailsChange, toolbarHost, onClosePublish, onViewSiteUrlChange, onPublicationSourceChange, publicationLocked = false, publicationStatus }: {
   user: AuthUser;
   active?: boolean;
   onOpenCmsRecord?: (source: CmsSource) => void;
@@ -63,6 +65,9 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   toolbarHost?: HTMLDivElement | null;
   onClosePublish?: () => void;
   onViewSiteUrlChange?: (url: string | null) => void;
+  onPublicationSourceChange?: (source: PublicationSource | null) => void;
+  publicationLocked?: boolean;
+  publicationStatus?: PublicationStatus | null;
 }) {
   const [workspace, setWorkspace] = useState<EditorWorkspace | null>(null);
   const history = useDraftHistory();
@@ -86,7 +91,8 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   const [canvasZoom, setCanvasZoom] = useState<CanvasZoom>("fit");
   const [resolvedZoom, setResolvedZoom] = useState(1);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [sourceBusy, setBusy] = useState(false);
+  const busy = sourceBusy || publicationLocked;
   const [loading, setLoading] = useState(false);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [reviewing, setReviewing] = useState(false);
@@ -317,6 +323,24 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
       setError("Browser storage is unavailable. Keep this tab open until you push your changes.");
     }
   }, [key]);
+
+  const publicationLatest = useRef({ workspace, drafts });
+  useEffect(() => { publicationLatest.current = { workspace, drafts }; }, [workspace, drafts]);
+  const acknowledgePublication = useCallback((result: EditorPushResult, reviewed: EditorChange[], repository: string, branch: string, baseRevision: string) => {
+    const latest = publicationLatest.current;
+    if (!latest.workspace || latest.workspace.repository !== repository || latest.workspace.branch !== branch) return;
+    const reconciled = reconcilePublication(latest.workspace, latest.drafts, result, reviewed, baseRevision);
+    if (!reconciled) return; // Status polls must not reset newer edit history.
+    publicationLatest.current = reconciled;
+    setWorkspace(reconciled.workspace);
+    resetHistory(reconciled.drafts);
+    saveDrafts(reconciled.drafts);
+    setCommit(result.url);
+    setLastSynced(new Date());
+  }, [resetHistory, saveDrafts]);
+  const publicationSource = useMemo<PublicationSource>(() => ({ workspace, drafts, busy: sourceBusy || loading || reviewing, storageUnavailable, acknowledge: acknowledgePublication }), [workspace, drafts, sourceBusy, loading, reviewing, storageUnavailable, acknowledgePublication]);
+  useEffect(() => { onPublicationSourceChange?.(publicationSource); }, [onPublicationSourceChange, publicationSource]);
+  useEffect(() => () => onPublicationSourceChange?.(null), [onPublicationSourceChange]);
 
   function persist(next: Drafts, edit: HistoryEdit | null) {
     if (edit) history.record(next, edit);
@@ -549,7 +573,8 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   }
   function changeCanvasZoom(zoom: CanvasZoom) { if (!controlsDisabled) setCanvasZoom(zoom); }
 
-  const saveState = storageUnavailable ? "Not saved in this browser" : loading ? "Loading source…" : !workspace ? "Source unavailable" : changedCount ? "Saved in this browser · Awaiting push" : commit ? "Committed to GitHub" : "Source loaded";
+  const publicationLabel = publicationStatus?.revision && publicationStatus.revision === workspace?.headSha ? `${publicationStatus.state === "live" ? "Live" : publicationStatus.state === "deploying" ? "Deploying" : publicationStatus.state === "verifying" ? "Verifying live" : "Committed"} · ${publicationStatus.revision.slice(0, 8)}` : null;
+  const saveState = storageUnavailable ? "Not saved in this browser" : loading ? "Loading source…" : !workspace ? "Source unavailable" : changedCount ? "Saved in this browser · Awaiting push" : publicationLabel ?? (commit ? "Committed to GitHub" : "Source loaded");
   const connectionStatus = loading ? "Checking GitHub" : connectionError ? "Connection check failed" : workspace?.connected ? "Connected to GitHub" : "GitHub not connected";
   const reload = () => void load(page, canvasRoute);
   const toolbarActions = <section aria-label="GitHub source" className="grid gap-3 p-3">

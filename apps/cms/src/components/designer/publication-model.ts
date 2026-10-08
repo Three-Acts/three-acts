@@ -6,7 +6,7 @@ export type PublicationReceipt = {
   changes: EditorChange[]; cms: ReviewedCmsRecord[];
   step: "source" | "cms" | "deploy" | "verify" | "done";
   state: "reviewed" | "committed" | "promoting" | "deploying" | "verifying" | "live" | "failed" | "unconfigured";
-  revision: string | null;
+  revision: string | null; baseRevision: string;
   commit?: { sha: string; url: string; documents: Array<{ id: string; sha: string }> };
   deployment?: PublicationDeployment;
   promotion?: CmsPromotionResult;
@@ -14,7 +14,7 @@ export type PublicationReceipt = {
 };
 export type PublicationDependencies = {
   configuration: () => Promise<PublicationConfiguration>;
-  push: (changes: EditorChange[], message: string, requestId: string) => Promise<EditorPushResult>;
+  push: (changes: EditorChange[], message: string, requestId: string, expectedHead: string) => Promise<EditorPushResult>;
   onCommitted: (result: EditorPushResult, reviewed: EditorChange[]) => void;
   promote: (records: ReviewedCmsRecord[]) => Promise<CmsPromotionResult>;
   deploy: (identity: PublicationIdentity, retry: boolean) => Promise<PublicationDeployment>;
@@ -26,7 +26,7 @@ export function preparePublication(scope: string, workspace: EditorWorkspace, ch
   if (!workspace.connected || !workspace.repository || !workspace.branch) throw new Error("Connect GitHub before publishing source changes.");
   const receipt = workspace.documents.find(doc => doc.id === "publication");
   if (!receipt) throw new Error("The source publication contract is unavailable. Reload the workspace.");
-  return readPublicationReceipt({ version: 1, scope, repository: workspace.repository, branch: workspace.branch, publicationId, startedAt: new Date().toISOString(), message, changes: [...changes.filter(change => change.id !== "publication"), { id: "publication", sha: receipt.sha, content: { version: 1, publicationId } }], cms, step: "source", state: "reviewed", revision: null });
+  return readPublicationReceipt({ version: 1, scope, repository: workspace.repository, branch: workspace.branch, publicationId, startedAt: new Date().toISOString(), message, changes: [...changes.filter(change => change.id !== "publication"), { id: "publication", sha: receipt.sha, content: { version: 1, publicationId } }], cms, step: "source", state: "reviewed", revision: null, baseRevision: workspace.headSha });
 }
 
 export function publicationStorageKey(scope: string, repository: string, branch: string): string {
@@ -42,7 +42,8 @@ export function readScopedPublicationReceipt(input: unknown, scope: string, repo
 export function readPublicationReceipt(input: unknown): PublicationReceipt {
   if (!input || typeof input !== "object" || Array.isArray(input) || new TextEncoder().encode(JSON.stringify(input)).length > 1024 * 1024) throw new Error("Invalid or oversized publication recovery receipt.");
   const value = input as PublicationReceipt;
-  if (Object.keys(value).some(key => !["version", "scope", "repository", "branch", "publicationId", "startedAt", "message", "changes", "cms", "step", "state", "revision", "commit", "deployment", "promotion", "error"].includes(key))) throw new Error("Unsupported publication recovery fields.");
+  if (Object.keys(value).some(key => !["version", "scope", "repository", "branch", "publicationId", "startedAt", "message", "changes", "cms", "step", "state", "revision", "baseRevision", "commit", "deployment", "promotion", "error"].includes(key))) throw new Error("Unsupported publication recovery fields.");
+  if (typeof value.baseRevision !== "string" || !/^[a-f0-9]{40}$/.test(value.baseRevision)) throw new Error("Publication review requires an exact source baseline revision.");
   readPublicationIdentity({ revision: value.revision ?? "0".repeat(40), publicationId: value.publicationId });
   if (value.version !== 1 || typeof value.scope !== "string" || !value.scope || value.scope.length > 200 || typeof value.repository !== "string" || !/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(value.repository) || typeof value.branch !== "string" || !value.branch || value.branch.length > 255 || typeof value.message !== "string" || !value.message.trim() || value.message.length > 200 || value.message.includes("Editor-Request:") || typeof value.startedAt !== "string" || !Number.isFinite(Date.parse(value.startedAt)) || !["source", "cms", "deploy", "verify", "done"].includes(value.step) || !["reviewed", "committed", "promoting", "deploying", "verifying", "live", "failed", "unconfigured"].includes(value.state)) throw new Error("Invalid publication recovery scope or state.");
   if (!Array.isArray(value.changes) || value.changes.length < 1 || value.changes.length > contentDefinitions.length) throw new Error("Invalid publication source changes.");
@@ -86,7 +87,7 @@ export async function advancePublication(input: PublicationReceipt, deps: Public
     if (!configuration.configured) { save({ state: "unconfigured", error: configuration.message ?? "Publication is not configured." }); return receipt; }
     if (configuration.repository !== receipt.repository || configuration.branch !== receipt.branch) throw new Error("The publication connection changed. Review the current source before starting another release.");
     if (receipt.step === "source") {
-      const result = await deps.push(receipt.changes, receipt.message, receipt.publicationId);
+      const result = await deps.push(receipt.changes, receipt.message, receipt.publicationId, receipt.baseRevision);
       if (!/^[a-f0-9]{40}$/.test(result.sha) || result.url !== `https://github.com/${receipt.repository}/commit/${result.sha}` || result.documents.length !== receipt.changes.length) throw new Error("Source push did not return this publication's committed documents.");
       const documents = receipt.changes.map(change => {
         const document = result.documents.find(doc => doc.id === change.id);

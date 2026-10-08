@@ -14,7 +14,7 @@ function fixture() {
   let state: PublicationDeployment["state"] = "BUILDING";
   const deps: PublicationDependencies = {
     configuration: async () => { calls.push("config"); return { configured: true, repository: "test/site", branch: "content" }; },
-    push: async (changes, message, requestId) => { calls.push("push"); assert.deepEqual(changes, receipt.changes); assert.equal(message, receipt.message); assert.equal(requestId, publicationId); return commit; },
+    push: async (changes, message, requestId, expectedHead) => { calls.push("push"); assert.deepEqual(changes, receipt.changes); assert.equal(message, receipt.message); assert.equal(requestId, publicationId); assert.equal(expectedHead, workspace.headSha); return commit; },
     onCommitted: result => { calls.push("ack"); assert.deepEqual(result.documents.map(doc => doc.id), receipt.changes.map(change => change.id)); },
     promote: async records => { calls.push("cms"); assert.deepEqual(records, cms); return { complete: true, published: 1, records: [{ collectionId: "articles", id: "reviewed-article", state: "published" }] }; },
     deploy: async (identity, retry) => { calls.push(retry ? "retry-deploy" : "deploy"); assert.deepEqual(identity, { revision, publicationId }); return { ...identity, state, id: "dpl_reviewed" }; },
