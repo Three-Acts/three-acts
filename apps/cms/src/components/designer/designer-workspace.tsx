@@ -1,3 +1,6 @@
+import { CanvasSizeControls } from "./canvas-size-controls";
+import { CanvasViewport } from "./canvas-viewport";
+import { clampViewportWidth, viewportBreakpoint, viewportPresets, type CanvasZoom } from "./viewport-model";
 import type { CmsSource } from "@three-acts/cms-schema";
 import { CmsSourceInspector } from "./cms-source-inspector";
 import { isCanvasSelection, readCanvasNodes, readCanvasTreeStatus } from "./canvas-contract";
@@ -8,7 +11,7 @@ import type { HistoryEdit } from "./history";
 import { ComponentInspector } from "./component-inspector";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowUpRight, CheckCircle2, Eye, File, GitBranch, Globe, Info, Layers, Monitor, MousePointer2, RefreshCw, Settings, SlidersHorizontal, Smartphone, Tablet, Type, Undo2, Redo2, RotateCcw, X } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Eye, File, GitBranch, Globe, Info, Layers, MousePointer2, RefreshCw, Settings, SlidersHorizontal, Type, Undo2, Redo2, RotateCcw, X } from "lucide-react";
 import { contentFields, validateContent, type ContentField, type ContentObject, type EditorChange, type EditorDocument, type EditorPushResult, type EditorWorkspace } from "@three-acts/static-content";
 import type { AuthUser } from "@three-acts/auth";
 import { Button, ConfirmDialog, IconButton, PanelHeader, SearchInput, Tooltip, type ToastOptions } from "../atoms";
@@ -39,7 +42,6 @@ function siteUrl(): URL | null {
 }
 
 const publicSite = siteUrl();
-const widths = { desktop: "1280px", tablet: "1024px", landscape: "768px", mobile: "390px" };
 
 export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPagePathChange, onBusyChange, onUnsavedChange, onOpenPageDetails, onSelectPage, pageDetailsPath, pageDetailsDirty = false, pagePublishStatuses, onTemplateDetailsChange, toolbarHost, onClosePublish, onViewSiteUrlChange }: {
   user: AuthUser;
@@ -76,7 +78,9 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   const [canvasMode, setCanvasMode] = useState<"design" | "preview">("design");
   const [breakpoint, setBreakpoint] = useState<Breakpoint>("desktop");
   const [editingComponent, setEditingComponent] = useState<string | null>(null);
-  const [device, setDevice] = useState<keyof typeof widths>("desktop");
+  const [viewportWidth, setViewportWidth] = useState<number>(viewportPresets.desktop);
+  const [canvasZoom, setCanvasZoom] = useState<CanvasZoom>("fit");
+  const [resolvedZoom, setResolvedZoom] = useState(1);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -144,7 +148,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   }
   function changeBreakpoint(value: Breakpoint) {
     setBreakpoint(value);
-    setDevice(value === "base" ? "mobile" : value);
+    setViewportWidth(viewportPresets[value === "base" ? "mobile" : value]);
   }
   function resolveSelectedField(binding: { id: string; path: string }) {
     const document = workspace?.documents.find(document => document.id === binding.id);
@@ -420,6 +424,14 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   }, [frameUrl, onViewSiteUrlChange]);
   const elementPresentation = getElementPresentation(canvasSelection?.tag ?? "div", canvasSelection?.category ?? "element");
   const controlsDisabled = !active || busy || loading || reviewing;
+  function changeViewportWidth(width: number) {
+    if (controlsDisabled) return;
+    const next = clampViewportWidth(width);
+    setViewportWidth(next);
+    setBreakpoint(viewportBreakpoint(next));
+  }
+  function changeCanvasZoom(zoom: CanvasZoom) { if (!controlsDisabled) setCanvasZoom(zoom); }
+
   const saveState = storageUnavailable ? "Not saved in this browser" : loading ? "Loading source…" : !workspace ? "Source unavailable" : changedCount ? "Saved in this browser · Awaiting push" : commit ? "Committed to GitHub" : "Source loaded";
   const connectionStatus = loading ? "Checking GitHub" : connectionError ? "Connection check failed" : workspace?.connected ? "Connected to GitHub" : "GitHub not connected";
   const reload = () => void load(page, canvasRoute);
@@ -493,24 +505,26 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     </aside>}
     </div>
 
-    <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <PanelHeader className="h-8 min-h-8 gap-1.5 px-2" render={<header aria-label="Canvas toolbar"/>}>
-        <div className="flex min-w-0 flex-1 items-center gap-2 text-ui">
+    <main className="@container/canvas flex min-h-0 min-w-0 flex-1 flex-col">
+      <PanelHeader className="h-8 min-h-8 gap-1.5 px-2 @max-[650px]/canvas:h-auto @max-[650px]/canvas:flex-wrap @max-[650px]/canvas:gap-x-0 @max-[650px]/canvas:gap-y-0" render={<header aria-label="Canvas toolbar"/>}>
+        <div className="flex min-w-0 flex-1 items-center gap-2 text-ui @max-[650px]/canvas:w-full @max-[650px]/canvas:flex-none @max-[650px]/canvas:min-h-8">
           <PagePicker pageStates={pageStates} documents={workspace?.documents ?? []} current={current} previewItems={previews.items} chosenPreview={chosenPreview} previewsLoading={previews.loading} previewsError={previews.error} disabled={busy || loading || !workspace} onSelectPage={choosePage} onSelectPreview={choosePreview} onOpenDetails={(document) => onOpenPageDetails?.(document.route, () => selectPage(document.id))}/>
           <span className="hidden min-w-0 truncate text-cms-muted lg:inline" title={canvasRoute}>{canvasRoute}</span>
           <span aria-label="Draft save state" aria-live="polite" className={`inline-flex shrink-0 items-center gap-1 text-[10px] ${storageUnavailable ? "text-cms-danger" : changedCount ? "text-cms-accent" : "text-cms-subtle"}`} title={storageUnavailable ? "Keep this tab open until you push. Browser storage is unavailable." : changedCount ? `${changedCount} document${changedCount === 1 ? "" : "s"} awaiting push; these changes are not live.` : "The loaded source is separate from your hosting deployment."}>{storageUnavailable ? <Info size={12} aria-hidden="true"/> : <CheckCircle2 size={12} aria-hidden="true"/>}<span className="sr-only md:not-sr-only">{saveState}</span></span>
         </div>
-        <div className="flex shrink-0 items-center gap-0.5" aria-label="Canvas mode">
-          <IconButton className={`size-6 border-transparent bg-transparent shadow-none ${canvasMode === "design" ? "text-cms-accent" : ""}`} aria-label="Design mode" title="Design mode" aria-pressed={canvasMode === "design"} disabled={controlsDisabled} onClick={() => setCanvasMode("design")}><MousePointer2 size={14}/></IconButton>
-          <IconButton className={`size-6 border-transparent bg-transparent shadow-none ${canvasMode === "preview" ? "text-cms-accent" : ""}`} aria-label="Preview mode" title="Preview mode" aria-pressed={canvasMode === "preview"} disabled={controlsDisabled} onClick={() => setCanvasMode("preview")}><Eye size={14}/></IconButton>
-        </div>
-        <span className="mx-0.5 h-4 shrink-0 border-r border-cms-line" aria-hidden="true"/>
-        <div className="flex shrink-0 items-center gap-0.5" aria-label="Canvas width">{([{ id: "desktop", Icon: Monitor }, { id: "tablet", Icon: Tablet }, { id: "landscape", Icon: Tablet }, { id: "mobile", Icon: Smartphone }] as const).map(({ id, Icon }) => <IconButton key={id} className={`size-6 border-transparent bg-transparent shadow-none ${device === id ? "text-cms-accent" : ""}`} aria-label={`${id} preview`} title={`${id[0].toUpperCase()}${id.slice(1)} preview`} aria-pressed={device === id} onClick={() => { setDevice(id); setBreakpoint(id === "mobile" ? "base" : id); }}><Icon size={14}/></IconButton>)}</div>
-        <span className="mx-0.5 h-4 shrink-0 border-r border-cms-line" aria-hidden="true"/>
-        <div className="flex shrink-0 items-center gap-0.5" aria-label="Edit history">
-          <Tooltip content={history.undoLabel ? `Undo ${history.undoLabel} (⌘/Ctrl+Z)` : "Nothing to undo"}><IconButton aria-label="Undo edit" className="size-6 border-transparent bg-transparent p-1 shadow-none" disabled={!history.undoLabel || controlsDisabled || canvasMode === "preview"} onClick={() => runHistory("undo")}><Undo2 size={14}/></IconButton></Tooltip>
-          <Tooltip content={history.redoLabel ? `Redo ${history.redoLabel} (Shift+⌘/Ctrl+Z)` : "Nothing to redo"}><IconButton aria-label="Redo edit" className="size-6 border-transparent bg-transparent p-1 shadow-none" disabled={!history.redoLabel || controlsDisabled || canvasMode === "preview"} onClick={() => runHistory("redo")}><Redo2 size={14}/></IconButton></Tooltip>
-          <Tooltip content={`Discard all ${changedCount} browser drafts`}><IconButton aria-label="Discard drafts" className="size-6 border-transparent bg-transparent p-1 shadow-none" disabled={!changedCount || controlsDisabled} onClick={() => setDiscarding(true)}><RotateCcw size={14}/></IconButton></Tooltip>
+        <div className="flex shrink-0 items-center gap-1.5 [scrollbar-width:none] @max-[650px]/canvas:min-h-8 @max-[650px]/canvas:max-w-full @max-[650px]/canvas:overflow-x-auto">
+          <div className="flex shrink-0 items-center gap-0.5" aria-label="Canvas mode">
+            <IconButton className={`size-6 border-transparent bg-transparent shadow-none ${canvasMode === "design" ? "text-cms-accent" : ""}`} aria-label="Design mode" title="Design mode" aria-pressed={canvasMode === "design"} disabled={controlsDisabled} onClick={() => setCanvasMode("design")}><MousePointer2 size={14}/></IconButton>
+            <IconButton className={`size-6 border-transparent bg-transparent shadow-none ${canvasMode === "preview" ? "text-cms-accent" : ""}`} aria-label="Preview mode" title="Preview mode" aria-pressed={canvasMode === "preview"} disabled={controlsDisabled} onClick={() => setCanvasMode("preview")}><Eye size={14}/></IconButton>
+          </div>
+          <span className="mx-0.5 h-4 shrink-0 border-r border-cms-line" aria-hidden="true"/>
+          <CanvasSizeControls width={viewportWidth} zoom={canvasZoom} scale={resolvedZoom} disabled={controlsDisabled} onWidth={changeViewportWidth} onZoom={changeCanvasZoom}/>
+          <span className="mx-0.5 h-4 shrink-0 border-r border-cms-line" aria-hidden="true"/>
+          <div className="flex shrink-0 items-center gap-0.5" aria-label="Edit history">
+            <Tooltip content={history.undoLabel ? `Undo ${history.undoLabel} (⌘/Ctrl+Z)` : "Nothing to undo"}><IconButton aria-label="Undo edit" className="size-6 border-transparent bg-transparent p-1 shadow-none" disabled={!history.undoLabel || controlsDisabled || canvasMode === "preview"} onClick={() => runHistory("undo")}><Undo2 size={14}/></IconButton></Tooltip>
+            <Tooltip content={history.redoLabel ? `Redo ${history.redoLabel} (Shift+⌘/Ctrl+Z)` : "Nothing to redo"}><IconButton aria-label="Redo edit" className="size-6 border-transparent bg-transparent p-1 shadow-none" disabled={!history.redoLabel || controlsDisabled || canvasMode === "preview"} onClick={() => runHistory("redo")}><Redo2 size={14}/></IconButton></Tooltip>
+            <Tooltip content={`Discard all ${changedCount} browser drafts`}><IconButton aria-label="Discard drafts" className="size-6 border-transparent bg-transparent p-1 shadow-none" disabled={!changedCount || controlsDisabled} onClick={() => setDiscarding(true)}><RotateCcw size={14}/></IconButton></Tooltip>
+          </div>
         </div>
       </PanelHeader>
       <div className="flex min-h-0 flex-1 flex-col">
@@ -518,8 +532,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
         {recovery && <div className="flex shrink-0 items-center gap-2 border-b border-cms-pending/40 bg-cms-pending/10 px-3 py-2 text-ui text-cms-text" role="alert">Some saved drafts use older or invalid fields. Compatible drafts are restored, and a backup is kept in this browser.<Button variant="ghost" onClick={downloadRecovery}>Download draft backup</Button></div>}
         {stale.length > 0 && <div className="shrink-0 border-b border-cms-pending/40 bg-cms-pending/10 px-3 py-2 text-ui text-cms-text" role="alert">{stale.map((doc) => doc.label).join(", ")} changed on GitHub. Your drafts are preserved. Discard the affected drafts and reapply your edits before pushing.</div>}
         {!workspace ? <div className="grid min-h-0 flex-1 place-items-center p-6 text-center"><div className="max-w-sm"><Layers size={28} className="mx-auto text-cms-muted"/><h2 className="mt-3 text-ui-lg font-semibold">{loading ? "Opening your workspace…" : "Your content couldn't be loaded"}</h2><p className="my-2 text-ui text-cms-muted">The designer connects through the Three Acts API.</p><Button onClick={() => void load()} disabled={loading}>Try again</Button></div></div> : <>
-          <div className="flex min-h-0 flex-1 overflow-auto bg-cms-bg">
-            <div className="h-full min-h-80 shrink-0 overflow-hidden border border-cms-line-strong bg-cms-surface" style={{ width: widths[device] }}>
+          <CanvasViewport width={viewportWidth} zoom={canvasZoom} disabled={controlsDisabled} unavailable={!frameUrl} onWidth={changeViewportWidth} onZoom={changeCanvasZoom} onScale={setResolvedZoom}>
               {frameUrl ? <iframe key={frameRevision} ref={frame} title="Website canvas" src={frameUrl} sandbox="allow-scripts allow-same-origin" onLoad={sendPreview} className="h-full w-full border-0 bg-white"/> : <div className="grid h-full place-items-center p-6 text-center"><div>
                 {currentTemplate && (!chosenPreview || canvasRoute !== chosenPreview.route) ? <>
                   <Layers size={28} className="mx-auto text-cms-muted"/>
@@ -527,8 +540,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
                   <p className="mt-2 max-w-md text-ui text-cms-muted">{previews.error ?? (previews.loading ? "Loading published items from this collection." : "Publish an item in this collection to preview its page." )}</p>
                 </> : <><Globe size={28} className="mx-auto text-cms-muted"/><h2 className="mt-3 text-ui-lg font-semibold">Connect your website</h2><p className="mt-2 max-w-md text-ui text-cms-muted">Set VITE_SITE_URL to your public website. Enable PUBLIC_EDITOR_PREVIEW and PUBLIC_EDITOR_ORIGIN on the web app for canvas editing.</p></>}
               </div></div>}
-            </div>
-          </div>
+          </CanvasViewport>
           {canvasSelection && <CanvasBreadcrumb selection={canvasSelection} disabled={busy || canvasMode === "preview"} onSelect={(selector) => postCanvas({ type: "three-acts:select-node", selector })}/>}
         </>}
       </div>

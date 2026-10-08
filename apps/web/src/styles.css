@@ -4,6 +4,11 @@
 @source "../../../packages/design/src/components.ts";
 @source "../../../packages/design/src/index.ts";
 
+/* These project breakpoint names also exist as built-in orientation variants.
+ * Resolve them from our theme so responsive styles follow width at every zoom. */
+@custom-variant portrait (@media (width >= theme(--breakpoint-portrait)));
+@custom-variant landscape (@media (width >= theme(--breakpoint-landscape)));
+
 /*
  * Base element resets live in Tailwind's `base` layer (not unlayered), so
  * that any `text-*`/`bg-*` utility — which Tailwind puts in the `utilities`
