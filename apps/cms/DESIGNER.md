@@ -19,7 +19,7 @@ Build the CMS with:
 npm run build:cms
 ```
 
-The CMS needs `VITE_SITE_URL` set to the public website origin for Designer previews. The public website uses the content and preview bridge from `packages/static-content`; the package's document schema and draft behavior are unchanged.
+The CMS needs `VITE_SITE_URL` set to the public website origin for Designer previews. The public website uses the content and preview bridge from `packages/static-content`; existing content documents and draft flows remain compatible.
 
 ## Canvas workspace
 
@@ -121,7 +121,7 @@ Layout edits participate in browser drafts, Undo/Redo, recovery, review, SHA con
 
 Navigator's **Add element** menu is available on every page. Select a container to add inside it, or a leaf to add after it. It offers Div, Section, headings, Paragraph, Text, Link, Image and list elements, plus registered Button, Grid, Section and Typography components. Added elements have editable text and supported attributes; component instances retain their property controls. The compact **Element actions** menu moves, duplicates or removes added elements. Nested duplication preserves independent identities, and removal cleans up descendant design entries.
 
-Additions share draft/history/recovery/review/source commit handling with styling and render through the actual React/Astro source in normal builds. Their schema permits at most 100 distinct additions and 12 levels of nesting, rejects cycles and executable/unsafe attributes, and shares the 100 KB design document limit. Changes follow source scope, including shared footers and repeated templates.
+Additions share draft/history/recovery/review/source commit handling with styling and render through the actual React/Astro source in normal builds. Their schema permits at most 100 distinct additions and 12 levels of nesting, rejects cycles and executable/unsafe attributes, and shares the 100,000-character design document limit. Changes follow source scope, including shared footers and repeated templates.
 
 To verify the ordinary-element authoring snapshot through a normal desktop/mobile build:
 
