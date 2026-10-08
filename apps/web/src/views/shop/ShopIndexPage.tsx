@@ -28,7 +28,8 @@ export function ShopIndexPage({ meta, categories, products }: ShopIndexPageProps
           <Grid.Root data-editor-id="source.ShopIndexPage.3" cols={4}>
             {sortedCategories.map((category, index) => (
               <Tile.Root
-                key={category.id}
+              cmsSource={{ collectionId: "product-categories", recordId: category.id, label: category.name }}
+              key={category.id}
                 mark={String(index + 1).padStart(2, "0")}
                 title={category.name}
                 description={category.description}

@@ -1,3 +1,4 @@
+import { cmsAttributes } from "@three-acts/cms-schema";
 import { elementClass } from "../../lib/design";
 import type { Article, ArticleCategory, Author } from "@three-acts/content";
 import { cn } from "@three-acts/utils";
@@ -35,10 +36,11 @@ type LeadArticleProps = {
 /** The lead card at the top of the journal: a 2-column black-bordered module, `aspect-card` cover left, meta/title/excerpt/byline right. */
 function LeadArticle({ article, author, categories, className }: LeadArticleProps) {
   return (
-    <article data-editor-base-class={cn("grid border border-line-strong bg-surface landscape:grid-cols-2", className)} data-editor-id="source.BlogIndexPage.1" className={elementClass("source.BlogIndexPage.1", cn("grid border border-line-strong bg-surface landscape:grid-cols-2", className))}>
+    <article {...cmsAttributes({ collectionId: "articles", recordId: article.id, label: article.title })} data-editor-base-class={cn("grid border border-line-strong bg-surface landscape:grid-cols-2", className)} data-editor-id="source.BlogIndexPage.1" className={elementClass("source.BlogIndexPage.1", cn("grid border border-line-strong bg-surface landscape:grid-cols-2", className))}>
       <a data-editor-base-class={"focus-ring block aspect-card w-full overflow-hidden bg-block"} data-editor-id="source.BlogIndexPage.2" href={`/blog/${article.slug}`} className={elementClass("source.BlogIndexPage.2", "focus-ring block aspect-card w-full overflow-hidden bg-block")}>
         {article.coverImage && (
           <Image
+            {...cmsAttributes({ collectionId: "articles", recordId: article.id, label: article.title }, "coverImage")}
             src={article.coverImage.src}
             alt={article.coverImage.alt || article.title}
             width={article.coverImage.width ?? 800}
@@ -51,12 +53,12 @@ function LeadArticle({ article, author, categories, className }: LeadArticleProp
       <div data-editor-base-class={"flex flex-col justify-center gap-4 p-6 desktop:p-8"} data-editor-id="source.BlogIndexPage.3" className={elementClass("source.BlogIndexPage.3", "flex flex-col justify-center gap-4 p-6 desktop:p-8")}>
         <span data-editor-base-class={"text-small text-ink"} data-editor-id="source.BlogIndexPage.4" className={elementClass("source.BlogIndexPage.4", "text-small text-ink")}>{articleMetaLine(article, categories)}</span>
         <a data-editor-base-class={"focus-ring"} data-editor-id="source.BlogIndexPage.5" href={`/blog/${article.slug}`} className={elementClass("source.BlogIndexPage.5", "focus-ring")}>
-          <Typography.Title data-editor-id="source.BlogIndexPage.6" as="h2" className="hover:underline">
+          <Typography.Title {...cmsAttributes({ collectionId: "articles", recordId: article.id, label: article.title }, "title")} data-editor-id="source.BlogIndexPage.6" as="h2" className="hover:underline">
             {article.title}
           </Typography.Title>
         </a>
-        <p data-editor-base-class={"text-body text-ink"} data-editor-id="source.BlogIndexPage.7" className={elementClass("source.BlogIndexPage.7", "text-body text-ink")}>{article.excerpt}</p>
-        <Byline author={author} publishedAt={article.publishedAt} readingTime={article.readingTime} />
+        <p data-editor-base-class={"text-body text-ink"} data-editor-id="source.BlogIndexPage.7" className={elementClass("source.BlogIndexPage.7", "text-body text-ink")} {...cmsAttributes({ collectionId: "articles", recordId: article.id, label: article.title }, "excerpt")}>{article.excerpt}</p>
+        <Byline articleSource={{ collectionId: "articles", recordId: article.id, label: article.title }} author={author} publishedAt={article.publishedAt} readingTime={article.readingTime} />
       </div>
     </article>
   );
@@ -98,6 +100,7 @@ export function BlogIndexPage({ articles, categories, authors }: BlogIndexPagePr
           <Grid.Root data-editor-id="source.BlogIndexPage.10" cols={3}>
             {rest.map((article) => (
               <Card.Article
+                cmsSource={{ collectionId: "articles", recordId: article.id, label: article.title }}
                 key={article.slug}
                 title={article.title}
                 href={`/blog/${article.slug}`}

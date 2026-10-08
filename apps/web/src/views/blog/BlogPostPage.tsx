@@ -1,3 +1,4 @@
+import { cmsAttributes } from "@three-acts/cms-schema";
 import { elementClass } from "../../lib/design";
 import type { Article, ArticleCategory, Author } from "@three-acts/content";
 import type { Product } from "@three-acts/ecommerce";
@@ -33,15 +34,15 @@ function PostBreadcrumb({ article, category }: { article: Article; category?: Ar
           <li data-editor-base-class={"flex items-center gap-2"} data-editor-id="source.BlogPostPage.5" className={elementClass("source.BlogPostPage.5", "flex items-center gap-2")}>
             <a data-editor-base-class={"focus-ring hover:underline"} data-editor-id="source.BlogPostPage.6"
               href={`/blog/category/${category.slug}`}
-              data-cms-bound="articleCategories.slug"
+              {...cmsAttributes({ collectionId: "article-categories", recordId: category.id, label: category.name }, "slug")}
               className={elementClass("source.BlogPostPage.6", "focus-ring hover:underline")}
             >
-              <span data-editor-base-class={""} data-editor-id="source.BlogPostPage.7" className={elementClass("source.BlogPostPage.7", "")} data-cms-bound="articleCategories.name">{category.name}</span>
+              <span data-editor-base-class={""} data-editor-id="source.BlogPostPage.7" className={elementClass("source.BlogPostPage.7", "")} {...cmsAttributes({ collectionId: "article-categories", recordId: category.id, label: category.name }, "name")}>{category.name}</span>
             </a>
             <span data-editor-base-class={"text-block"} data-editor-id="source.BlogPostPage.8" aria-hidden="true" className={elementClass("source.BlogPostPage.8", "text-block")}>/</span>
           </li>
         )}
-        <li data-editor-base-class={"font-medium text-ink"} data-editor-id="source.BlogPostPage.9" aria-current="page" className={elementClass("source.BlogPostPage.9", "font-medium text-ink")} data-cms-bound="articles.title">{article.title}</li>
+        <li data-editor-base-class={"font-medium text-ink"} data-editor-id="source.BlogPostPage.9" aria-current="page" className={elementClass("source.BlogPostPage.9", "font-medium text-ink")} {...cmsAttributes({ collectionId: "articles", recordId: article.id, label: article.title }, "title")}>{article.title}</li>
       </ol>
     </nav>
   );
@@ -72,12 +73,12 @@ export function BlogPostPage({ article, author, category, categories, related, s
         <Section.Container data-editor-id="source.BlogPostPage.11" className="max-w-3xl">
           <PostBreadcrumb article={article} category={category} />
           <header data-editor-base-class={"flex flex-col gap-6"} data-editor-id="source.BlogPostPage.12" className={elementClass("source.BlogPostPage.12", "flex flex-col gap-6")}>
-            {category && <Badge.Root variant="outline"><span data-editor-base-class={""} data-editor-id="source.BlogPostPage.13" className={elementClass("source.BlogPostPage.13", "")} data-cms-bound="articleCategories.name">{category.name}</span></Badge.Root>}
-            <Typography.Display data-editor-id="source.BlogPostPage.14" as="h1" className="max-w-3xl" data-cms-bound="articles.title">
+            {category && <Badge.Root variant="outline"><span data-editor-base-class={""} data-editor-id="source.BlogPostPage.13" className={elementClass("source.BlogPostPage.13", "")} {...cmsAttributes({ collectionId: "article-categories", recordId: category.id, label: category.name }, "name")}>{category.name}</span></Badge.Root>}
+            <Typography.Display data-editor-id="source.BlogPostPage.14" as="h1" className="max-w-3xl" {...cmsAttributes({ collectionId: "articles", recordId: article.id, label: article.title }, "title")}>
               {article.title}
             </Typography.Display>
-            <Typography.Lede data-editor-id="source.BlogPostPage.15" className="max-w-none" data-cms-bound="articles.excerpt">{article.excerpt}</Typography.Lede>
-            <Byline data-cms-bound="articles.byline" author={author} publishedAt={article.publishedAt} readingTime={article.readingTime} avatarSize="md" />
+            <Typography.Lede data-editor-id="source.BlogPostPage.15" className="max-w-none" {...cmsAttributes({ collectionId: "articles", recordId: article.id, label: article.title }, "excerpt")}>{article.excerpt}</Typography.Lede>
+            <Byline articleSource={{ collectionId: "articles", recordId: article.id, label: article.title }} data-cms-bound="articles.byline" author={author} publishedAt={article.publishedAt} readingTime={article.readingTime} avatarSize="md" />
           </header>
         </Section.Container>
 
@@ -87,7 +88,7 @@ export function BlogPostPage({ article, author, category, categories, related, s
               <Image
                 src={article.coverImage.src}
                 alt={article.coverImage.alt || article.title}
-                data-cms-bound="articles.coverImage"
+                {...cmsAttributes({ collectionId: "articles", recordId: article.id, label: article.title }, "coverImage")}
                 width={article.coverImage.width ?? 1318}
                 height={article.coverImage.height ?? 608}
                 loading="eager"
@@ -98,9 +99,9 @@ export function BlogPostPage({ article, author, category, categories, related, s
         )}
 
         <Section.Container data-editor-id="source.BlogPostPage.18" className="mt-12 max-w-3xl desktop:mt-16">
-          <Prose.Root body={article.body} data-cms-bound="articles.body" />
+          <Prose.Root body={article.body} {...cmsAttributes({ collectionId: "articles", recordId: article.id, label: article.title }, "body")} />
           {article.tags.length > 0 && (
-            <ul data-editor-base-class={"mt-10 flex flex-wrap gap-2"} data-editor-id="source.BlogPostPage.19" className={elementClass("source.BlogPostPage.19", "mt-10 flex flex-wrap gap-2")} data-cms-bound="articles.tags">
+            <ul data-editor-base-class={"mt-10 flex flex-wrap gap-2"} data-editor-id="source.BlogPostPage.19" className={elementClass("source.BlogPostPage.19", "mt-10 flex flex-wrap gap-2")} {...cmsAttributes({ collectionId: "articles", recordId: article.id, label: article.title }, "tags")}>
               {article.tags.map((tag) => (
                 <li data-editor-base-class={""} data-editor-id="source.BlogPostPage.20" className={elementClass("source.BlogPostPage.20", "")} key={tag}>
                   <Badge.Root variant="outline">{tag}</Badge.Root>
@@ -137,6 +138,7 @@ export function BlogPostPage({ article, author, category, categories, related, s
             <Grid.Root data-editor-id="source.BlogPostPage.27" cols={3} data-cms-bound="articles.related">
               {related.map((relatedArticle) => (
                 <Card.Article
+                  cmsSource={{ collectionId: "articles", recordId: relatedArticle.id, label: relatedArticle.title }}
                   key={relatedArticle.slug}
                   title={relatedArticle.title}
                   href={`/blog/${relatedArticle.slug}`}

@@ -16,3 +16,7 @@ test("rejects malformed or unregistered style scopes and accepts registered part
   assert.equal(isCanvasSelection({ ...selection, designTarget: { kind: "component", component: "Button.Link", part: "label" } }), true);
   assert.equal(isCanvasSelection({ ...selection, designTarget: { kind: "element", id: "home.title" } }), true);
 });
+test("CMS source metadata must identify a registered collection and an explicit record", () => {
+  for (const cmsSource of [null, {}, { collectionId: "products", label: "Product", field: "title" }, { collectionId: "products", recordId: "../unsafe", label: "Product" }]) assert.equal(isCanvasSelection({ ...selection, cmsSource }), false);
+  assert.equal(isCanvasSelection({ ...selection, cmsSource: { collectionId: "products", recordId: "product-1", label: "Product", field: "title" } }), true);
+});

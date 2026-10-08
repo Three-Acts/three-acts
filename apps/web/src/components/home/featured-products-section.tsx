@@ -37,6 +37,7 @@ export function FeaturedProductsSection({ products }: FeaturedProductsSectionPro
             const availabilityLabel = AVAILABILITY_LABEL[product.availability];
             return (
               <Card.Product
+                cmsSource={{ collectionId: "products", recordId: product.id, label: product.title }}
                 key={product.slug}
                 title={product.title}
                 href={`/shop/${product.slug}`}

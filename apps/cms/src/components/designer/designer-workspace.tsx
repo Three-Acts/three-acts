@@ -1,3 +1,5 @@
+import type { CmsSource } from "@three-acts/cms-schema";
+import { CmsSourceInspector } from "./cms-source-inspector";
 import { isCanvasSelection, readCanvasNodes } from "./canvas-contract";
 import { componentDefinitions, emptyDesign, validateDesign, type Breakpoint, type DesignDocument, type StyleChange } from "@three-acts/design";
 import { historyShortcut, type HistoryCommand } from "@three-acts/utils";
@@ -39,8 +41,10 @@ function siteUrl(): URL | null {
 const publicSite = siteUrl();
 const widths = { desktop: "1280px", tablet: "1024px", landscape: "768px", mobile: "390px" };
 
-export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsavedChange, onOpenPageDetails, onSelectPage, pageDetailsPath, pageDetailsDirty = false, pagePublishStatuses, onTemplateDetailsChange, toolbarHost, onClosePublish, onViewSiteUrlChange }: {
+export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPagePathChange, onBusyChange, onUnsavedChange, onOpenPageDetails, onSelectPage, pageDetailsPath, pageDetailsDirty = false, pagePublishStatuses, onTemplateDetailsChange, toolbarHost, onClosePublish, onViewSiteUrlChange }: {
   user: AuthUser;
+  active?: boolean;
+  onOpenCmsRecord?: (source: CmsSource) => void;
   onPagePathChange?: (path: string) => void;
   onBusyChange?: (busy: boolean) => void;
   onUnsavedChange?: (unsafe: boolean) => void;
@@ -184,7 +188,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   }, [user.email, resetHistory]);
 
   useEffect(() => { void Promise.resolve().then(() => load()); }, [load]);
-  useEffect(() => { onBusyChange?.(busy || loading || reviewing); }, [busy, loading, reviewing, onBusyChange]);
+  useEffect(() => { onBusyChange?.(active && (busy || loading || reviewing)); }, [active, busy, loading, reviewing, onBusyChange]);
   useEffect(() => { onPagePathChange?.(canvasRoute); }, [canvasRoute, onPagePathChange]);
   useEffect(() => {
     if (!currentTemplate || !chosenPreview) return;
@@ -203,9 +207,9 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     onTemplateDetailsChange?.(currentTemplate && templateContent ? { document: currentTemplate, content: templateContent, onChange: onTemplateFieldChange } : null);
   }, [currentTemplate, templateContent, onTemplateFieldChange, onTemplateDetailsChange]);
   useEffect(() => {
-    onUnsavedChange?.(storageUnavailable && changedCount > 0);
+    onUnsavedChange?.(active && storageUnavailable && changedCount > 0);
     return () => onUnsavedChange?.(false);
-  }, [storageUnavailable, changedCount, onUnsavedChange]);
+  }, [active, storageUnavailable, changedCount, onUnsavedChange]);
   useEffect(() => {
     if (!changedCount) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
@@ -232,9 +236,9 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     saveDrafts(next);
   }
   const runHistory = useCallback((command: HistoryCommand) => {
-    if (busy || loading || reviewing || canvasMode !== "design") return;
+    if (!active || busy || loading || reviewing || canvasMode !== "design") return;
     saveDrafts(command === "undo" ? undoDrafts() : redoDrafts());
-  }, [busy, loading, reviewing, canvasMode, saveDrafts, undoDrafts, redoDrafts]);
+  }, [active, busy, loading, reviewing, canvasMode, saveDrafts, undoDrafts, redoDrafts]);
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
@@ -242,13 +246,13 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
       const target = event.target;
       if (!command || !(target instanceof Element) || target.closest("input,textarea,[contenteditable],[role=dialog],[role=alertdialog]")) return;
       if (!root.current?.contains(target) && target !== document.body) return;
-      if (busy || loading || reviewing || canvasMode !== "design" || document.querySelector("[role=dialog],[role=alertdialog]")) return;
+      if (!active || busy || loading || reviewing || canvasMode !== "design" || document.querySelector("[role=dialog],[role=alertdialog]")) return;
       event.preventDefault();
       runHistory(command);
     };
     document.addEventListener("keydown", keydown);
     return () => document.removeEventListener("keydown", keydown);
-  }, [runHistory, busy, loading, reviewing, canvasMode]);
+  }, [active, runHistory, busy, loading, reviewing, canvasMode]);
 
   function changeField(field: ContentField, value: string | number | boolean, id = page, typing = true) {
     const document = workspace?.documents.find((item) => item.id === id);
@@ -275,13 +279,14 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
   useEffect(() => { sendPreview(); }, [sendPreview, previewReady]);
   useEffect(() => {
     if (!publicSite || !previewReady) return;
-    frame.current?.contentWindow?.postMessage({ type: "three-acts:mode", mode: busy || loading || reviewing ? "locked" : canvasMode }, publicSite.origin);
-  }, [busy, loading, reviewing, canvasMode, previewReady]);
+    frame.current?.contentWindow?.postMessage({ type: "three-acts:mode", mode: !active || busy || loading || reviewing ? "locked" : canvasMode }, publicSite.origin);
+  }, [active, busy, loading, reviewing, canvasMode, previewReady]);
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (!publicSite || event.origin !== publicSite.origin || event.source !== frame.current?.contentWindow || !event.data || typeof event.data !== "object") return;
       if (event.data.type === "three-acts:history" && ["undo", "redo"].includes(event.data.command)) runHistory(event.data.command);
       if (event.data.type === "three-acts:ready") { setPreviewReady(true); sendPreview(); }
+      if (!active) return;
       if (event.data.type === "three-acts:navigate" && canvasMode === "preview" && !busy && !reviewing && typeof event.data.href === "string") {
         try {
           const url = new URL(event.data.href);
@@ -306,7 +311,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
         setCanvasSelection(event.data);
         setEditingComponent(event.data.editingComponent ?? null);
         setSelectionVersion((version) => version + 1);
-        const doc = workspace?.documents.find((item) => item.id === event.data.binding?.id);
+        const doc = event.data.category !== "cms" ? workspace?.documents.find((item) => item.id === event.data.binding?.id) : undefined;
         const path = event.data.binding?.path;
         const editableField = doc && typeof path === "string" && contentFields(drafts[doc.id]?.content ?? doc.content).some((field) => field.path.join(".") === path);
         if (editableField && doc.kind !== "design" && doc.id !== "shared") setPage(doc.id);
@@ -329,7 +334,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     return () => window.removeEventListener("message", receive);
     // The handler must read the current draft, not a captured earlier version.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspace, drafts, page, content, busy, reviewing, canvasMode, previews.items, sendPreview, notify, canvasSelection?.selector, endGroup, runHistory]);
+  }, [active, workspace, drafts, page, content, busy, reviewing, canvasMode, previews.items, sendPreview, notify, canvasSelection?.selector, endGroup, runHistory]);
 
   function downloadRecovery() {
     if (!recovery) return;
@@ -345,6 +350,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     if (busy) return;
     endGroup();
     const next = workspace?.documents.find((doc) => doc.id === id);
+    if (id === page && (next?.collectionId || next?.route === canvasRoute)) return;
     postCanvas({ type: "three-acts:clear-selection" });
     if (next && !next.collectionId && id !== "shared" && next.route !== canvasRoute) { setPreviewReady(false); setCanvasRoute(next.route); resetCanvasState(); }
     setCanvasSelection(null);
@@ -400,7 +406,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
     return () => onViewSiteUrlChange?.(null);
   }, [frameUrl, onViewSiteUrlChange]);
   const elementPresentation = getElementPresentation(canvasSelection?.tag ?? "div", canvasSelection?.category ?? "element");
-  const controlsDisabled = busy || loading || reviewing;
+  const controlsDisabled = !active || busy || loading || reviewing;
   const saveState = storageUnavailable ? "Not saved in this browser" : loading ? "Loading source…" : !workspace ? "Source unavailable" : changedCount ? "Saved in this browser · Awaiting push" : commit ? "Committed to GitHub" : "Source loaded";
   const connectionStatus = loading ? "Checking GitHub" : connectionError ? "Connection check failed" : workspace?.connected ? "Connected to GitHub" : "GitHub not connected";
   const reload = () => void load(page, canvasRoute);
@@ -528,6 +534,7 @@ export function DesignerWorkspace({ user, onPagePathChange, onBusyChange, onUnsa
         <span className="min-w-0 flex-1 truncate" title={canvasSelection?.label}>{canvasSelection?.label ?? "No selection"}</span>
         {canvasSelection && <span className="shrink-0 font-mono text-[10px] text-cms-subtle">{canvasSelection.tag}</span>}
       </div>
+      {canvasSelection?.category === "cms" && <CmsSourceInspector source={canvasSelection.cmsSource} disabled={controlsDisabled || canvasMode === "preview"} onOpen={onOpenCmsRecord}/>}
       {canvasSelection && !isComponentSelection && rightPanel === "content" && <p aria-label="Editing scope" className="m-0 border-b border-cms-line px-2 py-2 text-[10px] text-cms-muted">{canvasSelection.category === "cms" ? "CMS record content" : contentDocument?.id === "shared" ? "Shared across the site" : contentDocument?.collectionId ? `All pages using ${contentDocument.label}` : "This page"}</p>}
       {isComponentSelection && canvasSelection ? <ComponentInspector contentScope={canvasSelection.component?.fields.some(field => field.id === "shared") ? "Content is shared across the site." : currentTemplate ? `Content applies to all pages using ${currentTemplate.label}.` : null} templateInstance={Boolean(currentTemplate)} selection={canvasSelection} onResetProperty={key => updateDesign(next => {
         const id = canvasSelection.component?.instanceId;

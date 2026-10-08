@@ -1,3 +1,4 @@
+import { cmsAttributes } from "@three-acts/cms-schema";
 import { elementClass } from "../../lib/design";
 import copy from "@three-acts/static-content/documents/about.json";
 import type { Author, Testimonial } from "@three-acts/content";
@@ -85,14 +86,14 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
               <div data-editor-base-class={"grid grid-cols-1 gap-x-gap gap-y-gap-y landscape:grid-cols-2 tablet:grid-cols-3"} data-editor-id="source.about.24" className={elementClass("source.about.24", "grid grid-cols-1 gap-x-gap gap-y-gap-y landscape:grid-cols-2 tablet:grid-cols-3")}>
                 {authors.map((author) => (
                   <a data-editor-base-class={"focus-ring group flex flex-col items-center gap-3 border border-surface bg-surface p-6 text-center"} data-editor-id="source.about.25"
-                    key={author.slug}
+                    {...cmsAttributes({ collectionId: "authors", recordId: author.id, label: author.name }, "name")} key={author.slug}
                     href={`/authors/${author.slug}`}
                     className={elementClass("source.about.25", "focus-ring group flex flex-col items-center gap-3 border border-surface bg-surface p-6 text-center")}
                   >
-                    <Avatar.Root name={author.name} src={author.avatar?.src} size="lg" />
+                    <Avatar.Root {...cmsAttributes({ collectionId: "authors", recordId: author.id, label: author.name }, "avatar")} name={author.name} src={author.avatar?.src} size="lg" />
                     <span data-editor-base-class={"flex flex-col gap-1"} data-editor-id="source.about.26" className={elementClass("source.about.26", "flex flex-col gap-1")}>
                       <span data-editor-base-class={"text-body font-medium text-ink group-hover:underline"} data-editor-id="source.about.27" className={elementClass("source.about.27", "text-body font-medium text-ink group-hover:underline")}>{author.name}</span>
-                      <span data-editor-base-class={"text-small text-ink"} data-editor-id="source.about.28" className={elementClass("source.about.28", "text-small text-ink")}>{author.role}</span>
+                      <span data-editor-base-class={"text-small text-ink"} data-editor-id="source.about.28" className={elementClass("source.about.28", "text-small text-ink")} {...cmsAttributes({ collectionId: "authors", recordId: author.id, label: author.name }, "role")}>{author.role}</span>
                     </span>
                   </a>
                 ))}
@@ -109,6 +110,7 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
             <Grid.Root data-editor-id="source.about.31" cols={testimonials.length >= 4 ? 4 : 3}>
               {testimonials.map((testimonial) => (
                 <Card.Testimonial
+                  cmsSource={{ collectionId: "testimonials", recordId: testimonial.id, label: testimonial.customerName }}
                   key={testimonial.id}
                   quote={testimonial.quote}
                   customerName={testimonial.customerName}

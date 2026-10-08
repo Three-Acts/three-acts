@@ -1,3 +1,4 @@
+import { readCmsSource } from "@three-acts/cms-schema";
 import { componentDefinitions } from "@three-acts/design";
 import type { CanvasNode, CanvasSelection } from "./canvas-types";
 
@@ -18,6 +19,7 @@ export function isCanvasSelection(value: unknown): value is CanvasSelection {
   const selection = value as CanvasSelection;
   const validBinding = (binding: unknown) => Boolean(binding && typeof binding === "object" && "id" in binding && typeof binding.id === "string" && "path" in binding && typeof binding.path === "string");
   return typeof selection.selector === "string" && typeof selection.label === "string" && typeof selection.tag === "string" && typeof selection.editable === "boolean" && canvasCategories.has(selection.category)
+    && (selection.cmsSource === undefined || readCmsSource(selection.cmsSource) !== null)
     && (selection.textState === undefined || ["editable", "unbound", "structured", "empty"].includes(selection.textState))
     && (selection.textField === undefined || (validBinding(selection.textField) && typeof selection.textField.value === "string"))
     && (selection.attributes === undefined || (Array.isArray(selection.attributes) && selection.attributes.length <= 6 && selection.attributes.every((attribute) => attribute && ["href", "src", "alt", "title", "target", "aria-label"].includes(attribute.name) && typeof attribute.value === "string" && (attribute.binding === undefined || validBinding(attribute.binding)))))

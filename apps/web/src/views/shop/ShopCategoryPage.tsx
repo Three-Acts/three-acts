@@ -1,3 +1,4 @@
+import { cmsAttributes } from "@three-acts/cms-schema";
 import { elementClass } from "../../lib/design";
 import type { Product, ProductCategory } from "@three-acts/ecommerce";
 import copy from "@three-acts/static-content/documents/product-category-template.json";
@@ -21,7 +22,7 @@ function CategoryBreadcrumb({ category }: { category: ProductCategory }) {
           </a>
           <span data-editor-base-class={"text-block"} data-editor-id="source.ShopCategoryPage.4" aria-hidden="true" className={elementClass("source.ShopCategoryPage.4", "text-block")}>/</span>
         </li>
-        <li data-editor-base-class={"font-medium text-ink"} data-editor-id="source.ShopCategoryPage.5" aria-current="page" className={elementClass("source.ShopCategoryPage.5", "font-medium text-ink")} data-cms-bound="productCategories.name">{category.name}</li>
+        <li data-editor-base-class={"font-medium text-ink"} data-editor-id="source.ShopCategoryPage.5" aria-current="page" className={elementClass("source.ShopCategoryPage.5", "font-medium text-ink")} {...cmsAttributes({ collectionId: "product-categories", recordId: category.id, label: category.name }, "name")}>{category.name}</li>
       </ol>
     </nav>
   );
@@ -42,8 +43,8 @@ export function ShopCategoryPage({ category, products }: ShopCategoryPageProps) 
         <CategoryBreadcrumb category={category} />
         <Section.Header
           eyebrow={<span data-editor-base-class={""} data-editor-id="product-category-template.shop_eyebrow" className={elementClass("product-category-template.shop_eyebrow", "")} data-static-field="product-category-template.shop_eyebrow">{copy.shop_eyebrow}</span>}
-          title={<span data-editor-base-class={""} data-editor-id="source.ShopCategoryPage.8" className={elementClass("source.ShopCategoryPage.8", "")} data-cms-bound="productCategories.name">{category.name}</span>}
-          lede={category.description ? <span data-editor-base-class={""} data-editor-id="source.ShopCategoryPage.9" className={elementClass("source.ShopCategoryPage.9", "")} data-cms-bound="productCategories.description">{category.description}</span> : undefined}
+          title={<span data-editor-base-class={""} data-editor-id="source.ShopCategoryPage.8" className={elementClass("source.ShopCategoryPage.8", "")} {...cmsAttributes({ collectionId: "product-categories", recordId: category.id, label: category.name }, "name")}>{category.name}</span>}
+          lede={category.description ? <span data-editor-base-class={""} data-editor-id="source.ShopCategoryPage.9" className={elementClass("source.ShopCategoryPage.9", "")} {...cmsAttributes({ collectionId: "product-categories", recordId: category.id, label: category.name }, "description")}>{category.description}</span> : undefined}
         />
         {sorted.length > 0 ? (
           <div data-editor-base-class={""} data-editor-id="source.ShopCategoryPage.10" className={elementClass("source.ShopCategoryPage.10", "")} data-cms-bound="products.inCategory"><ProductGrid products={sorted} /></div>

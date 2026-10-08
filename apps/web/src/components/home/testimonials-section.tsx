@@ -23,6 +23,7 @@ export function TestimonialsSection({ testimonials }: TestimonialsSectionProps) 
         <Grid.Root data-editor-id="source.testimonials-section.3" cols={testimonials.length >= 4 ? 4 : 3}>
           {testimonials.map((testimonial) => (
             <Card.Testimonial
+              cmsSource={{ collectionId: "testimonials", recordId: testimonial.id, label: testimonial.customerName }}
               key={testimonial.id}
               quote={testimonial.quote}
               customerName={testimonial.customerName}

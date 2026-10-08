@@ -1,3 +1,4 @@
+import { cmsAttributes } from "@three-acts/cms-schema";
 import { elementClass } from "../../lib/design";
 import copy from "@three-acts/static-content/documents/faq.json";
 import type { Faq } from "@three-acts/content";
@@ -56,7 +57,7 @@ export function FaqPage({ faqs }: FaqPageProps) {
                   <div data-editor-base-class={"mt-6"} data-editor-id="source.faq.9" className={elementClass("source.faq.9", "mt-6")}>
                     {group.faqs.map((faq, index) => (
                       <details data-editor-base-class={"group border-t border-line-strong py-5"} data-editor-id="source.faq.10" key={faq.id} open={index === 0} className={elementClass("source.faq.10", "group border-t border-line-strong py-5")}>
-                        <summary data-editor-base-class={"focus-ring flex cursor-pointer list-none items-center justify-between gap-4 text-body font-medium text-ink [&::-webkit-details-marker]:hidden"} data-editor-id="source.faq.11" className={elementClass("source.faq.11", "focus-ring flex cursor-pointer list-none items-center justify-between gap-4 text-body font-medium text-ink [&::-webkit-details-marker]:hidden")}>
+                        <summary {...cmsAttributes({ collectionId: "faqs", recordId: faq.id, label: faq.question }, "question")} data-editor-base-class={"focus-ring flex cursor-pointer list-none items-center justify-between gap-4 text-body font-medium text-ink [&::-webkit-details-marker]:hidden"} data-editor-id="source.faq.11" className={elementClass("source.faq.11", "focus-ring flex cursor-pointer list-none items-center justify-between gap-4 text-body font-medium text-ink [&::-webkit-details-marker]:hidden")}>
                           {faq.question}
                           <span data-editor-base-class={"shrink-0 text-h3 leading-none text-ink transition-transform duration-150 group-open:rotate-45"} data-editor-id="source.faq.12"
                             aria-hidden="true"
@@ -66,7 +67,7 @@ export function FaqPage({ faqs }: FaqPageProps) {
                           </span>
                         </summary>
                         <div data-editor-base-class={"mt-4"} data-editor-id="source.faq.13" className={elementClass("source.faq.13", "mt-4")}>
-                          <Prose.Root body={faq.answer} />
+                          <Prose.Root {...cmsAttributes({ collectionId: "faqs", recordId: faq.id, label: faq.question }, "answer")} body={faq.answer} />
                         </div>
                       </details>
                     ))}

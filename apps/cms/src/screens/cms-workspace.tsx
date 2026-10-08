@@ -1,3 +1,4 @@
+import { cmsSourceField, readCmsSource, type CmsSource } from "@three-acts/cms-schema";
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@three-acts/utils";
@@ -5,7 +6,7 @@ import type { AuthUser } from "@three-acts/auth";
 import { collectionRegistry } from "../cms/registry";
 import { singularize } from "../lib/format";
 import { canCreate, hasPublishWorkflow } from "../lib/records";
-import { BareIconButton, ConfirmDialog, PanelHeader, Tooltip, useToast } from "../components/atoms";
+import { BareIconButton, Button, ConfirmDialog, PanelHeader, Tooltip, useToast } from "../components/atoms";
 import { useCmsWorkspace } from "../hooks/use-cms-workspace";
 import { CollectionSidebar, RecordListPane, RecordsToolbar, RecordTable, TopBar } from "../components/workspace";
 import type { WorkspaceTab } from "../components/workspace";
@@ -28,6 +29,9 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
     activeCollectionId,
     clearError,
     draftRecord,
+    discardRecordChanges,
+    recordError,
+    reloadRecord,
     error,
     filteredRecords,
     groups,
@@ -83,6 +87,8 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(availableTabs[0] ?? "cms");
   const [designerToolbarHost, setDesignerToolbarHost] = useState<HTMLDivElement | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [cmsReturn, setCmsReturn] = useState<CmsSource | null>(null);
+  const [detailsDiscardRevision, setDetailsDiscardRevision] = useState(0);
   const [viewSiteUrl, setViewSiteUrl] = useState<string | null>(null);
   const siteSettingsCollection = settingsCollections.find((collection) => collection.settingsView === "site");
   const redirectRulesCollection = settingsCollections.find((collection) => collection.settingsView === "redirects");
@@ -122,21 +128,40 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
     refreshCollections();
     setPublishRevision((revision) => revision + 1);
 
-    if (!isSettingsDirty && !isDesignerBusy) {
+    if (!isSettingsDirty && !isDesignerBusy && !cmsReturn) {
       setSettingsRevision((revision) => revision + 1);
     }
   }
 
-  function guardNavigation(action: () => void) {
-    if (isDesignerBusy) return;
-    if (isDirty || isSettingsDirty) {
-      setPendingAction(() => action);
+  function guardNavigation(action: () => void, settingsUnsafe = isSettingsDirty, preserveRecord = false) {
+    if (isDesignerBusy || isSaving || uploadingField) return;
+    if ((!preserveRecord && isDirty) || settingsUnsafe) {
+      setPendingAction(() => () => {
+        if (!preserveRecord && isDirty) discardRecordChanges();
+        if (settingsUnsafe) setDetailsDiscardRevision(revision => revision + 1);
+        action();
+      });
     } else {
       action();
     }
   }
 
-  const handleGuardedBack = () => guardNavigation(() => setSelectedRecordId(null));
+  function returnToCanvas() {
+    guardNavigation(() => { setSelectedRecordId(null); setPublishOpen(false); setActiveTab("page-settings"); setCmsReturn(null); });
+  }
+  function openCmsRecord(raw: CmsSource, leaveDetails: () => void, dirtyDetails: boolean) {
+    const source = readCmsSource(raw);
+    if (!source) return;
+    guardNavigation(() => {
+      leaveDetails();
+      handleSelectCollection(source.collectionId);
+      setSelectedRecordId(source.recordId);
+      setCmsReturn(source);
+      setPublishOpen(false);
+      setActiveTab("cms");
+    }, dirtyDetails, activeCollectionId === source.collectionId && selectedRecordId === source.recordId);
+  }
+  const handleGuardedBack = () => cmsReturn ? returnToCanvas() : guardNavigation(() => setSelectedRecordId(null));
 
   function handleSelectRecordFromList(recordId: string) {
     guardNavigation(() => setSelectedRecordId(recordId));
@@ -153,13 +178,14 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   // The CMS tab's draft lives in the workspace hook and survives a tab switch;
   // a settings screen unmounts, so only its unsaved edits need the guard.
   function handleTabChange(tab: WorkspaceTab) {
-    if (isDesignerBusy) return;
+    if (isDesignerBusy || isSaving || uploadingField) return;
+    if (tab === "page-settings" && cmsReturn) { returnToCanvas(); return; }
     if (tab === activeTab) {
       return;
     }
 
     if (isSettingsDirty) {
-      setPendingAction(() => () => { setPublishOpen(false); setActiveTab(tab); });
+      setPendingAction(() => () => { setDetailsDiscardRevision(revision => revision + 1); setPublishOpen(false); setActiveTab(tab); });
     } else {
       setPublishOpen(false);
       setActiveTab(tab);
@@ -200,6 +226,9 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
         viewSiteUrl={viewSiteUrl}
       />
       <div className="flex min-h-0 flex-1">
+        {pageSettingsCollection && <main hidden={activeTab !== "page-settings"} className={cn("relative min-h-0 min-w-0 flex-1", activeTab === "page-settings" ? "flex" : "hidden")}>
+          <PagesWorkspace collection={pageSettingsCollection} key={`${pageSettingsCollection.id}-${settingsRevision}`} active={activeTab === "page-settings"} onOpenCmsRecord={openCmsRecord} discardDetailsRevision={detailsDiscardRevision} onDirtyChange={setIsSettingsDirty} onSaved={refreshCollections} onBusyChange={setIsDesignerBusy} user={user} toolbarHost={activeTab === "page-settings" ? designerToolbarHost : null} onClosePublish={() => setPublishOpen(false)} onViewSiteUrlChange={setViewSiteUrl} publishRevision={publishRevision}/>
+        </main>}
         {activeTab === "cms" ? (
           <CollectionSidebar
             activeCollectionId={activeCollectionId}
@@ -209,7 +238,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
           />
         ) : null}
 
-        {activeTab !== "cms" && !settingsCollection ? (
+        {activeTab === "page-settings" && pageSettingsCollection ? null : activeTab !== "cms" && !settingsCollection ? (
           <main className="grid flex-1 place-items-center p-8 text-center" role="status">
             <p className="m-0 text-ui text-cms-subtle">Loading settings…</p>
           </main>
@@ -217,20 +246,6 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
           // Settings tabs take the whole workspace below the top bar; the
           // collections sidebar belongs to the CMS tab only.
           <main className="relative flex min-h-0 min-w-0 flex-1">
-            {activeTab === "page-settings" ? (
-              <PagesWorkspace
-                collection={settingsCollection}
-                key={`${settingsCollection.id}-${settingsRevision}`}
-                onDirtyChange={setIsSettingsDirty}
-                onSaved={refreshCollections}
-                onBusyChange={setIsDesignerBusy}
-                user={user}
-                toolbarHost={designerToolbarHost}
-                onClosePublish={() => setPublishOpen(false)}
-                onViewSiteUrlChange={setViewSiteUrl}
-                publishRevision={publishRevision}
-              />
-            ) : (
               <SiteSettingsView
                 collection={settingsCollection}
                 key={`${settingsCollection.id}-${settingsRevision}`}
@@ -239,7 +254,6 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
                 mediaCollection={mediaCollection}
                 redirectCollection={redirectRulesCollection}
               />
-            )}
           </main>
         ) : activeCollection ? (
           <main className="relative flex min-h-0 min-w-0 flex-1">
@@ -302,6 +316,8 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
               draftRecord ? (
                 <RecordEditor
                   collection={activeCollection}
+                  backLabel={cmsReturn ? "Back to canvas" : "Back to table"}
+                  focusField={cmsReturn?.collectionId === activeCollection.id && cmsReturn.recordId === draftRecord.id ? cmsSourceField(cmsReturn)?.key : undefined}
                   draftRecord={draftRecord}
                   isDirty={isDirty}
                   isSaving={isSaving}
@@ -317,16 +333,16 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
                   uploadingField={uploadingField}
                 />
               ) : (
-                <div aria-busy="true" className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
+                <div role="region" aria-label="CMS record loading" aria-busy={!recordError} className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
                   <PanelHeader>
-                    <Tooltip content="Back to table">
-                      <BareIconButton aria-label="Back to table" onClick={handleGuardedBack}>
+                    <Tooltip content={cmsReturn ? "Back to canvas" : "Back to table"}>
+                      <BareIconButton aria-label={cmsReturn ? "Back to canvas" : "Back to table"} disabled={isSaving} onClick={handleGuardedBack}>
                         <ArrowLeft size={15} />
                       </BareIconButton>
                     </Tooltip>
                   </PanelHeader>
                   <div className="grid flex-1 place-items-center p-8 text-center">
-                    <p className="m-0 text-ui text-cms-subtle">Loading record…</p>
+                    <div className="grid gap-2"><p role={recordError ? "alert" : undefined} className="m-0 text-ui text-cms-subtle">{recordError ?? "Loading record…"}</p>{recordError && <Button onClick={() => void reloadRecord()}>Retry record</Button>}</div>
                   </div>
                 </div>
               )

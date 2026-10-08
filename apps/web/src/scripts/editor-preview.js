@@ -1,3 +1,4 @@
+import { normalizeCmsCollection, readCmsSource } from "@three-acts/cms-schema";
 import { applyStyle, componentBaseClass, componentDefinitions, designCss, emptyDesign, resolveProperties, validateDesign } from "@three-acts/design";
 import { cn, historyShortcut } from "@three-acts/utils";
 
@@ -117,9 +118,13 @@ import { cn, historyShortcut } from "@three-acts/utils";
     if (cms) {
       const raw = cms.dataset.cmsBound || '';
       const separator = raw.indexOf('.');
-      const collectionId = separator < 0 ? raw : raw.slice(0, separator);
+      const rawCollection = separator < 0 ? raw : raw.slice(0, separator);
+      const collectionId = normalizeCmsCollection(rawCollection) || rawCollection;
       const path = separator < 0 ? '' : raw.slice(separator + 1);
-      return { category: 'cms', element, binding: { ...(cms.dataset.cmsItemId || cms.dataset.recordId ? {id: cms.dataset.cmsItemId || cms.dataset.recordId} : {}), path, collectionId, field: path || undefined }, label: explicitLabel || `${humanize(collectionId)}${path ? ` · ${humanize(path.split('.').at(-1))}` : ''}` };
+      const owner = cms.closest('[data-cms-item-id],[data-record-id]');
+      const ownerCollection = owner?.dataset.cmsCollection || owner?.dataset.cmsBound?.split('.')[0];
+      const cmsSource = owner && normalizeCmsCollection(ownerCollection || '') === collectionId ? readCmsSource({ collectionId, recordId: owner.dataset.cmsItemId || owner.dataset.recordId, label: owner.dataset.cmsItemLabel, ...(path ? { field: path } : {}) }) : null;
+      return { category: 'cms', element, ...(cmsSource ? { cmsSource } : {}), binding: { ...(cms.dataset.cmsItemId || cms.dataset.recordId ? {id: cms.dataset.cmsItemId || cms.dataset.recordId} : {}), path, collectionId, field: path || undefined }, label: explicitLabel || `${humanize(collectionId)}${path ? ` · ${humanize(path.split('.').at(-1))}` : ''}` };
     }
     const binding = bindingFor(element);
     const key = binding ? `${binding.id}.${binding.path}` : null;
@@ -289,7 +294,7 @@ import { cn, historyShortcut } from "@three-acts/utils";
     const textField = info.category === 'cms' ? null : directTextField(element);
     const attributes = elementAttributes(element, info.category === 'cms');
     const textState = textField ? 'editable' : element.childElementCount ? 'structured' : normalize(element.textContent || '') ? 'unbound' : 'empty';
-    return {selector:selectorFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), category:mainPart && info.category !== 'cms' ? 'element' : info.category, ...(component && !mainPart ? {component} : {}), ...(editingComponent ? {editingComponent:editingComponent.name} : {}), ...(designTarget ? {designTarget} : {}), sourceClasses:(element.dataset.editorBaseClass || (root === element ? cn(componentBaseClass(root.dataset.editorComponent, resolveProperties(design, root.dataset.editorComponent, root.dataset.editorInstance, JSON.parse(root.dataset.editorSourceProps || '{}'))), root.dataset.editorCallerClass || '') : '')).split(/\s+/).filter(Boolean), ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
+    return {selector:selectorFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), ...(info.cmsSource ? {cmsSource:info.cmsSource} : {}), category:mainPart && info.category !== 'cms' ? 'element' : info.category, ...(component && !mainPart ? {component} : {}), ...(editingComponent ? {editingComponent:editingComponent.name} : {}), ...(designTarget ? {designTarget} : {}), sourceClasses:(element.dataset.editorBaseClass || (root === element ? cn(componentBaseClass(root.dataset.editorComponent, resolveProperties(design, root.dataset.editorComponent, root.dataset.editorInstance, JSON.parse(root.dataset.editorSourceProps || '{}'))), root.dataset.editorCallerClass || '') : '')).split(/\s+/).filter(Boolean), ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
   }
   const inspectableAttributes = ['href','src','alt','title','target','aria-label'];
   function directTextField(element) {
