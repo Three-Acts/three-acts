@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Layers, Search } from "lucide-react";
-import { PanelHeader, ScrollArea } from "../atoms";
-import type { CanvasNode } from "./canvas-types";
+import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Eye, EyeOff, Layers, Search } from "lucide-react";
+import { Button, PanelHeader, ScrollArea } from "../atoms";
+import type { CanvasNode, CanvasTreeStatus } from "./canvas-types";
 import { getElementPresentation } from "./element-presentation";
 
 type NavigatorProps = {
@@ -10,12 +10,14 @@ type NavigatorProps = {
   selectionVersion?: number;
   onSelect: (selector: string) => void;
   disabled: boolean;
+  treeStatus?: CanvasTreeStatus | null;
+  onLoadMore?: (limit: number) => void;
 };
 
 const categoryLabel = { element: "Element", component: "Component", cms: "CMS" } as const;
 
 /** Read-only outline of the preview canvas. */
-export function Navigator({ nodes, selected, selectionVersion = 0, onSelect, disabled }: NavigatorProps) {
+export function Navigator({ nodes, selected, selectionVersion = 0, onSelect, disabled, treeStatus, onLoadMore }: NavigatorProps) {
   const [query, setQuery] = useState("");
   const [disclosureOverrides, setDisclosureOverrides] = useState<Map<string, boolean>>(() => new Map());
   const [lastDisclosureSelection, setLastDisclosureSelection] = useState(selected);
@@ -181,7 +183,7 @@ export function Navigator({ nodes, selected, selectionVersion = 0, onSelect, dis
         {nodes.length === 0 ? (
           <p className="m-0 px-3 py-4 text-ui leading-4 text-cms-subtle">Elements from the page preview will appear here.</p>
         ) : visibleNodes.length === 0 ? (
-          <p className="m-0 px-3 py-4 text-ui leading-4 text-cms-subtle">No elements match your search.</p>
+          <p className="m-0 px-3 py-4 text-ui leading-4 text-cms-subtle">{treeStatus?.hasMore ? "No loaded elements match your search. Load more to search the rest of the outline." : "No elements match your search."}</p>
         ) : (
           <ul role="tree" aria-label="Page elements" className="m-0 list-none p-0">
             {visibleNodes.map((node, visibleIndex) => {
@@ -213,9 +215,11 @@ export function Navigator({ nodes, selected, selectionVersion = 0, onSelect, dis
                   <button
                     type="button"
                     role="treeitem"
+                    data-canvas-selector={node.selector}
                     aria-level={Math.max(1, node.depth + 1)}
                     aria-expanded={hasChildren ? !isCollapsed : undefined}
                     aria-selected={isSelected}
+                    aria-description={node.visibility?.reason}
                     tabIndex={isSelected || (visibleIndex === 0 && !visibleNodes.some((item) => item.selector === selected)) ? 0 : -1}
                     aria-label={`${categoryLabel[node.category]}: ${node.label}, ${node.tag}${parent ? ", nested element" : ""}`}
                     title={`${presentation.label}: ${node.label}`}
@@ -230,6 +234,8 @@ export function Navigator({ nodes, selected, selectionVersion = 0, onSelect, dis
                   >
                     <presentation.Icon aria-hidden="true" size={13} className={`shrink-0 ${presentation.color}`} />
                     <span className="min-w-0 flex-1 truncate">{node.label}</span>
+                    {node.visibility?.state === "hidden" && <EyeOff aria-label="Hidden element" size={11} className="shrink-0 text-cms-subtle"/>}
+                    {node.visibility?.state === "revealed" && <Eye aria-label="Temporarily revealed element" size={11} className="shrink-0 text-cms-accent"/>}
                   </button>
                 </li>
               );
@@ -237,6 +243,10 @@ export function Navigator({ nodes, selected, selectionVersion = 0, onSelect, dis
           </ul>
         )}
       </ScrollArea>
+      {treeStatus?.hasMore && <div aria-label="Navigator completeness" className="grid shrink-0 gap-1 border-t border-cms-line px-2 py-2">
+        <span className="text-[10px] leading-4 text-cms-subtle">Showing {treeStatus.loaded} of {treeStatus.capped ? "at least " : ""}{treeStatus.total} elements.</span>
+        {treeStatus.limit < treeStatus.maximum && treeStatus.total > treeStatus.limit ? <Button variant="ghost" disabled={disabled} onClick={() => onLoadMore?.(Math.min(treeStatus.maximum, treeStatus.limit + 400))}>Load more elements</Button> : <span className="text-[10px] leading-4 text-cms-muted">Outline safety limit reached. Canvas selections still appear here.</span>}
+      </div>}
     </aside>
   );
 }

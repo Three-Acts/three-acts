@@ -1,6 +1,6 @@
 import type { CmsSource } from "@three-acts/cms-schema";
 import { CmsSourceInspector } from "./cms-source-inspector";
-import { isCanvasSelection, readCanvasNodes } from "./canvas-contract";
+import { isCanvasSelection, readCanvasNodes, readCanvasTreeStatus } from "./canvas-contract";
 import { componentDefinitions, emptyDesign, validateDesign, type Breakpoint, type DesignDocument, type StyleChange } from "@three-acts/design";
 import { historyShortcut, type HistoryCommand } from "@three-acts/utils";
 import { useDraftHistory } from "./use-draft-history";
@@ -22,7 +22,7 @@ import { PagePicker } from "./page-picker";
 import { PageIcon } from "./page-icon";
 import { Navigator } from "./navigator";
 import { StyleInspector } from "./style-inspector";
-import type { CanvasNode, CanvasSelection } from "./canvas-types";
+import type { CanvasNode, CanvasSelection, CanvasTreeStatus } from "./canvas-types";
 import { getElementPresentation } from "./element-presentation";
 import { CanvasBreadcrumb } from "./canvas-breadcrumb";
 import { GitHubConnection } from "./github-connection";
@@ -70,6 +70,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   const [canvasSelection, setCanvasSelection] = useState<CanvasSelection | null>(null);
   const [selectionVersion, setSelectionVersion] = useState(0);
   const [canvasNodes, setCanvasNodes] = useState<CanvasNode[]>([]);
+  const [treeStatus, setTreeStatus] = useState<CanvasTreeStatus | null>(null);
   const [leftPanel, setLeftPanel] = useState<"pages" | "navigator">("navigator");
   const [rightPanel, setRightPanel] = useState<"content" | "style">("style");
   const [canvasMode, setCanvasMode] = useState<"design" | "preview">("design");
@@ -159,6 +160,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   function resetCanvasState() {
     setCanvasSelection(null);
     setCanvasNodes([]);
+    setTreeStatus(null);
     setEditingComponent(null);
   }
 
@@ -244,15 +246,22 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     const keydown = (event: KeyboardEvent) => {
       const command = historyShortcut(event);
       const target = event.target;
-      if (!command || !(target instanceof Element) || target.closest("input,textarea,[contenteditable],[role=dialog],[role=alertdialog]")) return;
+      if (event.defaultPrevented || !(target instanceof Element) || target.closest("input,textarea,select,[role=combobox],[contenteditable],[role=dialog],[role=alertdialog]")) return;
       if (!root.current?.contains(target) && target !== document.body) return;
       if (!active || busy || loading || reviewing || canvasMode !== "design" || document.querySelector("[role=dialog],[role=alertdialog]")) return;
+      if (event.key === "Escape" && canvasSelection && publicSite && previewReady) {
+        event.preventDefault();
+        endGroup();
+        frame.current?.contentWindow?.postMessage({ type: "three-acts:clear-selection" }, publicSite.origin);
+        return;
+      }
+      if (!command) return;
       event.preventDefault();
       runHistory(command);
     };
     document.addEventListener("keydown", keydown);
     return () => document.removeEventListener("keydown", keydown);
-  }, [active, runHistory, busy, loading, reviewing, canvasMode]);
+  }, [active, runHistory, busy, loading, reviewing, canvasMode, canvasSelection, previewReady, endGroup]);
 
   function changeField(field: ContentField, value: string | number | boolean, id = page, typing = true) {
     const document = workspace?.documents.find((item) => item.id === id);
@@ -300,7 +309,11 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
         } catch { /* Ignore malformed navigation requests. */ }
       }
       if (event.data.type === "three-acts:canvas-tree" && Array.isArray(event.data.nodes)) {
-        setCanvasNodes(readCanvasNodes(event.data.nodes));
+        const nodes = readCanvasNodes(event.data.nodes);
+        const status = readCanvasTreeStatus(event.data.treeStatus);
+        if (event.data.treeStatus !== undefined && (!status || status.loaded !== nodes.length)) return;
+        setCanvasNodes(nodes);
+        setTreeStatus(status);
       }
       if (event.data.type === "three-acts:clear-selection" || (event.data.type === "three-acts:selection" && event.data.selection === null)) setCanvasSelection(null);
       if (event.data.type === "three-acts:selection" && !busy && !reviewing && canvasMode === "design" && isCanvasSelection(event.data)) {
@@ -438,7 +451,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
         <button type="button" className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-1 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${leftPanel === "pages" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Pages panel" aria-pressed={leftPanel === "pages"} onClick={() => setLeftPanel("pages")}><File size={13}/>Pages</button>
         <button type="button" className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-1 text-ui focus-visible:outline-1 focus-visible:outline-cms-accent ${leftPanel === "navigator" ? "border-cms-text text-cms-text" : "border-transparent text-cms-muted hover:text-cms-text"}`} aria-label="Navigator panel" aria-pressed={leftPanel === "navigator"} onClick={() => setLeftPanel("navigator")}><Layers size={13}/>Navigator</button>
       </div>
-      {leftPanel === "navigator" ? <Navigator nodes={canvasNodes} selected={canvasSelection?.selector ?? null} selectionVersion={selectionVersion} onSelect={(selector) => postCanvas({ type: "three-acts:select-node", selector })} disabled={busy || canvasMode === "preview" || !previewReady}/> : <aside className="flex min-h-0 flex-1 flex-col" aria-label="Pages">
+      {leftPanel === "navigator" ? <Navigator nodes={canvasNodes} treeStatus={treeStatus} onLoadMore={limit => postCanvas({ type: "three-acts:tree-limit", limit })} selected={canvasSelection?.selector ?? null} selectionVersion={selectionVersion} onSelect={(selector) => postCanvas({ type: "three-acts:select-node", selector })} disabled={busy || canvasMode === "preview" || !previewReady}/> : <aside className="flex min-h-0 flex-1 flex-col" aria-label="Pages">
       <PanelHeader className="h-8 min-h-8 gap-2 px-2"><File size={14}/><strong className="font-semibold">Pages</strong></PanelHeader>
       <div className="border-b border-cms-line px-2 py-1"><SearchInput ariaLabel="Search pages" placeholder="Find a page…" value={query} onChange={setQuery}/></div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -534,6 +547,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
         <span className="min-w-0 flex-1 truncate" title={canvasSelection?.label}>{canvasSelection?.label ?? "No selection"}</span>
         {canvasSelection && <span className="shrink-0 font-mono text-[10px] text-cms-subtle">{canvasSelection.tag}</span>}
       </div>
+      {canvasSelection?.visibility && canvasSelection.visibility.state !== "visible" && <p role="status" aria-label="Selection visibility" className="m-0 border-b border-cms-line px-2 py-2 text-[10px] leading-4 text-cms-muted">{canvasSelection.visibility.reason}. {canvasSelection.visibility.state === "revealed" ? "Preview restores the disclosure state." : "Select another width or change its source styling to make it visible."}</p>}
       {canvasSelection?.category === "cms" && <CmsSourceInspector source={canvasSelection.cmsSource} disabled={controlsDisabled || canvasMode === "preview"} onOpen={onOpenCmsRecord}/>}
       {canvasSelection && !isComponentSelection && rightPanel === "content" && <p aria-label="Editing scope" className="m-0 border-b border-cms-line px-2 py-2 text-[10px] text-cms-muted">{canvasSelection.category === "cms" ? "CMS record content" : contentDocument?.id === "shared" ? "Shared across the site" : contentDocument?.collectionId ? `All pages using ${contentDocument.label}` : "This page"}</p>}
       {isComponentSelection && canvasSelection ? <ComponentInspector contentScope={canvasSelection.component?.fields.some(field => field.id === "shared") ? "Content is shared across the site." : currentTemplate ? `Content applies to all pages using ${currentTemplate.label}.` : null} templateInstance={Boolean(currentTemplate)} selection={canvasSelection} onResetProperty={key => updateDesign(next => {
