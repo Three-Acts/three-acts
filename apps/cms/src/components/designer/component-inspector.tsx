@@ -56,11 +56,12 @@ export function ComponentInspector({ selection, disabled, onProperty, onResetPro
         const sourceField = resolveSourceField(binding);
         if (!field || typeof field.value !== "string") return null;
         const id = `component-${binding.id}-${binding.path}`;
+        const attribute = field.path.at(-1)?.replace(/_\d+$/, "") ?? "";
         const changed = sourceField !== undefined && field.value !== sourceField.value;
         return <div key={`${binding.id}.${binding.path}`} className="grid gap-1">
           <FieldLabel id={id} label={binding.label} changed={changed} disabled={disabled} onReset={() => { if (sourceField && typeof sourceField.value === "string") onField(field, sourceField.value, binding.id, false); }}/>
-          {["href", "src"].includes(binding.label) ? (
-            <AttributeInput key={`${binding.id}:${binding.path}:${field.value}`} id={id} value={field.value} name={binding.label} disabled={disabled} onCommit={value => onField(field, value, binding.id, false)}/>
+          {["href", "src"].includes(attribute) ? (
+            <AttributeInput key={`${binding.id}:${binding.path}:${field.value}`} id={id} value={field.value} name={attribute} disabled={disabled} onCommit={value => onField(field, value, binding.id, false)}/>
           ) : (
             <Textarea id={id} aria-label={`Component ${binding.label}`} rows={2} value={field.value} disabled={disabled} onChange={event => onField(field, event.target.value, binding.id)} className="resize-y text-cms-text"/>
           )}

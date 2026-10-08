@@ -1,7 +1,7 @@
 import { createCanvasOutline } from "./canvas-outline.js";
 import { normalizeCmsCollection, readCmsSource } from "@three-acts/cms-schema";
 import { applyStyle, componentBaseClass, componentDefinitions, designCss, emptyDesign, resolveProperties, validateDesign } from "@three-acts/design";
-import { isSafeContentUrl, isSafeMediaUrl } from "@three-acts/static-content";
+import { isSafeContentUrl, isSafeMediaUrl, readLayoutSource, homeSections, homeSectionFieldLabels } from "@three-acts/static-content";
 import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
 
 /* Enabled explicitly by the web app, and activated only by the configured editor origin. */
@@ -17,8 +17,8 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
   const bindings = new Map();
   const normalize = value => value.replace(/\s+/g, ' ').trim();
   let active = false;
-  function fields(value, path = []) {
-    if (value && typeof value === 'object') return Object.entries(value).flatMap(([key, child]) => fields(child, [...path, key]));
+  function contentLeaves(value, path = []) {
+    if (value && typeof value === 'object') return Object.entries(value).flatMap(([key, child]) => contentLeaves(child, [...path, key]));
     return [{ path: path.join('.'), value }];
   }
   const route = window.location.pathname.replace(/\/$/, '') || '/';
@@ -35,6 +35,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
   let latestPreviewDocuments = null;
   let cmsRendering = false;
   let cmsSelectionAnchor = null;
+  let compositionSelectionAnchor = null;
   function add(id, path, element, node, attribute) {
     const key = `${id}.${path}`;
     const list = bindings.get(key) || [];
@@ -65,7 +66,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     // Bind structured titles, body paragraphs, array items and navigation labels
     // without changing the layout component's public prop contracts.
     const lookup = new Map();
-    for (const doc of relevant) for (const field of fields(doc.content)) {
+    for (const doc of relevant) for (const field of contentLeaves(doc.content)) {
       if (typeof field.value !== 'string' || !field.value.trim()) continue;
       const text = normalize(resolve(field.value));
       if (!lookup.has(text)) lookup.set(text, {id: doc.id, path: field.path});
@@ -81,7 +82,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     }
     // Prose splits body fields into paragraphs and lists. Bind the container so
     // the whole plain-text field stays selectable and edits retain paragraph order.
-    for (const doc of relevant) for (const field of fields(doc.content)) {
+    for (const doc of relevant) for (const field of contentLeaves(doc.content)) {
       if (typeof field.value !== 'string' || !field.value.includes('\n')) continue;
       const firstParagraph = normalize(resolve(field.value).split('\n\n')[0]);
       for (const element of document.querySelectorAll('p')) {
@@ -94,7 +95,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       const attribute = element.tagName === 'A' ? 'href' : 'src';
       if (element.closest('[data-cms-bound]') || element.hasAttribute('data-static-media')) continue;
       const value = element.getAttribute(attribute);
-      const matches = relevant.flatMap(doc => fields(doc.content).map(field => ({id: doc.id, ...field}))).filter(field => field.value === value && /^(href|src)(_|$)/.test(field.path.split('.').at(-1)));
+      const matches = relevant.flatMap(doc => contentLeaves(doc.content).map(field => ({id: doc.id, ...field}))).filter(field => field.value === value && /^(href|src)(_|$)/.test(field.path.split('.').at(-1)));
       const match = matches.length === 1 ? matches[0] : null;
       if (match) add(match.id, match.path, element, element, attribute);
     }
@@ -102,6 +103,13 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
   scanBindings();
   const frameSession = new URLSearchParams(window.location.search).get('session') || undefined;
   function send(data) { window.parent.postMessage({...data, ...(frameSession ? {session:frameSession} : {})}, origin); }
+  const compositionIsland = document.querySelector('astro-island[component-export="HomeCompositionPreview"]');
+  let announcedReady = false;
+  function announceReady() {
+    if (announcedReady) return;
+    announcedReady = true;
+    send({type:'three-acts:ready', route});
+  }
   function humanize(value) {
     return String(value || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, char => char.toUpperCase());
   }
@@ -142,7 +150,11 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       : staticGroup
         ? humanize(staticGroup.replace(/_/g, ' '))
         : staticFieldLabel(element, key) || semanticLabel(element));
-    return {category: component ? 'component' : 'element', element, binding, label, selector: selectorFor(element)};
+    return {...(element.hasAttribute('data-layout-section') && sectionSource(element) ? {section:sectionSource(element)} : {}), category: component ? 'component' : 'element', element, binding, label, selector: selectorFor(element)};
+  }
+  function sectionSource(element) {
+    const root = element.closest('[data-layout-section]');
+    return root ? readLayoutSource({ page:root.dataset.layoutPage, id:root.dataset.layoutSection, type:root.dataset.layoutType, hidden:root.dataset.layoutHidden === 'true' }) : null;
   }
   function bindingFor(element) {
     for (const [key, list] of bindings) if (list.some(binding => binding.element === element)) {
@@ -209,6 +221,9 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
   }
   function componentRoot(element) {
     const root = element.closest('[data-editor-component]');
+    // Composition carriers expose their own properties, while ordinary
+    // descendants keep their existing element/component editing contracts.
+    if (root?.dataset.editorComponent.startsWith('Layout.') && root !== element && editingComponent?.name !== root.dataset.editorComponent) return null;
     return root && Object.hasOwn(componentDefinitions, root.dataset.editorComponent) ? root : null;
   }
   function componentDescriptor(root) {
@@ -224,6 +239,20 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       const value = binding.path.split('.').reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, definitions.get(binding.id)?.content);
       return typeof value === 'string' ? [{ ...binding, label: element.dataset.staticAttribute || (name.startsWith('Button.') ? 'Text' : humanize(binding.path.split('.').at(-1).replace(/_\d+$/, ''))), value }] : [];
     });
+    if (name.startsWith('Layout.')) {
+      const source = sectionSource(root);
+      const section = source ? definitions.get('layout')?.content.pages?.home?.sections?.[source.id] : null;
+      if (source && section && section.type === source.type) {
+        const prefix = section.content ? `layout.pages.home.sections.${source.id}.content` : `home.${homeSections[source.type].group}`;
+        const [id, ...path] = prefix.split('.');
+        const value = path.reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, definitions.get(id)?.content);
+        fields.length = 0;
+        for (const leaf of contentLeaves(value)) if (typeof leaf.value === 'string') {
+          const label = homeSectionFieldLabels[source.type][leaf.path] || leaf.path.split('.').map(part => /^\d+$/.test(part) ? `Item ${Number(part) + 1}` : humanize(part.replace(/_\d+$/, ''))).join(' / ');
+          fields.push({id, path:[...path, leaf.path].join('.'), label, value:leaf.value});
+        }
+      }
+    }
     const ownBinding = bindingFor(root);
     if (ownBinding && root.dataset.staticAttribute) {
       const value = ownBinding.path.split('.').reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, definitions.get(ownBinding.id)?.content);
@@ -271,6 +300,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
         if (componentRoot(part) !== root) return;
         part.className = applyStyle(part.dataset.editorBaseClass || '', design.components[name]?.parts[part.dataset.editorPart]);
       });
+      if (root.dataset.layoutHidden === 'true') root.className = cn(root.className, 'hidden');
     });
     const sheet = document.getElementById('three-acts-design-css');
     if (sheet) sheet.textContent = designCss(design);
@@ -292,7 +322,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     const textField = info.category === 'cms' ? null : proseField || directTextField(element);
     const attributes = elementAttributes(element, info.category === 'cms');
     const textState = proseField ? 'structured' : textField ? 'editable' : element.childElementCount ? 'structured' : normalize(element.textContent || '') ? 'unbound' : 'empty';
-    return {selector:selectorFor(element), visibility:outline.visibilityFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), ...(info.cmsSource ? {cmsSource:info.cmsSource} : {}), category:mainPart && info.category !== 'cms' ? 'element' : info.category, ...(component && !mainPart ? {component} : {}), ...(editingComponent ? {editingComponent:editingComponent.name} : {}), ...(designTarget ? {designTarget} : {}), sourceClasses:(element.dataset.editorBaseClass || (root === element ? cn(componentBaseClass(root.dataset.editorComponent, resolveProperties(design, root.dataset.editorComponent, root.dataset.editorInstance, JSON.parse(root.dataset.editorSourceProps || '{}'))), root.dataset.editorCallerClass || '') : '')).split(/\s+/).filter(Boolean), ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(proseField ? {textFormat:'prose'} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
+    return {...(sectionSource(element) ? {section:sectionSource(element)} : {}), selector:selectorFor(element), visibility:outline.visibilityFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), ...(info.cmsSource ? {cmsSource:info.cmsSource} : {}), category:mainPart && info.category !== 'cms' ? 'element' : info.category, ...(component && !mainPart ? {component} : {}), ...(editingComponent ? {editingComponent:editingComponent.name} : {}), ...(designTarget ? {designTarget} : {}), sourceClasses:(element.dataset.editorBaseClass || (root === element ? cn(componentBaseClass(root.dataset.editorComponent, resolveProperties(design, root.dataset.editorComponent, root.dataset.editorInstance, JSON.parse(root.dataset.editorSourceProps || '{}'))), root.dataset.editorCallerClass || '') : '')).split(/\s+/).filter(Boolean), ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(proseField ? {textFormat:'prose'} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
   }
   const inspectableAttributes = ['href','src','alt','title','target','aria-label'];
   function formattedTextField(element) {
@@ -434,7 +464,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       for (const doc of previewDocuments) {
         if (!definitions.has(doc.id)) continue;
         definitions.set(doc.id, {...definitions.get(doc.id), content:doc.content});
-        for (const field of fields(doc.content)) for (const binding of bindings.get(`${doc.id}.${field.path}`) || []) {
+        for (const field of contentLeaves(doc.content)) for (const binding of bindings.get(`${doc.id}.${field.path}`) || []) {
           if (binding.element.isContentEditable) continue;
           if (binding.attribute === 'prose') {
             renderProse(binding.node, String(resolve(field.value)));
@@ -491,6 +521,24 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
       if (restored) publishSelection(restored);
     }
     refreshOutline();
+  });
+  document.addEventListener('three-acts:composition-rendering', () => {
+    cmsRendering = true;
+    compositionSelectionAnchor = selectedCandidate?.element.dataset.editorId || null;
+  });
+  document.addEventListener('three-acts:composition-rendered', event => {
+    cmsRendering = false;
+    scanBindings();
+    if (!active) { announceReady(); return; }
+    renderDesign(design);
+    if (latestPreviewDocuments) applyPreviewContent(latestPreviewDocuments);
+    if (compositionSelectionAnchor && !selectedCandidate?.element?.isConnected) {
+      const restored = Array.from(document.querySelectorAll('[data-editor-id]')).find(element => element.dataset.editorId === compositionSelectionAnchor);
+      if (restored) publishSelection(restored);
+    }
+    compositionSelectionAnchor = null;
+    refreshOutline();
+    if (Array.isArray(event.detail?.sections) && event.detail.sections.length <= 60 && event.detail.sections.every(source => readLayoutSource(source))) send({type:'three-acts:composition-rendered', sections:event.detail.sections.map(source => readLayoutSource(source))});
   });
   function validSelector(selector) {
     if (typeof selector !== 'string' || selector.length > 500) return null;
@@ -719,5 +767,7 @@ import { cn, historyShortcut, parseProse, proseRuns } from "@three-acts/utils";
     }
     if (event.data.type === 'three-acts:focus' && typeof event.data.path === 'string') focus(`${event.data.id}.${event.data.path}`, true);
   });
-  send({type:'three-acts:ready', route});
+  // Source overlays must wait for the canonical Home island to hydrate;
+  // applying edited text beforehand would invalidate its SSR hydration.
+  if (!compositionIsland || compositionIsland.hasAttribute('data-composition-ready')) announceReady();
 })();

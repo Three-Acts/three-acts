@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "pages": {
+    "home": {
+      "order": [
+        "home-hero",
+        "home-stats",
+        "home-categories",
+        "home-products",
+        "home-intro",
+        "home-journal",
+        "home-testimonials",
+        "home-faq",
+        "home-cta"
+      ],
+      "sections": {
+        "home-hero": {
+          "type": "hero",
+          "hidden": false
+        },
+        "home-stats": {
+          "type": "stats",
+          "hidden": false
+        },
+        "home-categories": {
+          "type": "categories",
+          "hidden": false
+        },
+        "home-products": {
+          "type": "products",
+          "hidden": false
+        },
+        "home-intro": {
+          "type": "intro",
+          "hidden": false
+        },
+        "home-journal": {
+          "type": "journal",
+          "hidden": false
+        },
+        "home-testimonials": {
+          "type": "testimonials",
+          "hidden": false
+        },
+        "home-faq": {
+          "type": "faq",
+          "hidden": false
+        },
+        "home-cta": {
+          "type": "cta",
+          "hidden": false
+        }
+      }
+    }
+  }
+}

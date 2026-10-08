@@ -3,6 +3,7 @@ import { loadArticles, loadFaqs, loadProductCategories, loadProducts, loadTestim
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { homeMeta } from "../page-meta";
 import { HomePage } from "../views/home";
+import { HomeCompositionPreview } from "../components/editor/home-composition-preview";
 
 const [products, categories, articles, testimonials, faqs] = await Promise.all([
   loadProducts(),
@@ -12,8 +13,10 @@ const [products, categories, articles, testimonials, faqs] = await Promise.all([
   loadFaqs()
 ]);
 const meta = await homeMeta();
+const editorPreview = import.meta.env.DEV || import.meta.env.PUBLIC_EDITOR_PREVIEW === "true";
+const editorOrigin = import.meta.env.PUBLIC_EDITOR_ORIGIN || (import.meta.env.DEV ? "http://localhost:5174" : "");
 ---
 
 <BaseLayout seo={meta.seo}>
-  <HomePage products={products} categories={categories} articles={articles} testimonials={testimonials} faqs={faqs} />
+  {editorPreview && editorOrigin ? <HomeCompositionPreview client:load origin={editorOrigin} products={products} categories={categories} articles={articles} testimonials={testimonials} faqs={faqs}/> : <HomePage products={products} categories={categories} articles={articles} testimonials={testimonials} faqs={faqs}/>}
 </BaseLayout>

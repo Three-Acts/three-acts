@@ -1,3 +1,8 @@
+import { checkContentShape } from "./value-validation";
+import layout from "./documents/layout.json";
+import { validateLayout } from "./layout";
+export * from "./layout";
+export { isSafeContentUrl, isSafeMediaUrl } from "./value-validation";
 import design from "./documents/design.json";
 import { validateDesign } from "@three-acts/design";
 import home from "./documents/home.json";
@@ -21,9 +26,10 @@ import articleCategoryTemplate from "./documents/article-category-template.json"
 
 export type ContentValue = string | number | boolean | ContentValue[] | { [key: string]: ContentValue };
 export type ContentObject = { [key: string]: ContentValue };
-export type ContentDefinition = { id: string; label: string; route: string; content: ContentObject; collectionId?: string; kind?: "design" };
+export type ContentDefinition = { id: string; label: string; route: string; content: ContentObject; collectionId?: string; kind?: "design" | "layout" };
 export const contentDefinitions: ContentDefinition[] = [
   { id: "design", label: "Site design", route: "/", kind: "design", content: design },
+  { id: "layout", label: "Page composition", route: "/", kind: "layout", content: layout },
   { id: "home", label: "Home", route: "/", content: home },
   { id: "about", label: "About", route: "/about", content: about },
   { id: "faq", label: "FAQ", route: "/faq", content: faq },
@@ -47,51 +53,17 @@ export const contentDefinitions: ContentDefinition[] = [
 export const contentPath = (id: string) => `packages/static-content/src/documents/${id}.json`;
 export const serializeContent = (content: ContentObject) => `${JSON.stringify(content, null, 2)}\n`;
 
-/** The deployed content files define the editing contract. Editors change values,
- * while developers own fields, layout, routes and section order in Git. */
+/** Source files define the editing contract. Editors change validated values,
+ * styles and approved layout instances; developers own schemas and routes. */
 export function validateContent(id: string, input: unknown): ContentObject {
   if (id === "design") return validateDesign(input) as unknown as ContentObject;
+  if (id === "layout") return validateLayout(input) as unknown as ContentObject;
   const definition = contentDefinitions.find((item) => item.id === id);
   if (!definition) throw new Error("Unknown content document.");
-  function check(template: ContentValue, value: unknown, path: string): ContentValue {
-    if (typeof template === "string") {
-      if (typeof value !== "string" || value.length > 20000) throw new Error(`${path}: enter text under 20,000 characters.`);
-      const key = path.split(".").at(-1) ?? "";
-      if ((/(^|_)src(_|$)/i.test(key) || key === "defaultImage") && value && !isSafeMediaUrl(value)) {
-        throw new Error(`${path}: use a site path or https/http image URL.`);
-      }
-      if ((/(^|_)(href|src|url)(_|$)/i.test(key) || key === "defaultImage") && value && !isSafeContentUrl(value)) {
-        throw new Error(`${path}: use a site path, anchor, https/http, mailto or tel URL.`);
-      }
-      return value;
-    }
-    if (typeof template === "number" || typeof template === "boolean") {
-      if (typeof value !== typeof template || (typeof value === "number" && !Number.isFinite(value))) throw new Error(`${path}: invalid value.`);
-      return value as number | boolean;
-    }
-    if (Array.isArray(template)) {
-      if (!Array.isArray(value) || value.length !== template.length) throw new Error(`${path}: keep the existing items.`);
-      return template.map((item, index) => check(item, value[index], `${path}.${index}`));
-    }
-    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${path}: invalid content.`);
-    const object = value as Record<string, unknown>;
-    const keys = Object.keys(template);
-    if (Object.keys(object).length !== keys.length || keys.some((key) => !Object.hasOwn(object, key))) throw new Error(`${path}: content fields have changed. Reload the editor.`);
-    return Object.fromEntries(keys.map((key) => [key, check(template[key], object[key], path ? `${path}.${key}` : key)]));
-  }
-  return check(definition.content, input, "") as ContentObject;
+
+  return checkContentShape(definition.content, input, "") as ContentObject;
 }
 
-export function isSafeContentUrl(value: string): boolean {
-  if (Array.from(value).some((char) => char.charCodeAt(0) <= 32 || char.charCodeAt(0) === 127 || char === "\\")) return false;
-  if (!(/^\/(?!\/)/.test(value) || /^#[a-z0-9_-]+$/i.test(value) || /^(https?:\/\/|mailto:|tel:)/i.test(value))) return false;
-  try { const url = new URL(value, "https://preview.invalid"); return ["https:", "http:", "mailto:", "tel:"].includes(url.protocol); }
-  catch { return false; }
-}
-
-export function isSafeMediaUrl(value: string): boolean {
-  return isSafeContentUrl(value) && (/^\/(?!\/)/.test(value) || /^https?:\/\//i.test(value));
-}
 
 export type ContentField = { path: string[]; value: string | number | boolean };
 export function contentFields(content: ContentObject): ContentField[] {

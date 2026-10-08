@@ -35,6 +35,7 @@ export function createCanvasOutline({ safeElement, describe, keyFor }) {
   function cssHiddenReason(element) {
     for (let current = element; current; current = current.parentElement) {
       const style = getComputedStyle(current);
+      if (current.dataset.layoutHidden === 'true') return 'Hidden in the page composition';
       if (current.hidden || style.display === 'none') return 'Hidden at this width or by display';
       if (style.visibility === 'hidden' || style.visibility === 'collapse') return 'Hidden by visibility';
       if (style.opacity === '0') return 'Hidden by opacity';
@@ -77,7 +78,7 @@ export function createCanvasOutline({ safeElement, describe, keyFor }) {
   function nodeFor(element, parentSelector, depth) {
     const info = describe(element);
     const label = info.cmsSource ? `${info.cmsSource.label} · ${info.label}` : info.label || element.tagName.toLowerCase();
-    return { selector: selectorFor(element), parentSelector, depth, tag: element.tagName.toLowerCase(), label, category: info.category || 'element', visibility: visibilityFor(element), ...(info.binding ? { binding: info.binding } : {}) };
+    return { ...(info.section ? {section:info.section} : {}), selector: selectorFor(element), parentSelector, depth, tag: element.tagName.toLowerCase(), label, category: info.category || 'element', visibility: visibilityFor(element), ...(info.binding ? { binding: info.binding } : {}) };
   }
   function snapshot(selected) {
     for (const [identity, reference] of elements) if (!reference.deref()?.isConnected) elements.delete(identity);
@@ -103,18 +104,24 @@ export function createCanvasOutline({ safeElement, describe, keyFor }) {
     const included = new Map(nodes.map(node => [node.selector, node]));
     // A direct canvas selection can live beyond the current outline page.
     // Pin its ancestry rather than increasing the default page or changing identity.
-    if (selected?.isConnected && safeElement(selected)) {
+    function pin(elementToPin) {
+      if (!elementToPin?.isConnected || !safeElement(elementToPin)) return;
       let parent = nodes[0];
-      for (const element of pathFor(selected).slice(-95)) {
+      for (const element of pathFor(elementToPin).slice(-95)) {
         const selector = selectorFor(element);
         const existing = included.get(selector);
         if (existing) parent = existing;
         else {
+          if (nodes.length >= maximum + 100) { capped = true; break; }
           const node = nodeFor(element, parent.selector, parent.depth + 1);
           nodes.push(node); included.set(selector, node); parent = node;
         }
       }
     }
+    pin(selected);
+    // Approved root sections remain manageable when their descendants exceed
+    // the current outline page. Keep the existing bounded snapshot contract.
+    for (const section of Array.from(document.querySelectorAll('[data-layout-section]')).filter(element => describe(element).section).slice(0, 60)) pin(section);
     const collected = new Set(all.map(node => node.selector));
     const total = all.length + nodes.filter(node => !collected.has(node.selector)).length;
     return { nodes, treeStatus: { limit, maximum, loaded: nodes.length, total, capped, hasMore: capped || all.some(node => !included.has(node.selector)) } };

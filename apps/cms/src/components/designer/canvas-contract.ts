@@ -1,5 +1,6 @@
 import { readCmsSource } from "@three-acts/cms-schema";
 import { componentDefinitions } from "@three-acts/design";
+import { readLayoutSource } from "@three-acts/static-content";
 import type { CanvasNode, CanvasSelection, CanvasTreeStatus } from "./canvas-types";
 
 const canvasCategories = new Set(["element", "component", "cms"]);
@@ -21,7 +22,7 @@ export function readCanvasNodes(value: unknown): CanvasNode[] {
   const selectors = new Set<string>();
   return value.slice(0, 5100).filter((node): node is CanvasNode => {
     if (!node || typeof node !== "object" || typeof node.selector !== "string" || !node.selector || selectors.has(node.selector) || typeof node.label !== "string" || typeof node.tag !== "string" || !canvasCategories.has(node.category) || !Number.isInteger(node.depth) || node.depth < 0 || node.depth > 100 || (node.parentSelector !== null && !selectors.has(node.parentSelector))) return false;
-    if (!validVisibility(node.visibility)) return false;
+    if (!validVisibility(node.visibility) || node.section !== undefined && !readLayoutSource(node.section)) return false;
     selectors.add(node.selector);
     return true;
   });
@@ -30,6 +31,7 @@ export function readCanvasNodes(value: unknown): CanvasNode[] {
 export function isCanvasSelection(value: unknown): value is CanvasSelection {
   if (!value || typeof value !== "object") return false;
   const selection = value as CanvasSelection;
+  if (selection.section !== undefined && !readLayoutSource(selection.section)) return false;
   const validBinding = (binding: unknown) => Boolean(binding && typeof binding === "object" && "id" in binding && typeof binding.id === "string" && "path" in binding && typeof binding.path === "string");
   return typeof selection.selector === "string" && typeof selection.label === "string" && typeof selection.tag === "string" && typeof selection.editable === "boolean" && canvasCategories.has(selection.category)
     && validVisibility(selection.visibility)

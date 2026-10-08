@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import type { EditorWorkspace } from "@three-acts/static-content";
 import { fileURLToPath } from "node:url";
 import type { CmsDraftPreview } from "@three-acts/cms-schema";
 
@@ -2100,4 +2101,175 @@ test("private preview rejects sibling, foreign-origin, wrong-session and stale p
   await expect.poll(() => canvas.locator("body").evaluate(() => (window as unknown as { __testCmsPackets: CmsDraftPreview[] }).__testCmsPackets.length)).toBeGreaterThanOrEqual(5);
   await expect(title).toHaveText(expected!);
   await expect(canvas.getByText("Forged preview title", { exact: true })).toHaveCount(0);
+});
+
+async function selectLayoutSection(page: import("@playwright/test").Page, label: string) {
+  const navigator = page.getByRole("complementary", { name: "Navigator" });
+  await navigator.getByRole("searchbox", { name: "Search elements" }).fill(label);
+  const item = navigator.getByRole("treeitem", { name: new RegExp(`^Component: ${label}, div`, "i") }).first();
+  await item.click();
+  await expect(page.getByRole("button", { name: "Section actions", exact: true })).toBeVisible();
+  return item;
+}
+
+async function sectionAction(page: import("@playwright/test").Page, name: string) {
+  await page.getByRole("button", { name: "Section actions", exact: true }).click();
+  await page.getByRole("menuitem", { name, exact: false }).click();
+}
+
+test("approved sections duplicate independent copy, reorder, hide, undo and persist through source review", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const sections = canvas.locator('[data-layout-section]');
+  await expect(sections).toHaveCount(9);
+  const original = canvas.locator('[data-static-field="home.cta_section.p_1"]');
+  const originalText = await original.textContent();
+  await selectLayoutSection(page, "CTA Section");
+  await expect(page.getByRole("button", { name: "Style panel" })).toHaveCount(0);
+  await sectionAction(page, "Duplicate");
+  await expect(sections).toHaveCount(10);
+  const copy = canvas.locator('[data-layout-section^="section-"]');
+  const id = await copy.getAttribute("data-layout-section");
+  expect(id).toBeTruthy();
+  await expect(copy).toHaveAttribute("data-editor-selected", "");
+  const properties = page.getByRole("complementary", { name: "Component properties" });
+  const text = properties.getByRole("textbox", { name: "Component Headline", exact: true });
+  await text.fill("An independently composed CTA");
+  await expect(copy.locator(`[data-static-field="layout.pages.home.sections.${id}.content.p_1"]`)).toHaveText("An independently composed CTA");
+  await expect(original).toHaveText(originalText!);
+  await expect(properties.getByRole("button", { name: "Reset Headline to source", exact: true })).toBeVisible();
+  const originalSection = canvas.locator('[data-layout-section="home-cta"] > section');
+  const originalClass = await originalSection.getAttribute("class");
+  const copiedSection = canvas.locator(`[data-layout-section="${id}"] > section`);
+  await copiedSection.click({ position: { x: 1, y: 1 } });
+  await page.getByRole("button", { name: "Style panel", exact: true }).click();
+  const styles = page.getByRole("complementary", { name: "Style inspector" });
+  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
+  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-12");
+  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("tablet");
+  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-16");
+  await expect(copiedSection).toHaveClass(/tablet:pt-16/);
+  await expect(originalSection).toHaveAttribute("class", originalClass!);
+  await page.getByRole("navigation", { name: "Element breadcrumb" }).getByRole("button", { name: "CTA Section", exact: true }).click();
+  await sectionAction(page, "Hide section");
+  await expect(copy).toBeHidden();
+  await expect(copy).toHaveAttribute("data-layout-hidden", "true");
+  await page.getByRole("button", { name: "Undo edit", exact: true }).click();
+  await expect(copy).toBeVisible();
+  await page.getByRole("button", { name: "Redo edit", exact: true }).click();
+  await expect(copy).toBeHidden();
+  await sectionAction(page, "Show section");
+  await expect(copy).toBeVisible();
+  await sectionAction(page, "Move up");
+  await expect.poll(() => sections.evaluateAll(elements => elements.map(element => element.getAttribute("data-layout-section")))).toEqual(["home-hero", "home-stats", "home-categories", "home-products", "home-intro", "home-journal", "home-testimonials", "home-faq", id, "home-cta"]);
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-composition-properties.png", import.meta.url)), fullPage: true });
+  await page.reload();
+  await openDesignerTab(page);
+  await expect(copy).toBeVisible();
+  await expect(copy.locator(`[data-static-field="layout.pages.home.sections.${id}.content.p_1"]`)).toHaveText("An independently composed CTA");
+  const review = await openReview(page);
+  await expect(review).toContainText("Page composition");
+  await expect(review).toContainText("An independently composed CTA");
+  await review.getByRole("button", { name: "Push to GitHub" }).click();
+  await expect(page.getByText("Pushed to GitHub", { exact: true })).toBeVisible();
+  await page.reload();
+  await openDesignerTab(page);
+  await expect(copy.locator(`[data-static-field="layout.pages.home.sections.${id}.content.p_1"]`)).toHaveText("An independently composed CTA");
+  await expectReviewState(page, false);
+  const committed = await page.evaluate(async () => {
+    const { apiFetch } = await import("/src/lib/api-client.ts");
+    return apiFetch<EditorWorkspace>("/editor/content");
+  });
+  writeFileSync(fileURLToPath(new URL("../artifacts/composition-committed.json", import.meta.url)), JSON.stringify({ documents: committed.documents.map(document => ({ id: document.id, content: document.content })) }, null, 2));
+});
+
+test("approved section insertion supports every type and Navigator keyboard and pointer reordering", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const sections = canvas.locator('[data-layout-section]');
+  await expect(sections.first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Insert section", exact: true })).toBeEnabled();
+  const originalCount = await sections.count();
+  const types = ["Hero", "Stats", "Shop by category", "Featured products", "Intro", "Journal", "Testimonials", "FAQ teaser", "CTA"];
+  for (const [index, label] of types.entries()) {
+    await page.getByRole("button", { name: "Insert section", exact: true }).click();
+    await page.getByRole("menuitem", { name: label, exact: true }).click();
+    await expect(sections).toHaveCount(originalCount + index + 1);
+    await expect(canvas.locator('[data-layout-section][data-editor-selected]')).toHaveCount(1);
+  }
+  await expect(canvas.locator("h1")).toHaveCount(1);
+  const order = await sections.evaluateAll(elements => elements.map(element => element.getAttribute("data-layout-section")));
+  const navigator = page.getByRole("complementary", { name: "Navigator" });
+  const selected = navigator.getByRole("treeitem", { selected: true });
+  await selected.focus();
+  await selected.press("Alt+ArrowUp");
+  const keyboardOrder = [...order];
+  [keyboardOrder[keyboardOrder.length - 1], keyboardOrder[keyboardOrder.length - 2]] = [keyboardOrder[keyboardOrder.length - 2], keyboardOrder[keyboardOrder.length - 1]];
+  await expect.poll(() => sections.evaluateAll(elements => elements.map(element => element.getAttribute("data-layout-section")))).toEqual(keyboardOrder);
+  const dragSource = navigator.getByRole("treeitem", { name: /^Component: CTA Section, div/i }).last();
+  const target = navigator.getByRole("treeitem", { name: /^Component: Stats Section, div/i }).last();
+  const sourceId = keyboardOrder.at(-2)!;
+  const targetId = order[originalCount + 1]!;
+  await dragSource.dragTo(target);
+  const pointerOrder = keyboardOrder.filter(id => id !== sourceId);
+  pointerOrder.splice(keyboardOrder.indexOf(targetId), 0, sourceId);
+  await expect.poll(() => sections.evaluateAll(elements => elements.map(element => element.getAttribute("data-layout-section")))).toEqual(pointerOrder);
+  await page.getByRole("button", { name: "Undo edit", exact: true }).click();
+  await expect.poll(() => sections.evaluateAll(elements => elements.map(element => element.getAttribute("data-layout-section")))).toEqual(keyboardOrder);
+  await setLogicalWidth(page, 390);
+  await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-composition-mobile.png", import.meta.url)), fullPage: true });
+});
+
+test("composed section utilities and variants are independent and main-component styles remain shared", async ({ page }) => {
+  await signInAndOpenDesigner(page);
+  const canvas = page.frameLocator('iframe[title="Website canvas"]');
+  const original = canvas.locator('[data-layout-section="home-cta"] > section');
+  await original.click({ position: { x: 1, y: 1 } });
+  await page.getByRole("button", { name: "Style panel", exact: true }).click();
+  const styles = page.getByRole("complementary", { name: "Style inspector" });
+  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
+  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-4");
+  const originalButton = canvas.locator('[data-editor-instance="home.cta_section.href_2"]');
+  await originalButton.click();
+  const properties = page.getByRole("complementary", { name: "Component properties" });
+  await properties.getByRole("combobox", { name: "Component size" }).selectOption("sm");
+  await page.getByRole("navigation", { name: "Element breadcrumb" }).getByRole("button", { name: "Show parent elements", exact: true }).click();
+  await page.getByRole("dialog", { name: "Parent elements" }).getByRole("button", { name: "CTA Section", exact: true }).click();
+  const before = await canvas.locator('[data-layout-section]').count();
+  await sectionAction(page, "Duplicate");
+  await expect(canvas.locator('[data-layout-section]')).toHaveCount(before + 1);
+  const copy = canvas.locator('[data-layout-section][data-editor-selected]');
+  const id = await copy.getAttribute("data-layout-section");
+  const copiedSection = canvas.locator(`[data-layout-section="${id}"] > section`);
+  const copiedButton = canvas.locator(`[data-editor-instance="composition.${id}.home.cta_section.href_2"]`);
+  await expect(copiedSection).toHaveClass(/pt-4/);
+  await expect(copiedButton).toHaveClass(/px-\[17px\]/);
+  await copiedSection.click({ position: { x: 1, y: 1 } });
+  await page.getByRole("button", { name: "Style panel", exact: true }).click();
+  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-12");
+  await expect(copiedSection).toHaveClass(/pt-12/);
+  await expect(original).toHaveClass(/pt-4/);
+  await copiedButton.click();
+  await properties.getByRole("combobox", { name: "Component size" }).selectOption("lg");
+  await expect(copiedButton).toHaveClass(/px-7/);
+  await expect(originalButton).toHaveClass(/px-\[17px\]/);
+  await properties.getByRole("button", { name: "Edit main component" }).click();
+  await copiedButton.locator('[data-editor-part="label"]').click();
+  await styles.getByRole("combobox", { name: "Font size", exact: true }).selectOption("text-h2");
+  await expect(copiedButton.locator('[data-editor-part="label"]')).toHaveClass(/text-h2/);
+  await expect(originalButton.locator('[data-editor-part="label"]')).toHaveClass(/text-h2/);
+  await page.getByRole("button", { name: "Undo edit", exact: true }).click();
+  await expect(copiedButton.locator('[data-editor-part="label"]')).not.toHaveClass(/text-h2/);
+  await expect(originalButton.locator('[data-editor-part="label"]')).not.toHaveClass(/text-h2/);
+  await page.getByRole("button", { name: "Done editing component", exact: true }).click();
+  await selectLayoutSection(page, "Hero Section");
+  await sectionAction(page, "Duplicate");
+  const copiedHero = canvas.locator('[data-layout-section][data-editor-selected]');
+  await expect(copiedHero).toHaveAttribute("data-layout-type", "hero");
+  const heroId = await copiedHero.getAttribute("data-layout-section");
+  const image = canvas.locator(`[data-layout-section="${heroId}"] img[data-cms-bound="products.images.0"]`);
+  const editor = await openBoundCmsSource(page, image, "products", "images.0");
+  await editor.getByRole("button", { name: "Back to canvas" }).click();
+  await expect(image).toHaveAttribute("data-editor-selected", "");
+  await expect(canvas.locator(`[data-layout-section="${heroId}"]`)).toBeVisible();
 });

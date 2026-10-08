@@ -105,7 +105,22 @@ The opt-in `/editor-preview/cms/` shell contains no draft values; normal builds 
 
 ## Extend the editing contract
 
-Add or remove static fields in the JSON documents and wire them into the Astro/React view. Content editors can change registered content/design values; layout, source code, routes, and collection records are not writable through the Designer API. Use `data-static-field="document.path.to.field"` on text elements for precise canvas selection. The preview bridge also binds matching titles, navigation, and structured copy. Designer reuses CMS components and theme directly; there is no separate editor UI package.
+Home supports approved section composition through the Navigator's **Insert section** icon and the selected section's compact **Section actions** menu. Insert Hero, Stats, Shop by category, Featured products, Intro, Journal, Testimonials, FAQ teaser or CTA sections; duplicate, hide/show and reorder them. Drag a root section onto another root section, or focus it in Navigator and use Alt+↑/↓. Hidden sections remain listed and editable; Preview and normal builds respect their hidden state.
+
+Original sections retain their Home source bindings. Inserted and duplicated sections own independent validated copy in `packages/static-content/src/documents/layout.json`, and copied element utilities/component variants get distinct identities. Shared main-component styling and reusable CSS classes remain shared. The properties inspector reads each section's actual source, including fields in a section whose CMS data is currently empty. Changed fields use blue labels, small reset icons and Alt-click reset, with the main-component edit icon at the top.
+
+Layout edits participate in browser drafts, Undo/Redo, recovery, review, SHA conflict checks and atomic GitHub writes alongside design/content changes. The layout contract is version 1, allows only Home's approved root sections, and is limited to 60 instances and 512 KiB. Unknown types, nested layouts, mismatched identities, invalid copy/URLs and unsupported versions fail validation. Other pages retain their existing layout contracts. Preview builds hydrate the canonical Home renderer before applying source overlays; normal builds render the same saved layout through SSR. A source push still does not establish deployment.
+
+To verify a browser-pushed composition snapshot through a normal build:
+
+```sh
+npm run test:e2e:designer -- --grep 'approved sections duplicate'
+npx tsx --tsconfig tsconfig.base.json apps/cms/tests/designer/verify-composition-build.ts
+```
+
+The verifier temporarily rebuilds the exact source snapshot recorded by that isolated GitHub fixture, checks desktop/mobile order, copy, visibility and responsive instance styles without the editor renderer, then restores the original source files. Rebuild normally afterward to restore output for the current checkout.
+
+Add or remove static fields in the JSON documents and wire them into the Astro/React view. Content editors can change registered content/design values and approved layouts; source code, routes and collection records are not writable through the Designer API. Use `data-static-field="document.path.to.field"` on text elements for precise canvas selection. The preview bridge also binds matching titles, navigation, and structured copy. Designer reuses CMS components and theme directly; there is no separate editor UI package.
 
 CMS template definitions include a `collectionId` and a route such as `/shop/[slug]`. Use `cmsAttributes({ collectionId: "products", recordId: product.id, label: product.title }, "title")` from `@three-acts/cms-schema` on collection-bound elements. It emits the canonical collection, exact record identity, label, and field binding, keeping CMS content separate from static copy. A card/container can omit the field; annotate individual fields separately. A legacy `data-cms-bound` without record identity remains read-only and cannot open a source record.
 

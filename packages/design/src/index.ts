@@ -30,6 +30,15 @@ export const componentDefinitions: Record<string, ComponentDefinition> = {
   "Typography.Lede": simple("Lede", "apps/web/src/components/ui/typography/typography.tsx", "max-w-2xl text-lede text-ink"),
   "Typography.Eyebrow": simple("Eyebrow", "apps/web/src/components/ui/typography/typography.tsx", "flex items-center gap-2 text-small uppercase tracking-eyebrow text-ink"),
   "HeroSection": simple("Hero", "apps/web/src/components/home/hero-section.tsx", "pb-8 pt-[75px]"),
+  "Layout.hero": simple("Hero section", "apps/web/src/components/home/hero-section.tsx", "block"),
+  "Layout.stats": simple("Stats section", "apps/web/src/components/home/stat-section.tsx", "block"),
+  "Layout.categories": simple("Shop by category section", "apps/web/src/components/home/shop-by-category-section.tsx", "block"),
+  "Layout.products": simple("Featured products section", "apps/web/src/components/home/featured-products-section.tsx", "block"),
+  "Layout.intro": simple("Intro section", "apps/web/src/components/home/intro-section.tsx", "block"),
+  "Layout.journal": simple("Journal section", "apps/web/src/components/home/journal-section.tsx", "block"),
+  "Layout.testimonials": simple("Testimonials section", "apps/web/src/components/home/testimonials-section.tsx", "block"),
+  "Layout.faq": simple("FAQ teaser section", "apps/web/src/components/home/faq-teaser-section.tsx", "block"),
+  "Layout.cta": simple("CTA section", "apps/web/src/components/home/cta-section.tsx", "block"),
 };
 const componentStylers = Object.fromEntries(Object.entries(componentDefinitions).map(([name, definition]) => [name, cv(definition)]));
 export type DesignDocument = {

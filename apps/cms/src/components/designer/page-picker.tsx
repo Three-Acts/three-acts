@@ -49,8 +49,8 @@ export function PagePicker({
   const [query, setQuery] = useState("");
   const [bodyMode, setBodyMode] = useState<"pages" | "items">("pages");
   const searchRef = useRef<HTMLInputElement>(null);
-  const staticPages = useMemo(() => documents.filter((document) => document.kind !== "design" && document.id !== "shared" && !document.collectionId && matches(query, document.label, document.route)), [documents, query]);
-  const cmsPages = useMemo(() => documents.filter((document) => document.kind !== "design" && document.id !== "shared" && Boolean(document.collectionId) && matches(query, document.label, document.route)), [documents, query]);
+  const staticPages = useMemo(() => documents.filter((document) => !document.kind && document.id !== "shared" && !document.collectionId && matches(query, document.label, document.route)), [documents, query]);
+  const cmsPages = useMemo(() => documents.filter((document) => !document.kind && document.id !== "shared" && Boolean(document.collectionId) && matches(query, document.label, document.route)), [documents, query]);
   const visiblePreviewItems = useMemo(() => previewItems.filter((item) => matches(query, item.label, item.route)), [previewItems, query]);
   const currentIsTemplate = Boolean(current?.collectionId);
   const stateForPage = (document: EditorDocument) => pageStates[document.id] ?? getPagePresentation();
