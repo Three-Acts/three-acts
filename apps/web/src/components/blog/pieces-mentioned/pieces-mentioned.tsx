@@ -25,6 +25,7 @@ export function PiecesMentioned({ products }: PiecesMentionedProps) {
           }
           return (
             <Card.Product
+              cmsSource={{ collectionId: "products", recordId: product.id, label: product.title }}
               key={product.slug}
               title={product.title}
               href={`/shop/${product.slug}`}

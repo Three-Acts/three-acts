@@ -51,7 +51,7 @@ const cartProduct = {
     <Section.Container>
       <Breadcrumb.Root items={breadcrumbItems} className="mb-8" />
       <div class="grid gap-x-gap gap-y-gap-y landscape:grid-cols-2">
-        <ProductGallery images={product.images} title={product.title} />
+        <ProductGallery cmsSource={{ collectionId: "products", recordId: product.id, label: product.title }} images={product.images} title={product.title} />
         {/*
           This flex column's document order IS the visual order — the two
           islands below (review summary, add-to-cart) are mounted directly

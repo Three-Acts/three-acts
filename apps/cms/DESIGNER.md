@@ -89,11 +89,15 @@ The Pages list includes templates for products, articles, authors, product categ
 
 The template's settings icon opens its unbound copy in the floating details panel. Bound leaf copy can also be selected on the canvas and edited through the selection-only Content inspector. Edits apply to every generated page using that template and follow the same browser-draft and GitHub review workflow as static pages. Collection-bound titles, descriptions, images, prices, and article bodies remain managed in CMS; template edits do not change collection records or generated SEO metadata.
 
+Selecting CMS content shows its collection, item, and registered field in the inspector. The small **Edit CMS item** icon opens that exact record in the existing authenticated record editor and focuses the field, including the root field for nested assets. Related products/articles, categories, authors, FAQs, and testimonials carry their own record identities. The Designer stays mounted while the record is edited; **Back to canvas** restores the page, preview, selection, scroll, browser drafts, and history. Unsaved record or page-detail edits use the existing discard confirmation. Failed record loads offer Retry and a return to the canvas.
+
+Saving the CMS record does not publish the page. The canvas still renders its published/static snapshot; authenticated draft previews are a separate integration. Missing or unregistered source identity never falls back to the current preview item.
+
 ## Extend the editing contract
 
 Add or remove static fields in the JSON documents and wire them into the Astro/React view. Content editors can change registered content/design values; layout, source code, routes, and collection records are not writable through the Designer API. Use `data-static-field="document.path.to.field"` on text elements for precise canvas selection. The preview bridge also binds matching titles, navigation, and structured copy. Designer reuses CMS components and theme directly; there is no separate editor UI package.
 
-CMS template definitions include a `collectionId` and a route such as `/shop/[slug]`. Mark collection-bound elements with `data-cms-bound="products.title"` (or the corresponding collection field) so automatic preview matching cannot bind their text or attributes to editable copy.
+CMS template definitions include a `collectionId` and a route such as `/shop/[slug]`. Use `cmsAttributes({ collectionId: "products", recordId: product.id, label: product.title }, "title")` from `@three-acts/cms-schema` on collection-bound elements. It emits the canonical collection, exact record identity, label, and field binding, keeping CMS content separate from static copy. A card/container can omit the field; annotate individual fields separately. A legacy `data-cms-bound` without record identity remains read-only and cannot open a source record.
 
 ## Tests
 

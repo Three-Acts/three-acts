@@ -1,3 +1,4 @@
+import type { CmsSource } from "@three-acts/cms-schema";
 export type CanvasNode = {
   selector: string;
   parentSelector: string | null;
@@ -9,6 +10,7 @@ export type CanvasNode = {
 };
 
 export type CanvasSelection = {
+  cmsSource?: CmsSource;
   selector: string;
   tag: string;
   label: string;

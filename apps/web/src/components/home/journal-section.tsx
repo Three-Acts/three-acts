@@ -30,6 +30,7 @@ export function JournalSection({ articles }: JournalSectionProps) {
           <div data-editor-base-class={"grid grid-cols-1 gap-x-gap gap-y-gap-y landscape:grid-cols-2 tablet:grid-cols-3"} data-editor-id="source.journal-section.8" className={elementClass("source.journal-section.8", "grid grid-cols-1 gap-x-gap gap-y-gap-y landscape:grid-cols-2 tablet:grid-cols-3")}>
             {articles.map((article) => (
               <Card.Article
+                cmsSource={{ collectionId: "articles", recordId: article.id, label: article.title }}
                 key={article.slug}
                 inverse
                 title={article.title}

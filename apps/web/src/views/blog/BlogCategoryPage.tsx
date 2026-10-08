@@ -1,3 +1,4 @@
+import { cmsAttributes } from "@three-acts/cms-schema";
 import { elementClass } from "../../lib/design";
 import type { Article, ArticleCategory } from "@three-acts/content";
 import copy from "@three-acts/static-content/documents/article-category-template.json";
@@ -24,7 +25,7 @@ function CategoryBreadcrumb({ category }: { category: ArticleCategory }) {
           </a>
           <span data-editor-base-class={"text-block"} data-editor-id="source.BlogCategoryPage.4" aria-hidden="true" className={elementClass("source.BlogCategoryPage.4", "text-block")}>/</span>
         </li>
-        <li data-editor-base-class={"font-medium text-ink"} data-editor-id="source.BlogCategoryPage.5" aria-current="page" className={elementClass("source.BlogCategoryPage.5", "font-medium text-ink")} data-cms-bound="articleCategories.name">{category.name}</li>
+        <li data-editor-base-class={"font-medium text-ink"} data-editor-id="source.BlogCategoryPage.5" aria-current="page" className={elementClass("source.BlogCategoryPage.5", "font-medium text-ink")} {...cmsAttributes({ collectionId: "article-categories", recordId: category.id, label: category.name }, "name")}>{category.name}</li>
       </ol>
     </nav>
   );
@@ -50,8 +51,8 @@ export function BlogCategoryPage({ category, articles, categories, counts, total
         <CategoryBreadcrumb category={category} />
         <Section.Header
           eyebrow={<span data-editor-base-class={""} data-editor-id="article-category-template.journal_eyebrow" className={elementClass("article-category-template.journal_eyebrow", "")} data-static-field="article-category-template.journal_eyebrow">{copy.journal_eyebrow}</span>}
-          title={<span data-editor-base-class={""} data-editor-id="source.BlogCategoryPage.8" className={elementClass("source.BlogCategoryPage.8", "")} data-cms-bound="articleCategories.name">{category.name}</span>}
-          lede={category.description ? <span data-editor-base-class={""} data-editor-id="source.BlogCategoryPage.9" className={elementClass("source.BlogCategoryPage.9", "")} data-cms-bound="articleCategories.description">{category.description}</span> : undefined}
+          title={<span data-editor-base-class={""} data-editor-id="source.BlogCategoryPage.8" className={elementClass("source.BlogCategoryPage.8", "")} {...cmsAttributes({ collectionId: "article-categories", recordId: category.id, label: category.name }, "name")}>{category.name}</span>}
+          lede={category.description ? <span data-editor-base-class={""} data-editor-id="source.BlogCategoryPage.9" className={elementClass("source.BlogCategoryPage.9", "")} {...cmsAttributes({ collectionId: "article-categories", recordId: category.id, label: category.name }, "description")}>{category.description}</span> : undefined}
         />
         <div data-editor-base-class={""} data-editor-id="source.BlogCategoryPage.10" className={elementClass("source.BlogCategoryPage.10", "")} data-cms-bound="articleCategories.navigation"><CategoryNav
           categories={categories}
@@ -65,6 +66,7 @@ export function BlogCategoryPage({ category, articles, categories, counts, total
           <Grid.Root data-editor-id="source.BlogCategoryPage.11" cols={3} data-cms-bound="articles.inCategory">
             {articles.map((article) => (
               <Card.Article
+                cmsSource={{ collectionId: "articles", recordId: article.id, label: article.title }}
                 key={article.slug}
                 title={article.title}
                 href={`/blog/${article.slug}`}

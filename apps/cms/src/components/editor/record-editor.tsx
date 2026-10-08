@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Copy, Lock, Trash2 } from "lucide-react";
 import type { AssetField, CmsCollectionSummary, CmsRecord, CmsRecordValue, FileField, ImageField, ImageGalleryField, PublishStatus, VideoField } from "../../cms/types";
 import { formatDateTime } from "../../lib/format";
@@ -25,6 +25,8 @@ type RecordEditorProps = {
   onSave: () => void;
   onUpdateValue: (fieldKey: string, value: CmsRecordValue) => void;
   uploadingField: string | null;
+  focusField?: string;
+  backLabel?: string;
 };
 
 export function RecordEditor({
@@ -41,18 +43,30 @@ export function RecordEditor({
   onDuplicate,
   onSave,
   onUpdateValue,
-  uploadingField
+  uploadingField,
+  focusField,
+  backLabel = "Back to table"
 }: RecordEditorProps) {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const root = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!focusField) return;
+    const field = root.current?.querySelector<HTMLElement>(`[data-cms-field="${CSS.escape(focusField)}"]`);
+    if (!field) return;
+    field.scrollIntoView({ block: "center" });
+    const control = Array.from(field.querySelectorAll<HTMLElement>("input,textarea,button,[role=combobox],[tabindex]")).find(element => element.getClientRects().length && !element.hasAttribute("disabled"));
+    if (control) control.focus({ preventScroll: true });
+    else { field.tabIndex = -1; field.focus({ preventScroll: true }); }
+  }, [focusField, collection.id, draftRecord.id]);
   const editable = isEditable(collection);
   const publishable = hasPublishWorkflow(collection);
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg" aria-label={`${getRecordTitle(collection, draftRecord)} editor`}>
+    <section ref={root} data-cms-record-editor={draftRecord.id} data-cms-collection={collection.id} className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg" aria-label={`${getRecordTitle(collection, draftRecord)} editor`}>
       <PanelHeader className="justify-between">
         <div className="flex min-w-0 items-center gap-2.5">
-          <Tooltip content="Back to table">
-            <BareIconButton aria-label="Back to table" onClick={onBack}>
+          <Tooltip content={backLabel}>
+            <BareIconButton aria-label={backLabel} disabled={isSaving || Boolean(uploadingField)} onClick={onBack}>
               <ArrowLeft size={15} />
             </BareIconButton>
           </Tooltip>
@@ -103,6 +117,7 @@ export function RecordEditor({
         </div>
       </PanelHeader>
 
+      {backLabel === "Back to canvas" && <p aria-label="Canvas source status" className="m-0 border-b border-cms-line px-3 py-2 text-ui text-cms-muted">You’re editing the CMS source. Saving does not publish the page.</p>}
       <ScrollArea className="min-h-0 flex-1" viewportClassName="[overflow-anchor:none]">
         <EditorSection title="Basic info">
           {collection.fields.slice(0, 3).map((field) => (

@@ -46,6 +46,7 @@ export function useCmsWorkspace() {
   // The last record snapshot known to be saved on the server. Compared
   // against the draft to derive `isDirty` — never mutated by `updateDraftValue`.
   const [lastSavedRecordState, setLastSavedRecordState] = useState<CmsRecord | null>(null);
+  const [recordFailure, setRecordFailure] = useState<{ key: string; message: string } | null>(null);
   const [search, setSearch] = useState("");
   const [isLoadingCollections, setIsLoadingCollections] = useState(true);
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
@@ -141,14 +142,18 @@ export function useCmsWorkspace() {
     data
       .getRecord(activeCollectionId, selectedRecordId)
       .then((record) => {
+        if (record.id !== selectedRecordId) throw new Error("The CMS source identity did not match the requested record.");
         if (isMounted) {
+          setRecordFailure(null);
           setDraftRecordState(record);
           setLastSavedRecordState(record);
         }
       })
       .catch((nextError) => {
         if (isMounted) {
-          setError(describeCmsError(nextError));
+          const message = describeCmsError(nextError);
+          setRecordFailure({ key: `${activeCollectionId}:${selectedRecordId}`, message });
+          setError(message);
         }
       });
 
@@ -223,6 +228,7 @@ export function useCmsWorkspace() {
   // (yet) match the selected id, so switching records can never flash the
   // previous one's data or accept edits into it while the new one loads.
   const draftRecord = draftRecordState && draftRecordState.id === selectedRecordId ? draftRecordState : null;
+  const recordError = recordFailure?.key === `${activeCollectionId}:${selectedRecordId}` ? recordFailure.message : null;
   const lastSavedRecord = lastSavedRecordState && lastSavedRecordState.id === selectedRecordId ? lastSavedRecordState : null;
 
   const isDirty = useMemo(() => {
@@ -560,20 +566,31 @@ export function useCmsWorkspace() {
     }
   }
 
+  function discardRecordChanges() {
+    if (lastSavedRecord) setDraftRecordState(structuredClone(lastSavedRecord));
+  }
+
   /** Discards the draft and re-fetches the record — the recovery path from a `conflict` save error. */
   async function reloadRecord() {
-    if (!activeCollection || !selectedRecordId) {
+    if (!activeCollection || !selectedRecordId || isSaving || uploadingField) {
       return;
     }
 
+    setIsSaving(true);
     setError(null);
+    setRecordFailure(null);
 
     try {
       const record = await data.getRecord(activeCollection.id, selectedRecordId);
+      if (record.id !== selectedRecordId) throw new Error("The CMS source identity did not match the requested record.");
       setDraftRecordState(record);
       setLastSavedRecordState(record);
     } catch (nextError) {
-      setError(describeCmsError(nextError));
+      const message = describeCmsError(nextError);
+      setRecordFailure({ key: `${activeCollection.id}:${selectedRecordId}`, message });
+      setError(message);
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -787,6 +804,8 @@ export function useCmsWorkspace() {
     activeCollectionId,
     clearError,
     draftRecord,
+    discardRecordChanges,
+    recordError,
     error,
     filteredRecords,
     groups,

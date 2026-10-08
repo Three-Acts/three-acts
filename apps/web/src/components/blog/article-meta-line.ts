@@ -1,3 +1,5 @@
+import { createElement, type ReactNode } from "react";
+import { cmsAttributes } from "@three-acts/cms-schema";
 import type { Article, ArticleCategory } from "@three-acts/content";
 import { formatDate } from "../../lib/format";
 
@@ -12,12 +14,14 @@ type ArticleMetaLineOptions = {
 };
 
 /** The small eyebrow line under a journal card's title, e.g. "Guides · 25 September 2026 · 5 min read". */
-export function articleMetaLine(article: Article, categories: readonly ArticleCategory[], options: ArticleMetaLineOptions = {}): string {
-  const includeCategory = options.includeCategory ?? true;
+export function articleMetaLine(article: Article, categories: readonly ArticleCategory[], options: ArticleMetaLineOptions = {}): ReactNode {
+  const source = { collectionId: "articles", recordId: article.id, label: article.title };
+  const category = categories.find(category => category.slug === article.categorySlug);
+  const categorySource = category ? { collectionId: "article-categories", recordId: category.id, label: category.name } : source;
   const parts = [
-    includeCategory ? categoryNameFor(categories, article.categorySlug) : null,
-    formatDate(article.publishedAt),
-    `${article.readingTime} min read`
-  ].filter((part): part is string => Boolean(part));
-  return parts.join(" · ");
+    { value: options.includeCategory === false ? "" : categoryNameFor(categories, article.categorySlug), source: categorySource, field: category ? "name" : "category" },
+    { value: formatDate(article.publishedAt), source, field: "publishedAt" },
+    { value: `${article.readingTime} min read`, source, field: "readingTime" }
+  ].filter(part => Boolean(part.value));
+  return parts.flatMap((part, index) => [index ? " · " : "", createElement("span", { ...cmsAttributes(part.source, part.field), key: part.field }, part.value)]);
 }

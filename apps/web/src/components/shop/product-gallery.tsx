@@ -1,3 +1,4 @@
+import { cmsAttributes, type CmsSource } from "@three-acts/cms-schema";
 import type { ImageRef } from "@three-acts/ecommerce";
 import { Image } from "../ui/image";
 
@@ -6,6 +7,7 @@ type ProductGalleryProps = {
   /** Fallback `alt` text for any image whose own `alt` is empty. */
   title: string;
   className?: string;
+  cmsSource?: CmsSource;
 };
 
 /**
@@ -15,14 +17,15 @@ type ProductGalleryProps = {
  * `bg-block` when there's no image, so a product with one photo (or none)
  * never collapses the layout.
  */
-export function ProductGallery({ images, title, className }: ProductGalleryProps) {
+export function ProductGallery({ images, title, className, cmsSource }: ProductGalleryProps) {
   const [first, ...rest] = images;
 
   return (
-    <div className={className}>
+    <div className={className} {...cmsAttributes(cmsSource, "images")}>
       <div className="aspect-square w-full overflow-hidden bg-block">
         {first && (
           <Image
+            {...cmsAttributes(cmsSource, "images.0")}
             src={first.src}
             alt={first.alt || title}
             width={first.width ?? 1200}
@@ -36,7 +39,7 @@ export function ProductGallery({ images, title, className }: ProductGalleryProps
         <div className="mt-3 grid grid-cols-4 gap-3">
           {rest.map((image, index) => (
             <div key={index} className="aspect-square overflow-hidden bg-block">
-              <Image src={image.src} alt={image.alt || title} width={image.width ?? 400} height={image.height ?? 400} className="size-full object-cover" />
+              <Image {...cmsAttributes(cmsSource, `images.${index + 1}`)} src={image.src} alt={image.alt || title} width={image.width ?? 400} height={image.height ?? 400} className="size-full object-cover" />
             </div>
           ))}
         </div>

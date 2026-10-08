@@ -1,3 +1,4 @@
+import type { CmsSource } from "@three-acts/cms-schema";
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { AuthUser } from "@three-acts/auth";
@@ -11,6 +12,9 @@ import { TemplateDetailsPanel, type TemplateDetails } from "./template-details-p
 
 type PagesWorkspaceProps = {
   collection: CmsCollectionSummary;
+  active?: boolean;
+  onOpenCmsRecord?: (source: CmsSource, leaveDetails: () => void, dirtyDetails: boolean) => void;
+  discardDetailsRevision?: number;
   user: AuthUser;
   onDirtyChange: (dirty: boolean) => void;
   onSaved: () => void;
@@ -27,7 +31,7 @@ type PendingDetailsAction = {
 };
 
 /** Keeps the designer mounted while page details are shown in a side panel. */
-export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBusyChange, toolbarHost, onClosePublish, onViewSiteUrlChange, publishRevision = 0 }: PagesWorkspaceProps) {
+export function PagesWorkspace({ active = true, onOpenCmsRecord, discardDetailsRevision = 0, collection, user, onDirtyChange, onSaved, onBusyChange, toolbarHost, onClosePublish, onViewSiteUrlChange, publishRevision = 0 }: PagesWorkspaceProps) {
   const [detailsPath, setDetailsPath] = useState<string | null>(null);
   const [templateDetails, setTemplateDetails] = useState<TemplateDetails | null>(null);
   const [detailsDirty, setDetailsDirty] = useState(false);
@@ -60,12 +64,12 @@ export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBus
     onSaved();
   }, [onSaved]);
 
-  const busy = designerBusy || detailsBusy;
+  const busy = active && (designerBusy || detailsBusy);
   const hostDirty = detailsDirty || designerUnsaved;
 
   useEffect(() => {
-    onDirtyChange(hostDirty);
-  }, [hostDirty, onDirtyChange]);
+    onDirtyChange(active && hostDirty);
+  }, [active, hostDirty, onDirtyChange]);
 
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
 
@@ -119,7 +123,7 @@ export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBus
       {isTemplate ? templateDetails?.document.route === detailsPath ? <TemplateDetailsPanel details={templateDetails} disabled={busy} onClose={requestCloseDetails}/> : <div className="p-3 text-ui text-cms-muted"><p>Select a CMS template to edit its details.</p><Button aria-label="Close page details" disabled={busy} onClick={requestCloseDetails}>Close</Button></div> : <PageSettingsView
         collection={collection}
         initialPagePath={detailsPath}
-        key={detailsPath}
+        key={`${detailsPath}:${discardDetailsRevision}`}
         layout="panel"
         onBusyChange={reportBusy}
         onClose={requestCloseDetails}
@@ -132,6 +136,8 @@ export function PagesWorkspace({ collection, user, onDirtyChange, onSaved, onBus
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 bg-cms-bg">
       <DesignerWorkspace
+        active={active}
+        onOpenCmsRecord={source => onOpenCmsRecord?.(source, () => setDetailsPath(null), detailsDirty)}
         onBusyChange={reportDesignerBusy}
         onOpenPageDetails={openPageDetails}
         onSelectPage={selectPage}

@@ -28,6 +28,7 @@ export function ShopByCategorySection({ categories }: ShopByCategorySectionProps
         <Grid.Root data-editor-id="source.shop-by-category-section.6" cols={4}>
           {shown.map((category, index) => (
             <Tile.Root
+              cmsSource={{ collectionId: "product-categories", recordId: category.id, label: category.name }}
               key={category.slug}
               mark={String(index + 1).padStart(2, "0")}
               title={category.name}

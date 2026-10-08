@@ -7,3 +7,4 @@ export * from "./files";
 export * from "./schema-markup";
 export { collectionRegistry } from "./registry";
 export * from "./title-template";
+export { cmsAttributes, cmsSourceField, normalizeCmsCollection, readCmsSource, type CmsSource } from "./editor-source";

@@ -42,6 +42,7 @@ export function ProductGrid({ products, className, emptyTitle = "No products her
     <Grid.Root cols={3} className={className}>
       {products.map((product) => (
         <Card.Product
+          cmsSource={{ collectionId: "products", recordId: product.id, label: product.title }}
           key={product.id}
           title={product.title}
           href={`/shop/${product.slug}`}
