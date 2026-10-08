@@ -1,0 +1,13 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { CmsDraftPreviewClient } from "../../components/editor/cms-draft-preview";
+
+export function getStaticPaths() {
+  return import.meta.env.DEV || import.meta.env.PUBLIC_EDITOR_PREVIEW === "true" ? [{ params: { entry: "cms" } }] : [];
+}
+const origin = import.meta.env.PUBLIC_EDITOR_ORIGIN || (import.meta.env.DEV ? "http://localhost:5174" : "");
+---
+
+<BaseLayout seo={{ title: "CMS draft preview", description: "Private editor preview", canonicalPath: "/editor-preview/cms", noindex: true }}>
+  <CmsDraftPreviewClient client:only="react" origin={origin}/>
+</BaseLayout>

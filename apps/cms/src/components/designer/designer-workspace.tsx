@@ -1,7 +1,9 @@
 import { CanvasSizeControls } from "./canvas-size-controls";
 import { CanvasViewport } from "./canvas-viewport";
 import { clampViewportWidth, viewportBreakpoint, viewportPresets, type CanvasZoom } from "./viewport-model";
-import type { CmsSource } from "@three-acts/cms-schema";
+import { isCmsPreviewTemplateCollection, type CmsSource } from "@three-acts/cms-schema";
+import { useCmsDraftPreview } from "./use-cms-draft-preview";
+import { resolveCmsDraftRoute } from "./cms-draft-preview";
 import { CmsSourceInspector } from "./cms-source-inspector";
 import { isCanvasSelection, readCanvasNodes, readCanvasTreeStatus } from "./canvas-contract";
 import { componentDefinitions, emptyDesign, validateDesign, type Breakpoint, type DesignDocument, type StyleChange } from "@three-acts/design";
@@ -9,7 +11,7 @@ import { historyShortcut, type HistoryCommand } from "@three-acts/utils";
 import { useDraftHistory } from "./use-draft-history";
 import type { HistoryEdit } from "./history";
 import { ComponentInspector } from "./component-inspector";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowUpRight, CheckCircle2, Eye, File, GitBranch, Globe, Info, Layers, MousePointer2, RefreshCw, Settings, SlidersHorizontal, Type, Undo2, Redo2, RotateCcw, X } from "lucide-react";
 import { contentFields, validateContent, type ContentField, type ContentObject, type EditorChange, type EditorDocument, type EditorPushResult, type EditorWorkspace } from "@three-acts/static-content";
@@ -95,6 +97,8 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   const [connectionError, setConnectionError] = useState("");
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [notification, setNotification] = useState<ToastOptions | null>(null);
+  const [previewVersion, setPreviewVersion] = useState<"published" | "draft">("published");
+  const [cmsReadySession, setCmsReadySession] = useState<string | null>(null);
   const [previewIds, setPreviewIds] = useState<Record<string, string>>({});
   const frame = useRef<HTMLIFrameElement>(null);
   const unsavedStorageDrafts = useRef<Drafts | null>(null);
@@ -115,8 +119,17 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   const contentDocument = workspace?.documents.find((document) => document.id === (canvasSelection?.textField?.id ?? canvasSelection?.binding?.id)) ?? current;
   const content = contentDocument ? drafts[contentDocument.id]?.content ?? contentDocument.content : null;
   const currentTemplate = current?.collectionId ? current : null;
-  const previews = useCmsPagePreviews(currentTemplate?.collectionId, currentTemplate?.route);
-  const chosenPreview = previews.items.find((item) => item.id === previewIds[page]) ?? previews.items[0] ?? null;
+  const previews = useCmsPagePreviews(currentTemplate?.collectionId, currentTemplate?.route, previewVersion, active);
+  const chosenPreview = useMemo(() => previews.items.find((item) => item.id === previewIds[page]) ?? (previewIds[page] && currentTemplate ? {
+    id: previewIds[page], label: "Unavailable CMS item", route: currentTemplate.route,
+    publishStatus: "not_published" as const, liveRoute: null, draftRoute: null,
+  } : previews.items[0] ?? null), [previews.items, previewIds, page, currentTemplate]);
+  const isCmsDraft = Boolean(currentTemplate && chosenPreview && (previewVersion === "draft" || !chosenPreview.liveRoute));
+  const rawCollection = currentTemplate?.collectionId;
+  const draftCollection = isCmsPreviewTemplateCollection(rawCollection) ? rawCollection : null;
+  const frameTarget = `${draftCollection}:${chosenPreview?.id}:${isCmsDraft}:${frameRevision}`;
+  const cmsSession = useMemo(() => ({ target: frameTarget, id: crypto.randomUUID() }), [frameTarget]).id;
+  const cmsDraft = useCmsDraftPreview(active && isCmsDraft, cmsSession, draftCollection, chosenPreview?.id ?? null);
   const templateContent = currentTemplate ? drafts[currentTemplate.id]?.content ?? currentTemplate.content : null;
   const changedCount = Object.keys(drafts).length;
   const designDocument = workspace?.documents.find(document => document.id === "design");
@@ -158,7 +171,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   const stale = workspace?.documents.filter((document) => drafts[document.id] && drafts[document.id].sha !== document.sha) ?? [];
 
   function postCanvas(data: Record<string, unknown>) {
-    if (publicSite && previewReady) frame.current?.contentWindow?.postMessage(data, publicSite.origin);
+    if (publicSite && previewReady) frame.current?.contentWindow?.postMessage({ ...data, ...(isCmsDraft ? { session: cmsSession } : {}) }, publicSite.origin);
   }
 
   function resetCanvasState() {
@@ -200,8 +213,8 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     if (!currentTemplate || !chosenPreview) return;
     // Loading a different template's records is external async state; synchronize its selected live URL into the canvas route.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (canvasRoute !== chosenPreview.route) { setPreviewReady(false); setCanvasRoute(chosenPreview.route); resetCanvasState(); }
-  }, [currentTemplate, chosenPreview, canvasRoute]);
+    if (canvasRoute !== chosenPreview.route) { setCanvasRoute(chosenPreview.route); if (!isCmsDraft) { setPreviewReady(false); resetCanvasState(); } }
+  }, [currentTemplate, chosenPreview, canvasRoute, isCmsDraft]);
   const onTemplateFieldChange = useCallback((path: string[], value: string | number | boolean) => {
     if (!currentTemplate || !templateContent) return;
     const field = contentFields(templateContent).find((item) => item.path.join(".") === path.join("."));
@@ -256,7 +269,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
       if (event.key === "Escape" && canvasSelection && publicSite && previewReady) {
         event.preventDefault();
         endGroup();
-        frame.current?.contentWindow?.postMessage({ type: "three-acts:clear-selection" }, publicSite.origin);
+        frame.current?.contentWindow?.postMessage({ type: "three-acts:clear-selection", ...(isCmsDraft ? { session: cmsSession } : {}) }, publicSite.origin);
         return;
       }
       if (!command) return;
@@ -265,7 +278,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     };
     document.addEventListener("keydown", keydown);
     return () => document.removeEventListener("keydown", keydown);
-  }, [active, runHistory, busy, loading, reviewing, canvasMode, canvasSelection, previewReady, endGroup]);
+  }, [active, runHistory, busy, loading, reviewing, canvasMode, canvasSelection, previewReady, endGroup, isCmsDraft, cmsSession]);
 
   function changeField(field: ContentField, value: string | number | boolean, id = page, typing = true) {
     const document = workspace?.documents.find((item) => item.id === id);
@@ -285,18 +298,27 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     if (!workspace || !publicSite || !previewReady) return;
     frame.current?.contentWindow?.postMessage({
       type: "three-acts:preview",
+      ...(isCmsDraft ? { session: cmsSession } : {}),
       documents: workspace.documents.map((doc) => ({ id: doc.id, content: drafts[doc.id]?.content ?? doc.content }))
     }, publicSite.origin);
-  }, [workspace, drafts, previewReady]);
+  }, [workspace, drafts, previewReady, isCmsDraft, cmsSession]);
 
   useEffect(() => { sendPreview(); }, [sendPreview, previewReady]);
   useEffect(() => {
     if (!publicSite || !previewReady) return;
-    frame.current?.contentWindow?.postMessage({ type: "three-acts:mode", mode: !active || busy || loading || reviewing ? "locked" : canvasMode }, publicSite.origin);
-  }, [active, busy, loading, reviewing, canvasMode, previewReady]);
+    frame.current?.contentWindow?.postMessage({ type: "three-acts:mode", mode: !active || busy || loading || reviewing || cmsDraft.loading ? "locked" : canvasMode, ...(isCmsDraft ? { session: cmsSession } : {}) }, publicSite.origin);
+  }, [active, busy, loading, reviewing, canvasMode, previewReady, cmsDraft.loading, isCmsDraft, cmsSession]);
+  useEffect(() => {
+    if (!active || !isCmsDraft || !publicSite || cmsReadySession !== cmsSession || cmsDraft.loading) return;
+    if (cmsDraft.preview) frame.current?.contentWindow?.postMessage({ type: "three-acts:cms-preview", preview: cmsDraft.preview }, publicSite.origin);
+    else if (cmsDraft.error) frame.current?.contentWindow?.postMessage({ type: "three-acts:cms-preview-error", session: cmsSession, sequence: cmsDraft.sequence, message: cmsDraft.error.slice(0, 300) }, publicSite.origin);
+  }, [active, isCmsDraft, cmsReadySession, cmsSession, cmsDraft.loading, cmsDraft.preview, cmsDraft.error, cmsDraft.sequence]);
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (!publicSite || event.origin !== publicSite.origin || event.source !== frame.current?.contentWindow || !event.data || typeof event.data !== "object") return;
+      if (isCmsDraft ? event.data.session !== cmsSession : event.data.session !== undefined) return;
+      if (event.data.type === "three-acts:cms-preview-ready" && event.data.collectionId === draftCollection && event.data.recordId === chosenPreview?.id) setCmsReadySession(cmsSession);
+      if (event.data.type === "three-acts:cms-preview-retry" && active && !busy && !reviewing) { cmsDraft.refresh(); previews.refresh(); }
       if (event.data.type === "three-acts:history" && ["undo", "redo"].includes(event.data.command)) runHistory(event.data.command);
       if (event.data.type === "three-acts:ready") { setPreviewReady(true); sendPreview(); }
       if (!active) return;
@@ -307,8 +329,21 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
           const route = url.pathname.replace(/\/$/, "") || "/";
           const document = workspace?.documents.find((doc) => !doc.collectionId && doc.kind !== "design" && doc.id !== "shared" && doc.route === route);
           const preview = previews.items.find((item) => item.route === route);
+          const draftTarget = isCmsDraft && cmsDraft.preview && workspace ? resolveCmsDraftRoute(cmsDraft.preview, route, workspace.documents) : null;
           if (document) choosePage(document);
-          else if (preview) choosePreview(preview.id);
+          else if (draftTarget) {
+            const target = workspace?.documents.find(doc => doc.id === draftTarget.templateId);
+            if (target) {
+              const select = () => {
+                selectPage(target.id);
+                setPreviewVersion("draft");
+                setPreviewIds(previous => ({ ...previous, [target.id]: draftTarget.recordId }));
+                setPreviewReady(false); resetCanvasState(); setCanvasRoute(route);
+              };
+              if (onSelectPage) onSelectPage(target.route, select);
+              else select();
+            }
+          } else if (preview) choosePreview(preview.id);
           else notify({ title: "Choose this preview from the page picker", duration: 4500 });
         } catch { /* Ignore malformed navigation requests. */ }
       }
@@ -351,7 +386,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     return () => window.removeEventListener("message", receive);
     // The handler must read the current draft, not a captured earlier version.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, workspace, drafts, page, content, busy, reviewing, canvasMode, previews.items, sendPreview, notify, canvasSelection?.selector, endGroup, runHistory]);
+  }, [active, workspace, drafts, page, content, busy, reviewing, canvasMode, previews.items, previews.refresh, sendPreview, notify, canvasSelection?.selector, endGroup, runHistory, isCmsDraft, cmsSession, draftCollection, chosenPreview?.id, cmsDraft.refresh, cmsDraft.preview]);
 
   function downloadRecovery() {
     if (!recovery) return;
@@ -370,8 +405,7 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     if (id === page && (next?.collectionId || next?.route === canvasRoute)) return;
     postCanvas({ type: "three-acts:clear-selection" });
     if (next && !next.collectionId && id !== "shared" && next.route !== canvasRoute) { setPreviewReady(false); setCanvasRoute(next.route); resetCanvasState(); }
-    setCanvasSelection(null);
-    setEditingComponent(null);
+    setPreviewReady(false); resetCanvasState();
     setPage(id);
   }
 
@@ -382,14 +416,20 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
   }
 
   function choosePreview(id: string) {
-    if (busy || !currentTemplate) return;
+    if (!active || busy || loading || reviewing || !currentTemplate) return;
     endGroup();
     const item = previews.items.find((preview) => preview.id === id);
     if (!item) return;
+    if (!item.liveRoute) setPreviewVersion("draft");
     setPreviewIds((previous) => ({ ...previous, [currentTemplate.id]: id }));
-    if (canvasRoute !== item.route) { setPreviewReady(false); setCanvasRoute(item.route); resetCanvasState(); }
+    if (chosenPreview?.id !== id || canvasRoute !== item.route) { setPreviewReady(false); setCanvasRoute(item.route); resetCanvasState(); }
   }
 
+  function changePreviewVersion(version: "published" | "draft") {
+    if (!active || busy || loading || reviewing || version === "published" && !chosenPreview?.liveRoute) return;
+    endGroup(); setPreviewVersion(version); setPreviewReady(false); resetCanvasState();
+    setCanvasSelection(null); setEditingComponent(null);
+  }
   async function push() {
     setError("");
     let changes: EditorChange[];
@@ -417,13 +457,12 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     } finally { setBusy(false); }
   }
 
-  const frameUrl = publicSite && current && (!currentTemplate || (chosenPreview && canvasRoute === chosenPreview.route)) ? new URL(canvasRoute, publicSite).toString() : null;
-  useEffect(() => {
-    onViewSiteUrlChange?.(frameUrl);
-    return () => onViewSiteUrlChange?.(null);
-  }, [frameUrl, onViewSiteUrlChange]);
+  const publicFrameUrl = publicSite && current ? currentTemplate ? chosenPreview?.liveRoute ? new URL(chosenPreview.liveRoute, publicSite).toString() : null : new URL(canvasRoute, publicSite).toString() : null;
+  const privateFrameUrl = publicSite && draftCollection && chosenPreview ? `${new URL("/editor-preview/cms/", publicSite)}?${new URLSearchParams({ collection: draftCollection, record: chosenPreview.id, session: cmsSession })}` : null;
+  const frameUrl = isCmsDraft ? privateFrameUrl : publicSite && current && (!currentTemplate || (chosenPreview && canvasRoute === chosenPreview.route)) ? new URL(canvasRoute, publicSite).toString() : null;
+  useEffect(() => { onViewSiteUrlChange?.(publicFrameUrl); return () => onViewSiteUrlChange?.(null); }, [publicFrameUrl, onViewSiteUrlChange]);
   const elementPresentation = getElementPresentation(canvasSelection?.tag ?? "div", canvasSelection?.category ?? "element");
-  const controlsDisabled = !active || busy || loading || reviewing;
+  const controlsDisabled = !active || busy || loading || reviewing || cmsDraft.loading;
   function changeViewportWidth(width: number) {
     if (controlsDisabled) return;
     const next = clampViewportWidth(width);
@@ -508,8 +547,9 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
     <main className="@container/canvas flex min-h-0 min-w-0 flex-1 flex-col">
       <PanelHeader className="h-8 min-h-8 gap-1.5 px-2 @max-[650px]/canvas:h-auto @max-[650px]/canvas:flex-wrap @max-[650px]/canvas:gap-x-0 @max-[650px]/canvas:gap-y-0" render={<header aria-label="Canvas toolbar"/>}>
         <div className="flex min-w-0 flex-1 items-center gap-2 text-ui @max-[650px]/canvas:w-full @max-[650px]/canvas:flex-none @max-[650px]/canvas:min-h-8">
-          <PagePicker pageStates={pageStates} documents={workspace?.documents ?? []} current={current} previewItems={previews.items} chosenPreview={chosenPreview} previewsLoading={previews.loading} previewsError={previews.error} disabled={busy || loading || !workspace} onSelectPage={choosePage} onSelectPreview={choosePreview} onOpenDetails={(document) => onOpenPageDetails?.(document.route, () => selectPage(document.id))}/>
+          <PagePicker pageStates={pageStates} documents={workspace?.documents ?? []} current={current} previewItems={previews.items} chosenPreview={chosenPreview} previewsLoading={previews.loading} previewsError={previews.error} disabled={busy || loading || !workspace} onSelectPage={choosePage} onSelectPreview={choosePreview} previewVersion={isCmsDraft ? "draft" : "published"} onPreviewVersion={changePreviewVersion} onRetryPreviews={() => { previews.refresh(); cmsDraft.refresh(); }} onOpenDetails={(document) => onOpenPageDetails?.(document.route, () => selectPage(document.id))}/>
           <span className="hidden min-w-0 truncate text-cms-muted lg:inline" title={canvasRoute}>{canvasRoute}</span>
+          {currentTemplate && chosenPreview && <span aria-label="CMS preview snapshot" title="CMS values only; browser template and design drafts are also shown." className="shrink-0 text-[10px] text-cms-subtle">{isCmsDraft ? cmsDraft.loading ? "Loading CMS draft…" : "Saved CMS draft" : "Published CMS"}</span>}
           <span aria-label="Draft save state" aria-live="polite" className={`inline-flex shrink-0 items-center gap-1 text-[10px] ${storageUnavailable ? "text-cms-danger" : changedCount ? "text-cms-accent" : "text-cms-subtle"}`} title={storageUnavailable ? "Keep this tab open until you push. Browser storage is unavailable." : changedCount ? `${changedCount} document${changedCount === 1 ? "" : "s"} awaiting push; these changes are not live.` : "The loaded source is separate from your hosting deployment."}>{storageUnavailable ? <Info size={12} aria-hidden="true"/> : <CheckCircle2 size={12} aria-hidden="true"/>}<span className="sr-only md:not-sr-only">{saveState}</span></span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 [scrollbar-width:none] @max-[650px]/canvas:min-h-8 @max-[650px]/canvas:max-w-full @max-[650px]/canvas:overflow-x-auto">
@@ -536,8 +576,8 @@ export function DesignerWorkspace({ active = true, onOpenCmsRecord, user, onPage
               {frameUrl ? <iframe key={frameRevision} ref={frame} title="Website canvas" src={frameUrl} sandbox="allow-scripts allow-same-origin" onLoad={sendPreview} className="h-full w-full border-0 bg-white"/> : <div className="grid h-full place-items-center p-6 text-center"><div>
                 {currentTemplate && (!chosenPreview || canvasRoute !== chosenPreview.route) ? <>
                   <Layers size={28} className="mx-auto text-cms-muted"/>
-                  <h2 className="mt-3 text-ui-lg font-semibold">{previews.loading || (chosenPreview && canvasRoute !== chosenPreview.route) ? "Loading preview…" : previews.error ? "Preview items couldn't be loaded" : "No published items to preview"}</h2>
-                  <p className="mt-2 max-w-md text-ui text-cms-muted">{previews.error ?? (previews.loading ? "Loading published items from this collection." : "Publish an item in this collection to preview its page." )}</p>
+                  <h2 className="mt-3 text-ui-lg font-semibold">{previews.loading || (chosenPreview && canvasRoute !== chosenPreview.route) ? "Loading preview…" : previews.error ? "Preview items couldn't be loaded" : "No CMS items to preview"}</h2>
+                  <p className="mt-2 max-w-md text-ui text-cms-muted">{previews.error ?? (previews.loading ? "Loading items from this collection." : "Create an item in this collection to preview its page." )}</p>
                 </> : <><Globe size={28} className="mx-auto text-cms-muted"/><h2 className="mt-3 text-ui-lg font-semibold">Connect your website</h2><p className="mt-2 max-w-md text-ui text-cms-muted">Set VITE_SITE_URL to your public website. Enable PUBLIC_EDITOR_PREVIEW and PUBLIC_EDITOR_ORIGIN on the web app for canvas editing.</p></>}
               </div></div>}
           </CanvasViewport>
