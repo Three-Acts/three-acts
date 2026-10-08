@@ -15,7 +15,16 @@ export function editorElementProps(id: string, attributes: Record<string, unknow
   const identity = typeof attributes["data-editor-id"] === "string" ? attributes["data-editor-id"] as string : id;
   const raw = attributes[classKey];
   const base = classList(raw);
-  if (attributes["data-editor-component"] || attributes["data-editor-part"]) return attributes;
+  if (typeof attributes["data-editor-component"] === "string") {
+    const name=attributes["data-editor-component"] as string;
+    if (!Object.hasOwn(componentDefinitions,name)) return attributes;
+    const props=JSON.parse(String(attributes["data-editor-source-props"] || '{}')) as Record<string,string>;
+    const resolved=resolveProperties(design,name,typeof attributes["data-editor-instance"]==='string'?attributes["data-editor-instance"]:undefined,props);
+    const expected=new Set(cn(componentBaseClass(name,resolved),String(attributes["data-editor-caller-class"]??'')).split(/\s+/));
+    const extras=base.split(/\s+/).filter(value=>!expected.has(value)).join(' ');
+    return {...attributes,"data-editor-base-class":base,"data-editor-source-extras":extras};
+  }
+  if (attributes["data-editor-part"]) return {...attributes,"data-editor-base-class":base};
   return { ...attributes, "data-editor-id": identity, "data-editor-base-class": base, [classKey]: applyStyle(base, design.elements[identity]) };
 }
 export function elementClass(id: string, className = ""): string {

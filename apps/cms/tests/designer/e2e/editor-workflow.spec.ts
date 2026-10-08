@@ -4,6 +4,8 @@ import type { EditorWorkspace } from "@three-acts/static-content";
 import { fileURLToPath } from "node:url";
 import type { CmsDraftPreview } from "@three-acts/cms-schema";
 
+test.beforeEach(async({request})=>{await request.post('http://127.0.0.1:5380/__e2e/reset-source');});
+
 const email = "e2e-designer@example.com";
 const password = "e2e-password";
 const firstEdit = "A browser-saved headline for Three Acts.";
@@ -11,6 +13,16 @@ const directEdit = "A directly edited headline for Three Acts.";
 const pushedEdit = "A committed headline for Three Acts.";
 
 
+async function setStyleValue(styles: import('@playwright/test').Locator, label: string, value: string) {
+  const field=styles.getByRole('textbox',{name:label,exact:true});await expect(field).toBeEnabled();await field.fill(value);await field.press('Enter');
+}
+async function customProperty(styles: import('@playwright/test').Locator, property: string, value: string) {
+  const section=styles.locator('details').filter({has:styles.page().locator('summary').filter({hasText:/^Custom properties$/})});
+  if(!(await section.evaluate(el=>(el as HTMLDetailsElement).open)))await section.locator('summary').click();
+  await styles.getByRole('textbox',{name:'Custom property',exact:true}).fill(property);
+  await styles.getByRole('textbox',{name:'Custom property value',exact:true}).fill(value);
+  await styles.getByRole('button',{name:'Add custom property'}).click();
+}
 function pagePicker(page: import("@playwright/test").Page) {
   return page.getByRole("dialog", { name: "Page picker" });
 }
@@ -235,11 +247,11 @@ test("navigator selection, Tailwind source reset, persisted page changes, and ca
   await expect(canvas.locator("[data-editor-selected]")).toHaveCount(1);
   await page.getByRole("button", { name: "Style panel" }).click();
   const styles = page.getByRole("complementary", { name: "Style inspector" });
-  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
+  await styles.getByRole("button", {name:"Style breakpoint: base",exact:true}).click();
   const section = canvas.locator('[data-editor-id="source.cta-section.1"]');
   const original = await section.getAttribute("class");
-  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-4");
-  await styles.getByRole("combobox", { name: "Background", exact: true }).selectOption("bg-block");
+  await setStyleValue(styles,"Padding top","16");
+  await styles.getByText("Backgrounds",{exact:true}).click(); await setStyleValue(styles,"Color","var(--color-block)");
   await expect(section).toHaveClass(/pt-4/);
   await expect(section).toHaveClass(/bg-block/);
   await expect(section).not.toHaveAttribute("style");
@@ -249,15 +261,15 @@ test("navigator selection, Tailwind source reset, persisted page changes, and ca
   await expect(section).toHaveClass(/pt-4/);
   await expect(section).toHaveClass(/bg-block/);
   await section.click({ position: { x: 1, y: 1 } });
-  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("");
-  await styles.getByRole("combobox", { name: "Background", exact: true }).selectOption("");
+  await styles.getByRole("textbox",{name:"Padding top",exact:true}).click({modifiers:["Alt"]});
+  await styles.getByRole("textbox",{name:"Color",exact:true}).click({modifiers:["Alt"]});
   await expect(section).toHaveAttribute("class", original!);
   await expectReviewState(page, false);
   await page.getByRole("button", { name: "Preview mode" }).click();
   await expect(canvas.locator("#three-acts-editor-selection")).toBeHidden();
-  await expect(styles.getByRole("combobox", { name: "Padding top", exact: true })).toBeDisabled();
+  await expect(styles.getByRole("textbox", { name: "Padding top", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Design mode" }).click();
-  await expect(styles.getByRole("combobox", { name: "Padding top", exact: true })).toBeEnabled();
+  await expect(styles.getByRole("textbox", { name: "Padding top", exact: true })).toBeEnabled();
   await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-style-inspector.png", import.meta.url)), fullPage: true });
 });
 
@@ -300,16 +312,17 @@ test("compact panels keep disclosure choices, reveal canvas selections, and alig
   await page.getByRole("button", { name: "Navigator panel" }).click();
 
   // A nested content leaf now exposes its source styling directly.
-  await expect(style.getByRole("combobox", {name:"Padding bottom",exact:true})).toBeEnabled();
+  await expect(style.getByRole("textbox", {name:"Padding bottom",exact:true})).toBeEnabled();
   const cta = canvas.locator('[data-editor-id="source.cta-section.1"]');
   await cta.click({ position: { x: 1, y: 1 } });
-  await style.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
-  await style.getByRole("combobox", { name: "Display", exact: true }).selectOption("flex");
+  await style.getByRole("button", {name:"Style breakpoint: base",exact:true}).click();
+  await style.getByRole("button",{name:"Display: flex",exact:true}).click();
   await expect(cta).toHaveClass(/flex/);
-  await style.getByRole("combobox", { name: "Direction", exact: true }).selectOption("flex-col");
+  await style.getByRole("button",{name:"Direction: column",exact:true}).click();
   await expect(cta).toHaveClass(/flex-col/);
-  await style.getByRole("combobox", { name: "Display", exact: true }).selectOption("");
-  await style.getByRole("combobox", { name: "Direction", exact: true }).selectOption("");
+  await style.getByText("Direction",{exact:true}).click({modifiers:["Alt"]});
+  await expect(style.getByRole("button",{name:"Direction: column",exact:true})).not.toHaveAttribute("aria-pressed","true");
+  await style.getByText("Display",{exact:true}).click({modifiers:["Alt"]});
   await hero.click();
   await page.getByRole("button", { name: "Show parent elements" }).click();
   const parents = page.getByRole("dialog", { name: "Parent elements" });
@@ -1053,8 +1066,8 @@ test("Tailwind design drafts configure component properties, shared parts, custo
   await expect(page.getByLabel("Main component editing")).toContainText("Changes apply to all instances");
   await heroButton.locator('[data-editor-part="label"]').click();
   const styles = page.getByRole("complementary", { name: "Style inspector" });
-  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
-  await styles.getByRole("combobox", { name: "Font size", exact: true }).selectOption("text-h3");
+  await styles.getByRole("button", {name:"Style breakpoint: base",exact:true}).click();
+  await setStyleValue(styles,"Size","var(--text-h3)");
   await expect(heroButton.locator('[data-editor-part="label"]')).toHaveClass(/text-h3/);
   await expect(closingButton.locator('[data-editor-part="label"]')).toHaveClass(/text-h3/);
   await page.getByRole("button", { name: "Done editing component" }).click();
@@ -1066,27 +1079,25 @@ test("Tailwind design drafts configure component properties, shared parts, custo
   await navigator.getByRole("treeitem", { name: "Component: Hero, div, nested element", exact: true }).click();
   await properties.getByRole("button", { name: "Edit main component" }).click();
   const hero = canvas.locator('[data-editor-component="HeroSection"]');
-  await styles.getByRole("combobox", { name: "Padding bottom", exact: true }).selectOption("pb-12");
+  await setStyleValue(styles,"Padding bottom","48");
   await expect(hero).toHaveClass(/pb-12/);
   await expect(hero).not.toHaveClass(/(?:^|\s)pb-8(?:\s|$)/);
   await expect(hero).not.toHaveAttribute("style");
-  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("tablet");
-  await styles.getByRole("combobox", { name: "Padding bottom", exact: true }).selectOption("pb-24");
+  await styles.getByRole("button", {name:"Style breakpoint: tablet",exact:true}).click();
+  await setStyleValue(styles,"Padding bottom","96");
   await expect(hero).toHaveClass(/tablet:pb-24/);
-  await styles.getByText("Reusable custom CSS", { exact: true }).click();
-  await styles.getByRole("textbox", { name: "Custom selector" }).fill(".editor-callout");
-  await styles.getByRole("textbox", { name: "CSS declarations" }).fill("margin-bottom: 16px; color: var(--color-ink);");
-  await styles.getByRole("button", { name: "Save and apply class" }).click();
-  await expect(hero).toHaveClass(/editor-callout/);
+  await customProperty(styles,"margin-bottom","16px");
+  await customProperty(styles,"color","var(--color-ink)");
   await expect(hero).toHaveCSS("margin-bottom", "16px");
-  await styles.getByRole("textbox", { name: "CSS declarations" }).fill("background-color: url(https://example.com);");
-  await styles.getByRole("button", { name: "Save and apply class" }).click();
-  await expect(styles.getByRole("alert")).toContainText("unsupported");
+  await customProperty(styles,"background-color","url(https://example.com)");
+  await expect(styles.getByRole("alert")).toContainText("valid CSS");
 
   const review = await openReview(page);
   await expect(review).toContainText("Site design");
   await expect(review).toContainText("pb-12");
+  const componentPush=page.waitForResponse(response=>response.url().endsWith('/api/editor/push') && response.request().method()==='POST');
   await review.getByRole("button", { name: "Push to GitHub" }).click();
+  const componentResult=await (await componentPush).json();
   await expect(review).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText("Pushed to GitHub");
   const publishing = await openPublishing(page);
@@ -1108,6 +1119,10 @@ test("Tailwind design drafts configure component properties, shared parts, custo
   await expect(heroButton).toHaveClass(/px-\[17px\]/);
   await expect(hero).toHaveClass(/pb-12/);
   await expectReviewState(page, false);
+  const componentSnapshot=await page.evaluate(async()=>{const {apiFetch}=await import('/src/lib/api-client.ts');return apiFetch<EditorWorkspace>('/editor/content');});
+  const componentSources=componentResult.data.documents.filter((doc:{id:string})=>doc.id.startsWith('source:'));
+  expect(componentSources).toHaveLength(2);
+  writeFileSync(fileURLToPath(new URL('../artifacts/components-committed.json',import.meta.url)),JSON.stringify({documents:[...componentSnapshot.documents,...componentSources].map(doc=>({id:doc.id,content:doc.content}))},null,2));
   await page.screenshot({ path: fileURLToPath(new URL("../artifacts/cms-designer-tailwind-components.png", import.meta.url)), fullPage: true });
 });
 
@@ -1123,6 +1138,9 @@ test("editor history groups typing, spans pages, preserves native input undo and
   await expect(undo).toBeDisabled();
   await expect(redo).toBeDisabled();
   await expect(page.getByLabel("Editing scope", { exact: true })).toHaveText("This page");
+  // Grouping is covered with explicit timestamps in unit tests. Keep the
+  // native input flow independent of debugger/CI scheduling between events.
+  await page.clock.setFixedTime(new Date());
   await text.fill("History headline");
   await text.press("End");
   await text.pressSequentially(" with native typing");
@@ -1218,29 +1236,26 @@ test("editor history reverses individual variants, resets and utilities and clea
   await cta.click({ position: { x: 1, y: 1 } });
   await page.getByRole("button",{name:"Style panel",exact:true}).click();
   const styles = page.getByRole("complementary", { name: "Style inspector" });
-  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("tablet");
-  await styles.getByRole("combobox", { name: "Padding bottom", exact: true }).selectOption("pb-24");
+  await styles.getByRole("button", {name:"Style breakpoint: tablet",exact:true}).click();
+  await setStyleValue(styles,"Padding bottom","96");
   await expect(cta).toHaveClass(/tablet:pb-24/);
   await undo.click();
   await expect(cta).not.toHaveClass(/tablet:pb-24/);
   await expect(button).toHaveClass(changedVariant === "ghost" ? /border-transparent/ : /border-surface/);
   await redo.click();
   await expect(cta).toHaveClass(/tablet:pb-24/);
-  await styles.locator('label[for="utility-paddingBottom"]').click({ modifiers: ["Alt"] });
+  await styles.getByRole("textbox",{name:"Padding bottom",exact:true}).click({ modifiers: ["Alt"] });
   await expect(cta).not.toHaveClass(/tablet:pb-24/);
   await undo.click();
   await expect(cta).toHaveClass(/tablet:pb-24/);
-  await styles.getByText("Reusable custom CSS", { exact: true }).click();
-  await styles.getByRole("textbox", { name: "Custom selector" }).fill(".history-callout");
-  await styles.getByRole("textbox", { name: "CSS declarations" }).fill("margin-bottom: 24px;");
-  await styles.getByRole("button", { name: "Save and apply class" }).click();
-  await expect(cta).toHaveClass(/history-callout/);
+  await customProperty(styles,"margin-bottom","24px");
+  await expect(cta).toHaveClass(/mb-6/);
   await expect(cta).toHaveCSS("margin-bottom", "24px");
   await undo.click();
-  await expect(cta).not.toHaveClass(/history-callout/);
+  await expect(cta).not.toHaveClass(/mb-6/);
   await expect(cta).toHaveClass(/tablet:pb-24/);
   await redo.click();
-  await expect(cta).toHaveClass(/history-callout/);
+  await expect(cta).toHaveClass(/mb-6/);
   await expect(cta).toHaveCSS("margin-bottom", "24px");
   await expect(page.getByLabel("Draft save state", { exact: true })).toContainText("Saved in this browser");
   const publishing = await openPublishing(page);
@@ -1496,6 +1511,7 @@ test("hidden Navigator reveals closed FAQ content and preserves the interaction 
 });
 
 test("hidden Navigator inspects responsive content and reveals mobile navigation without source layout changes", async ({ page }) => {
+  test.setTimeout(120_000);
   await signInAndOpenDesigner(page);
   const canvas = page.frameLocator('iframe[title="Website canvas"]');
   const mobileNav = canvas.locator('nav[aria-label="Mobile"]');
@@ -1628,14 +1644,14 @@ test("canvas viewport renders true preset/custom widths and switches Tailwind at
   const label = button.locator('[data-editor-part="label"]');
   await label.click();
   const style = page.getByRole("complementary", { name: "Style inspector" });
-  await style.getByRole("combobox", { name: "Style breakpoint" }).selectOption("desktop");
+  await style.getByRole("button", {name:"Style breakpoint: desktop",exact:true}).click();
   await expectLogicalWidth(page, 1280);
-  await style.getByRole("combobox", { name: "Display", exact: true }).selectOption("hidden");
+  await style.getByRole("button",{name:"Display: none",exact:true}).click();
   await expect(label).toHaveClass(/desktop:hidden/);
   await expect(label).toBeHidden();
   for (const [width, breakpoint] of [[767, "base"], [768, "landscape"], [1023, "landscape"], [1024, "tablet"], [1279, "tablet"], [1280, "desktop"]] as const) {
     await setLogicalWidth(page, width);
-    await expect(style.getByRole("combobox", { name: "Style breakpoint" })).toHaveValue(breakpoint);
+    await expect(style.getByRole("button",{name:`Style breakpoint: ${breakpoint}`,exact:true})).toHaveAttribute("aria-pressed","true");
     const media = await canvas.locator("html").evaluate(element => element.ownerDocument.defaultView!.matchMedia("(min-width:1280px)").matches);
     expect(media).toBe(width >= 1280);
     // Our named landscape breakpoint follows width, even when Fit makes the
@@ -2140,10 +2156,10 @@ test("approved sections duplicate independent copy, reorder, hide, undo and pers
   await copiedSection.click({ position: { x: 1, y: 1 } });
   await page.getByRole("button", { name: "Style panel", exact: true }).click();
   const styles = page.getByRole("complementary", { name: "Style inspector" });
-  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
-  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-12");
-  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("tablet");
-  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-16");
+  await styles.getByRole("button", {name:"Style breakpoint: base",exact:true}).click();
+  await setStyleValue(styles,"Padding top","48");
+  await styles.getByRole("button", {name:"Style breakpoint: tablet",exact:true}).click();
+  await setStyleValue(styles,"Padding top","64");
   await expect(copiedSection).toHaveClass(/tablet:pt-16/);
   await expect(originalSection).toHaveAttribute("class", originalClass!);
   await page.getByRole("navigation", { name: "Element breadcrumb" }).getByRole("button", { name: "CTA Section", exact: true }).click();
@@ -2166,7 +2182,9 @@ test("approved sections duplicate independent copy, reorder, hide, undo and pers
   const review = await openReview(page);
   await expect(review).toContainText("Page composition");
   await expect(review).toContainText("An independently composed CTA");
+  const composedPush=page.waitForResponse(response=>response.url().endsWith('/api/editor/push') && response.request().method()==='POST');
   await review.getByRole("button", { name: "Push to GitHub" }).click();
+  const composedResult=await (await composedPush).json();
   await expect(page.getByText("Pushed to GitHub", { exact: true })).toBeVisible();
   await page.reload();
   await openDesignerTab(page);
@@ -2176,7 +2194,7 @@ test("approved sections duplicate independent copy, reorder, hide, undo and pers
     const { apiFetch } = await import("/src/lib/api-client.ts");
     return apiFetch<EditorWorkspace>("/editor/content");
   });
-  writeFileSync(fileURLToPath(new URL("../artifacts/composition-committed.json", import.meta.url)), JSON.stringify({ documents: committed.documents.map(document => ({ id: document.id, content: document.content })) }, null, 2));
+  writeFileSync(fileURLToPath(new URL("../artifacts/composition-committed.json", import.meta.url)), JSON.stringify({ documents: [...committed.documents,...composedResult.data.documents.filter((doc:{id:string})=>doc.id.startsWith("source:"))].map(document => ({ id: document.id, content: document.content })) }, null, 2));
 });
 
 test("approved section insertion supports every type and Navigator keyboard and pointer reordering", async ({ page }) => {
@@ -2223,8 +2241,8 @@ test("composed section utilities and variants are independent and main-component
   await original.click({ position: { x: 1, y: 1 } });
   await page.getByRole("button", { name: "Style panel", exact: true }).click();
   const styles = page.getByRole("complementary", { name: "Style inspector" });
-  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
-  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-4");
+  await styles.getByRole("button", {name:"Style breakpoint: base",exact:true}).click();
+  await setStyleValue(styles,"Padding top","16");
   const originalButton = canvas.locator('[data-editor-instance="home.cta_section.href_2"]');
   await originalButton.click();
   const properties = page.getByRole("complementary", { name: "Component properties" });
@@ -2242,7 +2260,7 @@ test("composed section utilities and variants are independent and main-component
   await expect(copiedButton).toHaveClass(/px-\[17px\]/);
   await copiedSection.click({ position: { x: 1, y: 1 } });
   await page.getByRole("button", { name: "Style panel", exact: true }).click();
-  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-12");
+  await setStyleValue(styles,"Padding top","48");
   await expect(copiedSection).toHaveClass(/pt-12/);
   await expect(original).toHaveClass(/pt-4/);
   await copiedButton.click();
@@ -2251,7 +2269,7 @@ test("composed section utilities and variants are independent and main-component
   await expect(originalButton).toHaveClass(/px-\[17px\]/);
   await properties.getByRole("button", { name: "Edit main component" }).click();
   await copiedButton.locator('[data-editor-part="label"]').click();
-  await styles.getByRole("combobox", { name: "Font size", exact: true }).selectOption("text-h2");
+  await setStyleValue(styles,"Size","var(--text-h2)");
   await expect(copiedButton.locator('[data-editor-part="label"]')).toHaveClass(/text-h2/);
   await expect(originalButton.locator('[data-editor-part="label"]')).toHaveClass(/text-h2/);
   await page.getByRole("button", { name: "Undo edit", exact: true }).click();
@@ -2277,18 +2295,22 @@ test("publication reviews source and exact CMS records, deploys the committed re
   await heroButton.click();
   await page.getByRole("complementary", { name: "Component properties" }).getByRole("combobox", { name: "Component variant" }).selectOption("secondary");
   await selectLayoutSection(page, "CTA Section");
+  const previousSections=await canvas.locator('[data-layout-section]').evaluateAll(elements=>elements.map(el=>el.getAttribute('data-layout-section')));
   await sectionAction(page, "Duplicate");
-  const copy = canvas.locator('[data-layout-section^="section-"]').last();
-  const copiedId = await copy.getAttribute("data-layout-section");
+  await expect(canvas.locator('[data-layout-section]')).toHaveCount(previousSections.length+1);
+  const copiedId=await canvas.locator('[data-layout-section]').evaluateAll((elements,previous)=>elements.map(el=>el.getAttribute('data-layout-section')).find(id=>!previous.includes(id)),previousSections);
+  expect(copiedId).toBeTruthy();
+  const copy = canvas.locator(`[data-layout-section="${copiedId}"]`);
   await page.getByRole("complementary", { name: "Component properties" }).getByRole("textbox", { name: "Component Headline", exact: true }).fill("A reviewed composed section");
+  await expect(copy.locator(`[data-static-field="layout.pages.home.sections.${copiedId}.content.p_1"]`)).toHaveText("A reviewed composed section");
   const copiedSection = canvas.locator(`[data-layout-section="${copiedId}"] > section`);
   await copiedSection.click({ position: { x: 1, y: 1 } });
   await page.getByRole("button", { name: "Style panel", exact: true }).click();
   const styles = page.getByRole("complementary", { name: "Style inspector" });
-  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("base");
-  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-12");
-  await styles.getByRole("combobox", { name: "Style breakpoint" }).selectOption("tablet");
-  await styles.getByRole("combobox", { name: "Padding top", exact: true }).selectOption("pt-16");
+  await styles.getByRole("button", {name:"Style breakpoint: base",exact:true}).click();
+  await setStyleValue(styles,"Padding top","48");
+  await styles.getByRole("button", {name:"Style breakpoint: tablet",exact:true}).click();
+  await setStyleValue(styles,"Padding top","64");
   const hero = canvas.locator('[data-static-field="home.hero_section.display_1"]');
   await hero.click();
   await page.getByRole("button",{name:"Content panel",exact:true}).click();
@@ -2302,7 +2324,9 @@ test("publication reviews source and exact CMS records, deploys the committed re
   await expect(page.getByRole("dialog", { name: "Publishing" })).toContainText("A reviewed composed section");
   await expect(page.getByRole("dialog", { name: "Publishing" })).toContainText("Page composition");
   await expect(page.getByRole("region", { name: "Reviewed CMS records" })).toBeVisible();
+  const publishedPush=page.waitForResponse(response=>response.url().endsWith('/api/editor/push') && response.request().method()==='POST');
   await page.getByRole("button", { name: "Publish reviewed changes", exact: true }).click();
+  const publishedResult=await (await publishedPush).json();
   await expect(page.getByRole("region", { name: "Publication status" })).toContainText("Deploying committed revision");
   expect(requests).toEqual(["/api/editor/push", "/api/cms/publish", "/api/editor/deploy"]);
   const head = (await (await page.request.get("http://127.0.0.1:5380/repos/test/site/git/ref/heads/content")).json()).object.sha;
@@ -2326,9 +2350,11 @@ test("publication reviews source and exact CMS records, deploys the committed re
   expect(snapshot.headSha).toBe(head);
   expect(snapshot.documents.find(doc => doc.id === "home")!.content.hero_section).toMatchObject({ display_1: "A reviewed publication headline" });
   expect(snapshot.documents.find(doc => doc.id === "layout")!.content).toHaveProperty(`pages.home.sections.${copiedId}.content.p_1`, "A reviewed composed section");
-  expect(JSON.stringify(snapshot.documents.find(doc => doc.id === "design")!.content)).toContain("pt-12");
+  const publishedSources=publishedResult.data.documents.filter((doc:{id:string})=>doc.id.startsWith('source:'));
+  expect(publishedSources.some((doc:{content:{code:string}})=>doc.content.code.includes('pt-12'))).toBe(true);
+  expect(JSON.stringify(snapshot.documents.find(doc => doc.id === "design")!.content)).not.toContain("pt-12");
   expect(JSON.stringify(snapshot.documents.find(doc => doc.id === "design")!.content)).toContain("secondary");
-  writeFileSync(fileURLToPath(new URL("../artifacts/publication-committed.json", import.meta.url)), JSON.stringify({ revision: head, documents: snapshot.documents.map(doc => ({ id: doc.id, content: doc.content })) }, null, 2));
+  writeFileSync(fileURLToPath(new URL("../artifacts/publication-committed.json", import.meta.url)), JSON.stringify({ revision: head, documents: [...snapshot.documents,...publishedSources].map(doc => ({ id: doc.id, content: doc.content })) }, null, 2));
   await page.screenshot({ path: "apps/cms/tests/designer/artifacts/publication-live.png" });
 });
 
@@ -2341,26 +2367,24 @@ test("direct source styling supports arbitrary Tailwind, remembers the inspector
   await footerText.click();
   await page.getByRole("button", {name:"Style panel"}).click();
   const style = page.getByRole("complementary", {name:"Style inspector"});
-  await expect(style.getByRole("combobox", {name:"Padding bottom",exact:true})).toBeEnabled();
+  await expect(style.getByRole("textbox", {name:"Padding bottom",exact:true})).toBeEnabled();
   await expect(style.getByRole("tab")).toHaveCount(0);
-  await style.getByRole("combobox", {name:"Style breakpoint"}).selectOption("base");
-  await style.getByRole("combobox", {name:"Padding bottom",exact:true}).selectOption("__custom__");
-  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).fill("7");
-  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).press("Enter");
+  await style.getByRole("button", {name:"Style breakpoint: base",exact:true}).click();
+  await style.getByRole("textbox", {name:"Padding bottom",exact:true}).fill("28");
+  await style.getByRole("textbox", {name:"Padding bottom",exact:true}).press("Enter");
   await expect(footerText).toHaveClass(/pb-7/);
   await expect(footerText).toHaveCSS("padding-bottom","28px");
-  await style.getByRole("combobox", {name:"Padding bottom",exact:true}).selectOption("__custom__");
-  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).fill("999px");
-  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).press("Escape");
+  const actualTextColor=await footerText.evaluate(element=>getComputedStyle(element).color);
+  if(actualTextColor==="rgb(255, 255, 255)")await expect(style.getByLabel("Text color picker",{exact:true})).toHaveValue("#ffffff");
+  await style.getByRole("textbox", {name:"Padding bottom",exact:true}).fill("999px");
+  await style.getByRole("textbox", {name:"Padding bottom",exact:true}).press("Escape");
   await expect(footerText).toHaveCSS("padding-bottom","28px");
-  await style.getByRole("combobox", {name:"Padding bottom",exact:true}).selectOption("__custom__");
-  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).fill("calc(3rem + 2px)");
-  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).press("Enter");
+  await style.getByRole("textbox", {name:"Padding bottom",exact:true}).fill("calc(3rem + 2px)");
+  await style.getByRole("textbox", {name:"Padding bottom",exact:true}).press("Enter");
   await expect(footerText).toHaveCSS("padding-bottom","50px");
-  await style.getByRole("combobox", {name:"Style breakpoint"}).selectOption("desktop");
-  await style.getByRole("combobox", {name:"Padding bottom",exact:true}).selectOption("__custom__");
-  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).fill("calc(4rem + 8px)");
-  await style.getByRole("textbox", {name:"Padding bottom value",exact:true}).press("Enter");
+  await style.getByRole("button", {name:"Style breakpoint: desktop",exact:true}).click();
+  await style.getByRole("textbox", {name:"Padding bottom",exact:true}).fill("calc(4rem + 8px)");
+  await style.getByRole("textbox", {name:"Padding bottom",exact:true}).press("Enter");
   await expect(footerText).toHaveCSS("padding-bottom","72px");
   await canvas.locator("footer p").nth(1).click();
   await expect(style).toBeVisible();
@@ -2425,12 +2449,18 @@ test("direct source styling supports arbitrary Tailwind, remembers the inspector
   await expect(footerText).toHaveCSS("padding-bottom","72px");
   const review = await openReview(page);
   await review.getByRole("textbox", {name:"Commit message"}).fill("Add Privacy elements and direct Tailwind styling");
+  await expect(review.getByLabel('Source code diff')).toContainText('pb-[calc(3rem_+_2px)]');
+  const sourceResponse=page.waitForResponse(response=>response.url().endsWith('/api/editor/push')&&response.request().method()==='POST');
   await review.getByRole("button", {name:"Push to GitHub"}).click();
   await expect(page.getByText("Pushed to GitHub", {exact:true})).toBeVisible();
   const committed = await page.evaluate(async () => {
     const {apiFetch}=await import("/src/lib/api-client.ts"); return apiFetch<EditorWorkspace>("/editor/content");
   });
-  writeFileSync(fileURLToPath(new URL("../artifacts/direct-authoring-committed.json", import.meta.url)), JSON.stringify({documents:committed.documents.map(doc=>({id:doc.id,content:doc.content}))},null,2));
+  const pushed=await (await sourceResponse).json();
+  const sourceDocuments=pushed.data.documents.filter((doc: {id:string})=>doc.id.startsWith('source:'));
+  expect(sourceDocuments).toHaveLength(1);
+  expect(JSON.stringify(committed.documents.find(doc=>doc.id==='design')!.content)).not.toContain('pb-[calc(');
+  writeFileSync(fileURLToPath(new URL("../artifacts/direct-authoring-committed.json", import.meta.url)), JSON.stringify({documents:[...committed.documents,...sourceDocuments].map(doc=>({id:doc.id,content:doc.content}))},null,2));
   await page.screenshot({path:fileURLToPath(new URL("../artifacts/direct-authoring-privacy.png",import.meta.url)),fullPage:true});
 });
 

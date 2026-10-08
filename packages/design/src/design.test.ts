@@ -114,3 +114,12 @@ test("arbitrary CSS properties replace equivalent source utilities before Tailwi
   assert.equal(propertyUtility("paddingBottom","pb-[var(--space)]"),"pb-[var(--space)]");
   assert.equal(propertyUtility("width","w-1/2"),"w-1/2");
 });
+
+
+test("visual CSS values choose native utility groups and replace original classes",async()=>{
+ const {propertyUtility,utilityProperty}=await import("./index");
+ for(const [property,value,expected] of [["flexDirection","column","flex-col"],["display","none","hidden"],["backgroundColor","var(--color-block)","bg-block"],["fontWeight","700","font-bold"],["gridTemplateColumns","repeat(4, minmax(0, 1fr))","grid-cols-4"],["fontFamily","Inter, sans-serif","font-[family-name:Inter,_sans-serif]"],["fontWeight","650","font-[weight:650]"],["color","rgb(255, 255, 255)","text-[color:rgb(255,_255,_255)]"]] as const){
+  assert.equal(propertyUtility(property,value),expected);assert.equal(utilityProperty(expected),property);
+ }
+ assert.equal(applyStyle("font-sans leading-tight text-ink",{utilities:[propertyUtility("fontFamily","Georgia"),propertyUtility("lineHeight","1.7"),propertyUtility("color","#ffffff")],customClasses:[]}),"font-[family-name:Georgia] leading-[1.7] text-[color:#ffffff]");
+});

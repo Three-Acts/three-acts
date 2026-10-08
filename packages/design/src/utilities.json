@@ -363,5 +363,178 @@
       "rounded-xl",
       "rounded-full"
     ]
+  },
+  "position": {
+    "label": "Position",
+    "classes": [
+      "static",
+      "relative",
+      "absolute",
+      "fixed",
+      "sticky"
+    ]
+  },
+  "minWidth": {
+    "label": "Min width",
+    "classes": []
+  },
+  "minHeight": {
+    "label": "Min height",
+    "classes": []
+  },
+  "maxHeight": {
+    "label": "Max height",
+    "classes": []
+  },
+  "top": {
+    "label": "Top",
+    "classes": []
+  },
+  "right": {
+    "label": "Right",
+    "classes": []
+  },
+  "bottom": {
+    "label": "Bottom",
+    "classes": []
+  },
+  "left": {
+    "label": "Left",
+    "classes": []
+  },
+  "zIndex": {
+    "label": "Z index",
+    "classes": []
+  },
+  "fontFamily": {
+    "label": "Font family",
+    "classes": []
+  },
+  "lineHeight": {
+    "label": "Line height",
+    "classes": []
+  },
+  "letterSpacing": {
+    "label": "Letter spacing",
+    "classes": []
+  },
+  "textDecoration": {
+    "label": "Text decoration",
+    "classes": [
+      "no-underline",
+      "underline",
+      "line-through"
+    ]
+  },
+  "textTransform": {
+    "label": "Text transform",
+    "classes": [
+      "normal-case",
+      "uppercase",
+      "lowercase",
+      "capitalize"
+    ]
+  },
+  "overflow": {
+    "label": "Overflow",
+    "classes": [
+      "overflow-visible",
+      "overflow-hidden",
+      "overflow-scroll",
+      "overflow-auto"
+    ]
+  },
+  "borderWidth": {
+    "label": "Border width",
+    "classes": []
+  },
+  "borderColor": {
+    "label": "Border color",
+    "classes": []
+  },
+  "borderStyle": {
+    "label": "Border style",
+    "classes": [
+      "border-solid",
+      "border-dashed",
+      "border-dotted",
+      "border-none"
+    ]
+  },
+  "opacity": {
+    "label": "Opacity",
+    "classes": []
+  },
+  "boxShadow": {
+    "label": "Box shadow",
+    "classes": []
+  },
+  "cursor": {
+    "label": "Cursor",
+    "classes": []
+  },
+  "pointerEvents": {
+    "label": "Pointer events",
+    "classes": []
+  },
+  "aspectRatio": {
+    "label": "Aspect ratio",
+    "classes": []
+  },
+  "objectFit": {
+    "label": "Object fit",
+    "classes": []
+  },
+  "columnGap": {
+    "label": "Column gap",
+    "classes": []
+  },
+  "rowGap": {
+    "label": "Row gap",
+    "classes": []
+  },
+  "transform": {
+    "label": "Transform",
+    "classes": []
+  },
+  "transition": {
+    "label": "Transition",
+    "classes": []
+  },
+  "gridTemplateColumns": {
+    "label": "Columns",
+    "classes": [
+      "grid-cols-1",
+      "grid-cols-2",
+      "grid-cols-3",
+      "grid-cols-4",
+      "grid-cols-5",
+      "grid-cols-6",
+      "grid-cols-7",
+      "grid-cols-8",
+      "grid-cols-9",
+      "grid-cols-10",
+      "grid-cols-11",
+      "grid-cols-12"
+    ]
+  },
+  "gridTemplateRows": {
+    "label": "Rows",
+    "classes": [
+      "grid-rows-1",
+      "grid-rows-2",
+      "grid-rows-3",
+      "grid-rows-4",
+      "grid-rows-5",
+      "grid-rows-6"
+    ]
+  },
+  "flexWrap": {
+    "label": "Wrap",
+    "classes": [
+      "flex-nowrap",
+      "flex-wrap",
+      "flex-wrap-reverse"
+    ]
   }
 }

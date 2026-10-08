@@ -531,3 +531,24 @@ test("composition and scoped design changes commit atomically, with layout valid
   assert.equal(rejected.status, 400);
   assert.equal(github.calls.filter(call => call.method === "PATCH").length, 1);
 });
+
+test('source editing is authenticated, SHA-bound and commits only server-generated class changes',async t=>{
+  const {github,token}=await setup(t);
+  const {default:sourceRoute}=await import('../../../api/api/editor/source');
+  const path='apps/web/src/views/source-test.tsx',code='export const Demo=()=> <p className="pb-2 text-ink">Text</p>',sha=gitBlobSha(code);
+  github.snapshots.get(github.head)!.set(path,{content:code,sha});
+  const tree=github.commits.get(github.head)!.tree;github.trees.get(tree)!.set(path,{content:code,sha});
+  const source={path,start:code.indexOf('<p'),sha},edits=[{start:source.start,target:'source.demo',style:{utilities:['pb-6'],customClasses:[]}}];
+  assert.equal((await invoke(sourceRoute,{method:'POST',body:{source,edits}})).status,401);
+  const stale=await invoke(sourceRoute,{method:'POST',token,body:{source:{...source,sha:'0'.repeat(40)},edits}});assert.equal(errorCode(stale),'source_conflict');
+  const edited=resultData<{document:import('@three-acts/static-content').EditorDocument;content:ContentObject}>(await invoke(sourceRoute,{method:'POST',token,body:{source,edits}}));
+  assert.match(String(edited.content.code),/pb-6/);assert.doesNotMatch(String(edited.content.code),/pb-2/);
+  const changes=[{id:edited.document.id,sha,content:edited.content}];
+  const forged=await invoke(pushRoute,{method:'POST',token,body:{changes:[{...changes[0],content:{...edited.content,code:String(edited.content.code)+'\nconsole.log("injected")'}}],message:'Forged source'}});
+  assert.equal(errorCode(forged),'invalid_source_edit');assert.equal(github.calls.filter(call=>call.method==='POST'&&call.path==='/git/trees').length,0);
+  const requestId='11111111-1111-4111-8111-111111111111';
+  const first=resultData<EditorPushResult>(await invoke(pushRoute,{method:'POST',token,body:{changes,message:'Change actual source padding',requestId}}));
+  assert.equal(github.snapshots.get(first.sha)!.get(path)!.content,edited.content.code);
+  const retry=resultData<EditorPushResult>(await invoke(pushRoute,{method:'POST',token,body:{changes,message:'Change actual source padding',requestId}}));assert.equal(retry.sha,first.sha);
+  const conflict=await invoke(pushRoute,{method:'POST',token,body:{changes,message:'Try stale source'}});assert.equal(errorCode(conflict),'content_conflict');
+});

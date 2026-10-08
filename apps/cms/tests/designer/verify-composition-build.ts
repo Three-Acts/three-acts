@@ -10,15 +10,17 @@ import { contentDefinitions, contentPath, serializeContent, validateContent, val
 // exact public source snapshot, then restore every original file in finally.
 const root = process.cwd();
 const snapshot = JSON.parse(await readFile(resolve(root, "apps/cms/tests/designer/artifacts/composition-committed.json"), "utf8")) as { documents: Array<{ id: string; content: ContentObject }> };
-assert.equal(snapshot.documents.length, contentDefinitions.length);
+const sourceDocuments=snapshot.documents.filter(doc=>doc.id.startsWith("source:"));
+assert.ok(sourceDocuments.length);
 const sources = new Map(snapshot.documents.map(doc => [doc.id, validateContent(doc.id, doc.content)]));
-assert.equal(sources.size, contentDefinitions.length);
+assert.equal(sources.size, contentDefinitions.length + sourceDocuments.length);
 for (const definition of contentDefinitions) assert.ok(sources.has(definition.id));
-const originals = new Map(await Promise.all(contentDefinitions.map(async doc => [contentPath(doc.id), await readFile(resolve(root, contentPath(doc.id)))] as const)));
+const originals = new Map(await Promise.all([...contentDefinitions,...sourceDocuments].map(async doc => [contentPath(doc.id), await readFile(resolve(root, contentPath(doc.id)))] as const)));
 let server: ReturnType<typeof createServer> | undefined;
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 try {
   for (const doc of contentDefinitions) await writeFile(resolve(root, contentPath(doc.id)), serializeContent(sources.get(doc.id)!));
+  for(const doc of sourceDocuments) await writeFile(resolve(root,contentPath(doc.id)),String(doc.content.code));
   const build = spawnSync("npm", ["run", "build:web"], { cwd: root, env: { ...process.env, CONTENT_SOURCE: "mock", PUBLIC_EDITOR_PREVIEW: "false" }, encoding: "utf8" });
   if (build.status !== 0) throw new Error(`Composition production build failed:\n${build.stdout}\n${build.stderr}`);
   const dist = resolve(root, "apps/web/dist");
@@ -51,8 +53,9 @@ try {
       if (expected.sections[id].hidden) assert.equal(await section.evaluate(element => getComputedStyle(element).display), "none");
       if (expected.sections[id].type === "cta" && expected.sections[id].content) {
         assert.equal(await section.locator(`[data-static-field="layout.pages.home.sections.${id}.content.p_1"]`).textContent(), expected.sections[id].content.p_1);
-        const style = (sources.get("design")!.elements as Record<string, { utilities: string[] }>)[`composition.${id}.source.cta-section.1`];
-        assert.ok(style.utilities.includes("pt-12") && style.utilities.includes("tablet:pt-16"), "Fixture must include the browser-authored responsive instance styles");
+        const edits=sourceDocuments.flatMap(doc=>doc.content.edits as unknown as import('@three-acts/editor-source').SourceEdit[]);
+        const style=edits.find(edit=>edit.target===`composition.${id}.source.cta-section.1`)?.style;
+        assert.ok(style?.utilities.includes("pt-12") && style.utilities.includes("tablet:pt-16"), "Fixture must include the source-authored responsive instance styles");
         assert.equal(await section.locator(":scope > section").evaluate(element => getComputedStyle(element).paddingTop), width >= 1024 ? "64px" : "48px");
       }
     }

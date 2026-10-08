@@ -126,7 +126,7 @@ import { cn, historyShortcut } from "@three-acts/utils";
   }
   const outline = createCanvasOutline({ safeElement, describe, keyFor });
   const selectorFor = outline.selectorFor;
-  const styleProperties = ['display','flexDirection','justifyContent','alignItems','gap','paddingTop','paddingRight','paddingBottom','paddingLeft','marginTop','marginRight','marginBottom','marginLeft','width','height','minHeight','maxWidth','fontSize','fontWeight','lineHeight','color','backgroundColor','borderRadius'];
+  const styleProperties = ['gridTemplateColumns','gridTemplateRows','flexWrap','display','flexDirection','justifyContent','alignItems','gap','columnGap','rowGap','paddingTop','paddingRight','paddingBottom','paddingLeft','marginTop','marginRight','marginBottom','marginLeft','width','height','minWidth','maxWidth','minHeight','maxHeight','position','top','right','bottom','left','zIndex','fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','textAlign','textDecoration','textTransform','color','backgroundColor','borderRadius','borderWidth','borderColor','borderStyle','opacity','boxShadow','transform','transition','cursor','pointerEvents','overflow','aspectRatio','objectFit'];
   const styleNames = Object.fromEntries(styleProperties.map(name => [name, name.replace(/[A-Z]/g, char => `-${char.toLowerCase()}`)]));
   let mode = 'design';
   let activeEditor = null;
@@ -213,7 +213,13 @@ import { cn, historyShortcut } from "@three-acts/utils";
     return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
   }
   function buildTree() {
-    send({ type: 'three-acts:canvas-tree', ...outline.snapshot(selectedCandidate?.element), route });
+    const sourceFiles=new Map();
+    for(const element of document.querySelectorAll('[data-editor-source]')) {
+      const section=sectionSource(element);if(!section)continue;
+      try {const source=JSON.parse(element.dataset.editorSource);sourceFiles.set(`${section.id}:${source.path}`,{section,source});}catch{/* Ignore stale metadata. */}
+      if(sourceFiles.size>=200)break;
+    }
+    send({ type: 'three-acts:canvas-tree', ...outline.snapshot(selectedCandidate?.element), sources:[...sourceFiles.values()], route });
   }
   function refreshOutline() {
     if (selectedCandidate && !selectedCandidate.element.isConnected) {
@@ -314,7 +320,7 @@ import { cn, historyShortcut } from "@three-acts/utils";
       let sourceProps = {};
       try { sourceProps = JSON.parse(root.dataset.editorSourceProps || '{}'); } catch { return; }
       const props = resolveProperties(design, name, root.dataset.editorInstance, sourceProps);
-      root.className = applyStyle(cn(componentBaseClass(name, props), root.dataset.editorCallerClass || ''), design.components[name]?.parts.root);
+      root.className = applyStyle(cn(componentBaseClass(name, props), root.dataset.editorCallerClass || '', root.dataset.editorSourceExtras || ''), design.components[name]?.parts.root);
       root.querySelectorAll('[data-editor-part]').forEach(part => {
         if (componentRoot(part) !== root) return;
         part.className = applyStyle(part.dataset.editorBaseClass || '', design.components[name]?.parts[part.dataset.editorPart]);
@@ -349,7 +355,7 @@ import { cn, historyShortcut } from "@three-acts/utils";
     const textField = info.category === 'cms' ? null : proseField || directTextField(element);
     const attributes = elementAttributes(element, info.category === 'cms');
     const textState = proseField ? 'structured' : textField ? 'editable' : element.childElementCount ? 'structured' : normalize(element.textContent || '') ? 'unbound' : 'empty';
-    return {...(sectionSource(element) ? {section:sectionSource(element)} : {}), selector:selectorFor(element), visibility:outline.visibilityFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), ...(info.cmsSource ? {cmsSource:info.cmsSource} : {}), category:mainPart && info.category !== 'cms' ? 'element' : info.category, ...(component && !mainPart ? {component} : {}), ...(editingComponent ? {editingComponent:editingComponent.name} : {}), ...(designTarget ? {designTarget} : {}), sourceClasses:(element.dataset.editorBaseClass || (root === element ? cn(componentBaseClass(root.dataset.editorComponent, resolveProperties(design, root.dataset.editorComponent, root.dataset.editorInstance, JSON.parse(root.dataset.editorSourceProps || '{}'))), root.dataset.editorCallerClass || '') : '')).split(/\s+/).filter(Boolean), ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(proseField ? {textFormat:'prose'} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
+    return {...(sectionSource(element) ? {section:sectionSource(element)} : {}), selector:selectorFor(element), visibility:outline.visibilityFor(element), tag:element.tagName.toLowerCase(), label:info.label || humanize(element.tagName.toLowerCase()), ...(info.cmsSource ? {cmsSource:info.cmsSource} : {}), category:mainPart && info.category !== 'cms' ? 'element' : info.category, ...(component && !mainPart ? {component} : {}), ...(editingComponent ? {editingComponent:editingComponent.name} : {}), ...(designTarget ? {designTarget} : {}), ...((mainPart ? element.dataset.editorDefinitionSource || element.dataset.editorSource : element.dataset.editorSource) ? {source:JSON.parse(mainPart ? element.dataset.editorDefinitionSource || element.dataset.editorSource : element.dataset.editorSource)} : {}), sourceClasses:(element.dataset.editorBaseClass || (root === element ? cn(componentBaseClass(root.dataset.editorComponent, resolveProperties(design, root.dataset.editorComponent, root.dataset.editorInstance, JSON.parse(root.dataset.editorSourceProps || '{}'))), root.dataset.editorCallerClass || '') : '')).split(/\s+/).filter(Boolean), ...(info.binding ? {binding:info.binding} : {}), textState, ...(textField ? {textField} : {}), ...(proseField ? {textFormat:'prose'} : {}), ...(attributes.length ? {attributes} : {}), editable:isSafeEditable(element, info.binding), classNames:Array.from(element.classList), breadcrumbs, styles:computedStyles(element)};
   }
   const inspectableAttributes = ['href','src','alt','title','target','aria-label'];
   function formattedTextField(element) {

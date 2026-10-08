@@ -8,6 +8,7 @@
     "./documents/*.json": "./src/documents/*.json"
   },
   "dependencies": {
-    "@three-acts/design": "*"
+    "@three-acts/design": "*",
+    "@three-acts/editor-source": "*"
   }
 }

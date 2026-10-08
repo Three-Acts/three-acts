@@ -21,3 +21,14 @@ test("section duplication copies authored utilities and variants to a new scope 
   const again = copySectionDesign(next, "cta", "section-copy", "section-second-copy");
   assert.deepEqual(again.elements["composition.section-second-copy.source.cta-section.1"], design.elements["source.cta-section.1"]);
 });
+
+test('source duplication merges committed branches with current-session overrides',async()=>{
+  const {copiedSectionSourceEdits}=await import('../../src/components/designer/composition-model');
+  const baseline=[{start:100,target:'source.cta-section.1',style:{utilities:['pl-6','bg-ink'],customClasses:[]}},{start:150,target:'source.cta-section.4',style:{utilities:['mb-4'],customClasses:[]}}];
+  const pending=[{start:100,target:'source.cta-section.1',style:{utilities:['pt-8','bg-surface'],customClasses:[]}}];
+  const copied=copiedSectionSourceEdits('cta','home-cta','section-copy',baseline,pending);
+  assert.equal(copied.length,2);
+  assert.deepEqual(copied[0].style.utilities,['pl-6','pt-8','bg-surface']);
+  assert.deepEqual(copied[1].style.utilities,['mb-4']);
+  assert.match(copied[0].target,/composition.section-copy/);
+});

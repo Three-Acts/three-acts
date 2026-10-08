@@ -1,7 +1,7 @@
 import ts from "typescript";
 import MagicString from "magic-string";
 import { parse } from "@astrojs/compiler";
-import { createHash } from "node:crypto";
+import {sourceSha,sourceIdentities,astroSignature} from "@three-acts/editor-source/identity";
 import { dirname, relative, resolve } from "node:path";
 
 const ignored = new Set(["script", "style", "link", "meta", "title", "svg", "source"]);
@@ -16,20 +16,7 @@ function helperImport(file, root) {
   const path = relative(dirname(file), resolve(root, "src/lib/design")).replaceAll("\\", "/");
   return `import { editorElementProps as ${alias} } from ${quoted(path.startsWith(".") ? path : "./" + path)};\n`;
 }
-function identities(file, root) {
-  const path = relative(root, file).replaceAll("\\", "/");
-  const fileId = createHash("sha256").update(path).digest("hex").slice(0, 16);
-  const counts = new Map();
-  return signature => {
-    const nodeId = createHash("sha256").update(signature).digest("hex").slice(0, 16);
-    const occurrence = (counts.get(nodeId) ?? 0) + 1;
-    counts.set(nodeId, occurrence);
-    return `auto.${fileId}.${nodeId}.${occurrence}`;
-  };
-}
-function astroSignature(node) {
-  return JSON.stringify([node.type, node.name, node.value, (node.attributes ?? []).map(attr => [attr.name, attr.kind, attr.value]), (node.children ?? []).map(astroSignature)]);
-}
+function identities(file,root) {return sourceIdentities(relative(root,file).replaceAll("\\","/"));}
 
 export function instrumentJsx(source, file, root) {
   const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -45,9 +32,9 @@ export function instrumentJsx(source, file, root) {
       while (owner && !ts.isFunctionDeclaration(owner) && !ts.isVariableDeclaration(owner)) owner = owner.parent;
       const id = identity((owner?.name?.getText(ast) ?? "") + ":" + node.getText(ast));
       const props = opening.attributes.properties;
-      const eligible = !hidden && (/^[a-z][a-z0-9-]*$/.test(name) || componentNames.test(name));
-      const explicit = props.some(prop => ts.isJsxAttribute(prop) && ["data-editor-id", "data-editor-part"].includes(prop.name.getText(ast)));
-      if (!hidden && !explicit && (/^[a-z][a-z0-9-]*$/.test(name) || componentNames.test(name))) {
+      const forwarded = opening.attributes.properties.some(prop => ts.isJsxSpreadAttribute(prop) && prop.expression.getText(ast).includes("componentAttributes("));
+      const eligible = !hidden && (/^[a-z][a-z0-9-]*$/.test(name) || componentNames.test(name) || forwarded);
+      if (eligible) {
         const separate = [], entries = [];
         for (const prop of props) {
           if (ts.isJsxSpreadAttribute(prop)) entries.push(`...(${prop.expression.getText(ast)})`);
@@ -58,6 +45,9 @@ export function instrumentJsx(source, file, root) {
             entries.push(`${quoted(key)}: (${value})`);
           }
         }
+        const sourceReference = {path: "apps/web/" + relative(root, file).replaceAll("\\", "/"), start: opening.getStart(ast), sha: sourceSha(source)};
+        // Forwarded roots retain the source reference supplied by their caller.
+        if (!(/\/components\/ui\/image\//.test(file) && name === "img")) entries.push(`${quoted(forwarded ? "data-editor-definition-source" : "data-editor-source")}: ${quoted(JSON.stringify(sourceReference))}`);
         output.overwrite(opening.getStart(ast), opening.end, `<${name}${separate.length ? " " + separate.join(" ") : ""} {...${alias}(${quoted(id)}, {${entries.join(",")}})}${ts.isJsxSelfClosingElement(opening) ? " /" : ""}>`);
         changed = true;
       }
@@ -89,7 +79,7 @@ export async function instrumentAstro(source, file, root) {
       hidden ||= ignored.has(node.name) || node.name === "head";
       const id = identity(astroSignature(node));
       const attrs = node.attributes;
-      if (!hidden && node.name !== "slot" && node.position?.start && !attrs.some(attr => ["data-editor-id", "data-editor-part"].includes(attr.name)) && (node.type !== "component" || componentNames.test(node.name))) {
+      if (!hidden && node.name !== "slot" && node.position?.start && (node.type !== "component" || componentNames.test(node.name))) {
         const start = offset(node.position.start.offset);
         const separate = [], entries = [];
         for (const attr of attrs) {
@@ -113,9 +103,12 @@ export async function instrumentAstro(source, file, root) {
         }
         if (cursor === source.length) throw new Error(`Cannot read opening source tag in ${file}`);
         const selfClosing = source.slice(start, cursor).trimEnd().endsWith("/");
+        const sourceReference = {path: "apps/web/" + relative(root, file).replaceAll("\\", "/"), start, sha: sourceSha(source)};
+        entries.push(`${quoted("data-editor-source")}: ${quoted(JSON.stringify(sourceReference))}`);
+        const explicitId = attrs.find(attr => attr.name === "data-editor-id" && attr.kind === "quoted")?.value;
         output.overwrite(start, cursor + 1, `<${node.name}${separate.length ? " " + separate.join(" ") : ""} {...${alias}(${quoted(id)}, {${entries.join(",")}}, ${quoted(node.type === "component" ? "className" : "class")})}${selfClosing ? " /" : ""}>`);
         const nodeEnd = Math.max(cursor + 1, offset(node.position.end.offset));
-        const additions = position => `<ThreeActsEditorAdditions anchor=${quoted(id)} position=${quoted(position)} />`;
+        const additions = position => `<ThreeActsEditorAdditions anchor=${quoted(explicitId || id)} position=${quoted(position)} />`;
         if (!selfClosing && !["img", "input", "br", "hr", "area", "base", "embed", "param", "track", "wbr", "html", "body"].includes(node.name)) {
           const end = nodeEnd;
           const closing = source.lastIndexOf("</", end - 1);

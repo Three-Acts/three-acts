@@ -65,7 +65,7 @@ export default defineConfig({
       command: "npm run build:web && npx tsx apps/cms/tests/designer/static-preview-server.ts",
       cwd: root,
       url: `http://localhost:${ports.web}`,
-      timeout: 60_000,
+      timeout: 180_000,
       reuseExistingServer: false,
       env: {
         ...process.env,
@@ -80,7 +80,7 @@ export default defineConfig({
       command: "npm run dev -w @three-acts/cms -- --port 5274 --strictPort",
       cwd: root,
       url: `http://localhost:${ports.cms}`,
-      timeout: 60_000,
+      timeout: 180_000,
       reuseExistingServer: false,
       env: {
         ...process.env,

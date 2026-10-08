@@ -1,3 +1,5 @@
+import {readFileSync,readdirSync} from 'node:fs';
+import {resolve,relative} from 'node:path';
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { contentDefinitions, contentPath, serializeContent } from "@three-acts/static-content";
@@ -10,6 +12,15 @@ for (const definition of contentDefinitions) {
   const content = serializeContent(definition.content);
   files.set(contentPath(definition.id), { content, sha: blobSha(content) });
 }
+function seedSource(directory: string) {
+  for(const entry of readdirSync(directory,{withFileTypes:true})) {
+    const file=resolve(directory,entry.name);
+    if(entry.isDirectory())seedSource(file);
+    else if(/\.(?:astro|tsx|jsx)$/.test(entry.name)) {const content=readFileSync(file,'utf8');files.set(relative(process.cwd(),file),{content,sha:blobSha(content)});}
+  }
+}
+seedSource(resolve('apps/web/src'));
+const initialSourceFiles=new Map([...files].filter(([path])=>path.startsWith('apps/web/src/')));
 const snapshots = new Map([[initialHead, files]]);
 const trees = new Map([["2222222222222222222222222222222222222222", new Map(files)]]);
 const commits = new Map<string, { tree: string; parent?: string; message?: string }>([[initialHead, { tree: "2222222222222222222222222222222222222222" }]]);
@@ -31,6 +42,15 @@ const server = createServer(async (request, response) => {
     response.end(JSON.stringify(value));
   };
 
+  // Each source-authoring test starts with the exact files compiled into its
+  // canvas. Preserve older immutable snapshots and content/CMS changes.
+  if(request.method==='POST' && url.pathname==='/__e2e/reset-source') {
+    const updated=new Map(snapshots.get(head));
+    for(const [path,file] of initialSourceFiles)updated.set(path,file);
+    const tree=(nextId++).toString(16).padStart(40,'0');trees.set(tree,updated);
+    const sha=(nextId++).toString(16).padStart(40,'0');commits.set(sha,{tree,parent:head,message:'Reset source fixture'});snapshots.set(sha,updated);head=sha;
+    send(200,{sha});return;
+  }
   // The browser test uses this local-only hook to simulate a teammate pushing
   // a newer version after the CMS has loaded its original file SHA.
   if (request.method === "POST" && url.pathname === "/__e2e/external-change") {

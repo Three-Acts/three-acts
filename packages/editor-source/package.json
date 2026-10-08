@@ -1,0 +1,17 @@
+{
+  "name": "@three-acts/editor-source",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node.mjs",
+    "./identity": "./src/identity.mjs"
+  },
+  "dependencies": {
+    "@three-acts/design": "*",
+    "@astrojs/compiler": "^2.13.1",
+    "typescript": "^5.9.3",
+    "magic-string": "^0.30.21"
+  }
+}

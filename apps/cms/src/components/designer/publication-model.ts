@@ -46,7 +46,7 @@ export function readPublicationReceipt(input: unknown): PublicationReceipt {
   if (typeof value.baseRevision !== "string" || !/^[a-f0-9]{40}$/.test(value.baseRevision)) throw new Error("Publication review requires an exact source baseline revision.");
   readPublicationIdentity({ revision: value.revision ?? "0".repeat(40), publicationId: value.publicationId });
   if (value.version !== 1 || typeof value.scope !== "string" || !value.scope || value.scope.length > 200 || typeof value.repository !== "string" || !/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(value.repository) || typeof value.branch !== "string" || !value.branch || value.branch.length > 255 || typeof value.message !== "string" || !value.message.trim() || value.message.length > 200 || value.message.includes("Editor-Request:") || typeof value.startedAt !== "string" || !Number.isFinite(Date.parse(value.startedAt)) || !["source", "cms", "deploy", "verify", "done"].includes(value.step) || !["reviewed", "committed", "promoting", "deploying", "verifying", "live", "failed", "unconfigured"].includes(value.state)) throw new Error("Invalid publication recovery scope or state.");
-  if (!Array.isArray(value.changes) || value.changes.length < 1 || value.changes.length > contentDefinitions.length) throw new Error("Invalid publication source changes.");
+  if (!Array.isArray(value.changes) || value.changes.length < 1 || value.changes.length > contentDefinitions.length + 200) throw new Error("Invalid publication source changes.");
   const ids = new Set<string>();
   const changes = value.changes.map(change => {
     if (!change || typeof change.id !== "string" || typeof change.sha !== "string" || !/^[a-f0-9]{40}$/.test(change.sha) || ids.has(change.id)) throw new Error("Invalid or duplicate publication source document.");
@@ -68,7 +68,7 @@ export function readPublicationReceipt(input: unknown): PublicationReceipt {
 
 export function publicationCommitResult(receipt: PublicationReceipt): EditorPushResult {
   if (!receipt.commit) throw new Error("This publication has no source commit.");
-  return { sha: receipt.commit.sha, url: receipt.commit.url, documents: receipt.changes.map((change, index) => ({ ...contentDefinitions.find(doc => doc.id === change.id)!, content: change.content, sha: receipt.commit!.documents[index].sha, sourcePath: contentPath(change.id) })) };
+  return { sha: receipt.commit.sha, url: receipt.commit.url, documents: receipt.changes.map((change, index) => ({ ...(change.id.startsWith("source:") ? {id:change.id,label:change.id.split("/").at(-1)!,route:"/",kind:"source" as const} : contentDefinitions.find(doc => doc.id === change.id)!), content: change.content, sha: receipt.commit!.documents[index].sha, sourcePath: contentPath(change.id) })) };
 }
 
 /** Advances a single captured release. New drafts/queue entries are never read
