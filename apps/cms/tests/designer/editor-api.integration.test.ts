@@ -31,7 +31,7 @@ class GithubStub {
   readonly calls: StubCall[] = [];
   readonly snapshots = new Map<string, Map<string, GitFile>>();
   readonly trees = new Map<string, Map<string, GitFile>>();
-  readonly commits = new Map<string, { tree: string; parent: string | null }>();
+  readonly commits = new Map<string, { tree: string; parent: string | null; message?: string }>();
   head = "1111111111111111111111111111111111111111";
   rejectRefUpdate = false;
   private server?: Server;
@@ -85,6 +85,18 @@ class GithubStub {
       send(200, { object: { sha: this.head } });
       return;
     }
+    if (request.method === "GET" && path === "/commits") {
+      const history: Array<{ sha: string; commit: { message: string } }> = [];
+      let sha: string | null = url.searchParams.get("sha");
+      while (sha && history.length < 100) {
+        const commit = this.commits.get(sha);
+        if (!commit) break;
+        history.push({ sha, commit: { message: commit.message ?? "Initial content" } });
+        sha = commit.parent;
+      }
+      send(200, history);
+      return;
+    }
     const commitMatch = path.match(/^\/git\/commits\/([a-f0-9]{40})$/);
     if (request.method === "GET" && commitMatch) {
       const commit = this.commits.get(commitMatch[1]);
@@ -112,11 +124,11 @@ class GithubStub {
       return;
     }
     if (request.method === "POST" && path === "/git/commits") {
-      const input = body as { tree?: string; parents?: string[] };
+      const input = body as { tree?: string; parents?: string[]; message?: string };
       const files = this.trees.get(input.tree ?? "");
       if (!files) return send(422, { message: "tree not found" });
       const sha = this.nextSha();
-      this.commits.set(sha, { tree: input.tree!, parent: input.parents?.[0] ?? null });
+      this.commits.set(sha, { tree: input.tree!, parent: input.parents?.[0] ?? null, message: input.message });
       this.snapshots.set(sha, new Map(files));
       send(201, { sha, html_url: `https://github.com/test/site/commit/${sha}` });
       return;
@@ -221,6 +233,33 @@ test("content and push routes require a CMS session before contacting GitHub", a
   assert.equal(shopSession.status, 401);
   assert.equal(errorCode(shopSession), "unauthorized");
   assert.equal(github.calls.length, 0);
+});
+
+test("publication push retries reconcile the same commit after a lost response and later branch changes", async (t) => {
+  const { github, token } = await setup(t);
+  const workspace = resultData<EditorWorkspace>(await invoke(contentRoute, { method: "GET", token }));
+  const home = workspace.documents.find(doc => doc.id === "home")!;
+  const content = structuredClone(home.content);
+  (content.hero_section as ContentObject).display_1 = "A reviewed release";
+  const body = { requestId: "d280d96c-5b8f-4d43-8b9b-e5dce7f2ce31", message: "Publish reviewed source", changes: [{ id: home.id, sha: home.sha, content }] };
+  const committed = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body }));
+  const firstRetry = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body }));
+  assert.deepEqual(firstRetry, committed);
+  const faq = workspace.documents.find(doc => doc.id === "faq")!;
+  const faqContent = structuredClone(faq.content);
+  (faqContent.faq as ContentObject).title_2 = "A teammate's later edit";
+  const later = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body: { message: "Later edit", changes: [{ id: faq.id, sha: faq.sha, content: faqContent }] } }));
+  assert.notEqual(later.sha, committed.sha);
+  const laterRetry = resultData<EditorPushResult>(await invoke(pushRoute, { method: "POST", token, body }));
+  assert.deepEqual(laterRetry, committed);
+  assert.equal(github.head, later.sha, "Reconciliation must not rewind the branch");
+  assert.equal(github.calls.filter(call => call.method === "POST" && call.path === "/git/commits").length, 2);
+  const different = await invoke(pushRoute, { method: "POST", token, body: { ...body, message: "Different release" } });
+  assert.equal(different.status, 409);
+  assert.equal(errorCode(different), "publication_request_conflict");
+  const malformed = await invoke(pushRoute, { method: "POST", token, body: { ...body, requestId: "not-an-identity" } });
+  assert.equal(malformed.status, 400);
+  assert.equal(github.calls.filter(call => call.method === "PATCH").length, 2);
 });
 
 test("content route reads all documents from the configured branch without caching", async (t) => {

@@ -85,9 +85,12 @@ export async function pushEditorContent(input: unknown): Promise<EditorPushResul
   const settings = config();
   if (!settings) throw new ApiError(503, "github_unconfigured", "Connect GitHub in the API's environment settings before pushing.");
   if (!input || typeof input !== "object") throw new ApiError(400, "invalid_request", "Invalid push request.");
-  const { changes, message } = input as { changes?: unknown; message?: unknown };
+  const { changes, message, requestId } = input as { changes?: unknown; message?: unknown; requestId?: unknown };
   if (!Array.isArray(changes) || changes.length < 1 || changes.length > contentDefinitions.length || typeof message !== "string" || !message.trim() || message.length > 200) {
     throw new ApiError(400, "invalid_request", "Choose changed pages and enter a commit message under 200 characters.");
+  }
+  if (message.includes("Editor-Request:") || requestId !== undefined && (typeof requestId !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(requestId))) {
+    throw new ApiError(400, "invalid_request", "Use a valid publication request identity and a plain commit message.");
   }
   if (Buffer.byteLength(JSON.stringify(input)) > 512000) throw new ApiError(413, "content_too_large", "This update is too large. Push fewer pages at a time.");
   const ids = new Set<string>();
@@ -98,6 +101,20 @@ export async function pushEditorContent(input: unknown): Promise<EditorPushResul
     catch (error) { throw new ApiError(400, "invalid_content", error instanceof Error ? error.message : "Invalid content."); }
   });
   const parent = await head(settings);
+  // The commit is the durable receipt. Reconcile a lost push response before
+  // comparing old blob SHAs, including when a teammate advanced the branch.
+  const fingerprint = requestId ? createHash("sha256").update(JSON.stringify({ message: message.trim(), changes: [...validated].sort((a, b) => a.id.localeCompare(b.id)) })).digest("hex") : null;
+  const receipt = requestId ? `Editor-Request: ${requestId} ${fingerprint}` : null;
+  if (receipt) {
+    const history = await github<Array<{ sha: string; commit: { message: string } }>>(settings, `/commits?sha=${encodeURIComponent(parent)}&per_page=100`);
+    const previous = history.find(commit => commit.commit.message.split("\n").at(-1)?.startsWith(`Editor-Request: ${requestId} `));
+    if (previous) {
+      if (previous.commit.message.split("\n").at(-1) !== receipt) throw new ApiError(409, "publication_request_conflict", "This publication identity already belongs to different changes. Review a new release.");
+      const documents = await Promise.all(validated.map(change => readDocument(settings, change.id, previous.sha)));
+      if (documents.some((document, index) => serializeContent(document.content) !== serializeContent(validated[index].content))) throw new ApiError(409, "publication_request_conflict", "The publication receipt does not match these changes.");
+      return { sha: previous.sha, url: `https://github.com/${settings.repository}/commit/${previous.sha}`, documents };
+    }
+  }
   const originals = await Promise.all(validated.map((change) => readDocument(settings, change.id, parent)));
   if (validated.some((change, index) => change.sha !== originals[index].sha)) throw new ApiError(409, "content_conflict", "A page changed on GitHub since you started editing. Reload and review your drafts.");
   const commit = await github<{ tree: { sha: string } }>(settings, `/git/commits/${parent}`);
@@ -105,7 +122,7 @@ export async function pushEditorContent(input: unknown): Promise<EditorPushResul
     base_tree: commit.tree.sha,
     tree: validated.map((change) => ({ path: contentPath(change.id), mode: "100644", type: "blob", content: serializeContent(change.content) }))
   });
-  const next = await github<{ sha: string; html_url: string }>(settings, "/git/commits", "POST", { message: message.trim(), tree: tree.sha, parents: [parent] });
+  const next = await github<{ sha: string; html_url: string }>(settings, "/git/commits", "POST", { message: `${message.trim()}${receipt ? `\n\n${receipt}` : ""}`, tree: tree.sha, parents: [parent] });
   // Never force: a concurrent change after our read must reject the update.
   await github(settings, `/git/refs/heads/${branchPath(settings.branch)}`, "PATCH", { sha: next.sha, force: false });
   const documents = await Promise.all(validated.map((change) => readDocument(settings, change.id, next.sha)));
