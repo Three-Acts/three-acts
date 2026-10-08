@@ -43,7 +43,7 @@ export const collectionRegistry: CmsCollection[] = [
       { key: "title", label: "Title", type: "text", required: true },
       { key: "slug", label: "Slug", type: "slug", required: true, urlPrefix: "threeacts.dev/blog/" },
       { key: "excerpt", label: "Excerpt", type: "textarea", required: true, helpText: "One or two sentences shown in listings and as the fallback meta description." },
-      { key: "body", label: "Body", type: "textarea", required: true, helpText: "Article body. Blank lines separate paragraphs." },
+      { key: "body", label: "Body", type: "textarea", format: "prose", required: true, helpText: "Article body." },
       { key: "coverImage", label: "Cover image", type: "image", bucket: "cms-assets", accept: "image/*", required: true, helpText: "Every article needs a cover: it is the card image in listings and the social preview." },
       { key: "author", label: "Author", type: "text", required: true, helpText: "Author slug — matches authors.slug, e.g. amara-stone." },
       { key: "category", label: "Category", type: "text", helpText: "Category slug — matches article-categories.slug, e.g. guides." },
@@ -120,7 +120,7 @@ export const collectionRegistry: CmsCollection[] = [
     description: "Frequently asked questions shown on /faq and product pages, grouped by topic.",
     fields: [
       { key: "question", label: "Question", type: "text", required: true },
-      { key: "answer", label: "Answer", type: "textarea", required: true },
+      { key: "answer", label: "Answer", type: "textarea", format: "prose", required: true },
       {
         key: "topic",
         label: "Topic",
@@ -203,7 +203,7 @@ export const collectionRegistry: CmsCollection[] = [
         ]
       },
       { key: "shortDescription", label: "Short description", type: "textarea", required: true, helpText: "One or two sentences for product cards and the meta description." },
-      { key: "description", label: "Description", type: "textarea", helpText: "Full product description: materials, dimensions, care. Blank lines separate paragraphs." },
+      { key: "description", label: "Description", type: "textarea", format: "prose", helpText: "Full product description: materials, dimensions, care." },
       {
         key: "images",
         label: "Images",

@@ -3,6 +3,13 @@ import test from "node:test";
 import { isCanvasSelection, readCanvasNodes, readCanvasTreeStatus } from "../../src/components/designer/canvas-contract";
 
 const selection = { selector: "main > a", label: "Button link", tag: "a", category: "component", editable: false, breadcrumbs: [], styles: {} };
+test("formatted source editing requires an explicit supported format and cannot enable inline editing", () => {
+  const prose = { ...selection, textFormat: "prose", textField: { id: "terms", path: "terms.sections_2.0.body", value: "## Body" } };
+  assert.equal(isCanvasSelection(prose), true);
+  assert.equal(isCanvasSelection({ ...prose, editable: true }), false);
+  assert.equal(isCanvasSelection({ ...prose, textField: undefined }), false);
+  assert.equal(isCanvasSelection({ ...prose, textFormat: "html" }), false);
+});
 test("rejects malformed optional component metadata without throwing", () => {
   for (const component of [null, "Button.Link", { name: "Unknown", props: {}, fields: [] }, { name: "Button.Link", props: null, fields: [] }, { name: "Button.Link", props: [], fields: [] }, { name: "Button.Link", props: {}, fields: [null] }]) {
     assert.equal(isCanvasSelection({ ...selection, component }), false);

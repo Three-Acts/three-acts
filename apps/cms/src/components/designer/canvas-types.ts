@@ -22,6 +22,7 @@ export type CanvasSelection = {
   binding?: { id?: string; path?: string; collectionId?: string; field?: string };
   textState?: "editable" | "unbound" | "structured" | "empty";
   textField?: { id: string; path: string; value: string };
+  textFormat?: "prose";
   attributes?: CanvasAttribute[];
   editable: boolean;
   breadcrumbs: Array<{ selector: string; label: string }>;

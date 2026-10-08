@@ -1,4 +1,5 @@
 import { elementClass, componentAttributes, componentClass } from "../../lib/design";
+import { cmsAttributes, type CmsSource } from "@three-acts/cms-schema";
 import copy from "@three-acts/static-content/documents/home.json";
 import { Section } from "../layout/section";
 import { Button } from "../ui/button";
@@ -7,6 +8,7 @@ import { Typography } from "../ui/typography";
 
 type HeroSectionProps = {
   coverImage: { src: string; alt: string };
+  cmsSource?: CmsSource;
 };
 
 /**
@@ -16,7 +18,7 @@ type HeroSectionProps = {
  * (edge to edge of the viewport this is not — only full-bleed bands are).
  * Not wrapped in Section.Root — it owns its own `pt-[75px]`/`pb-8` rhythm.
  */
-export function HeroSection({ coverImage }: HeroSectionProps) {
+export function HeroSection({ coverImage, cmsSource }: HeroSectionProps) {
   return (
     <div className={componentClass("HeroSection", {})} {...componentAttributes("HeroSection", "home.hero", {})}>
       <Section.Container data-editor-id="source.hero-section.1">
@@ -32,7 +34,7 @@ export function HeroSection({ coverImage }: HeroSectionProps) {
       </Section.Container>
       <Section.Container data-editor-id="source.hero-section.6" className="mt-[75px]">
         <span data-editor-base-class={"block aspect-hero w-full overflow-hidden bg-block"} data-editor-id="source.hero-section.7" className={elementClass("source.hero-section.7", "block aspect-hero w-full overflow-hidden bg-block")}>
-          <Image src={coverImage.src} alt={coverImage.alt} width={1318} height={608} loading="eager" className="size-full object-cover" />
+          <Image src={coverImage.src} alt={coverImage.alt} {...(cmsSource ? cmsAttributes(cmsSource, "images.0") : {})} width={1318} height={608} loading="eager" className="size-full object-cover" />
         </span>
       </Section.Container>
     </div>

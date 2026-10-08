@@ -13,6 +13,7 @@ function avifSrc(src: string) {
 type ImageProps = ImgHTMLAttributes<HTMLImageElement> & {
   src: string;
   alt: string;
+  "data-static-media"?: string;
 };
 
 /**
@@ -32,7 +33,7 @@ export function Image({ src, alt, loading = "lazy", decoding = "async", ...props
 
   return (
     <picture>
-      <source srcSet={avifSrc(src)} type="image/avif" />
+      <source data-image-avif="" srcSet={avifSrc(src)} type="image/avif" />
       <img src={src} alt={alt} loading={loading} decoding={decoding} {...props} />
     </picture>
   );

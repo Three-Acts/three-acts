@@ -36,6 +36,7 @@ export function isCanvasSelection(value: unknown): value is CanvasSelection {
     && (selection.cmsSource === undefined || readCmsSource(selection.cmsSource) !== null)
     && (selection.textState === undefined || ["editable", "unbound", "structured", "empty"].includes(selection.textState))
     && (selection.textField === undefined || (validBinding(selection.textField) && typeof selection.textField.value === "string"))
+    && (selection.textFormat === undefined || selection.textFormat === "prose" && selection.textField !== undefined && selection.editable === false)
     && (selection.attributes === undefined || (Array.isArray(selection.attributes) && selection.attributes.length <= 6 && selection.attributes.every((attribute) => attribute && ["href", "src", "alt", "title", "target", "aria-label"].includes(attribute.name) && typeof attribute.value === "string" && (attribute.binding === undefined || validBinding(attribute.binding)))))
     && (selection.sourceClasses === undefined || (Array.isArray(selection.sourceClasses) && selection.sourceClasses.length <= 100 && selection.sourceClasses.every(value => typeof value === "string")))
     && (selection.editingComponent === undefined || (typeof selection.editingComponent === "string" && Object.hasOwn(componentDefinitions, selection.editingComponent)))

@@ -57,6 +57,9 @@ export function validateContent(id: string, input: unknown): ContentObject {
     if (typeof template === "string") {
       if (typeof value !== "string" || value.length > 20000) throw new Error(`${path}: enter text under 20,000 characters.`);
       const key = path.split(".").at(-1) ?? "";
+      if ((/(^|_)src(_|$)/i.test(key) || key === "defaultImage") && value && !isSafeMediaUrl(value)) {
+        throw new Error(`${path}: use a site path or https/http image URL.`);
+      }
       if ((/(^|_)(href|src|url)(_|$)/i.test(key) || key === "defaultImage") && value && !isSafeContentUrl(value)) {
         throw new Error(`${path}: use a site path, anchor, https/http, mailto or tel URL.`);
       }
@@ -84,6 +87,10 @@ export function isSafeContentUrl(value: string): boolean {
   if (!(/^\/(?!\/)/.test(value) || /^#[a-z0-9_-]+$/i.test(value) || /^(https?:\/\/|mailto:|tel:)/i.test(value))) return false;
   try { const url = new URL(value, "https://preview.invalid"); return ["https:", "http:", "mailto:", "tel:"].includes(url.protocol); }
   catch { return false; }
+}
+
+export function isSafeMediaUrl(value: string): boolean {
+  return isSafeContentUrl(value) && (/^\/(?!\/)/.test(value) || /^https?:\/\//i.test(value));
 }
 
 export type ContentField = { path: string[]; value: string | number | boolean };

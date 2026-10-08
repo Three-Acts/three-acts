@@ -101,9 +101,10 @@ export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "a
    * objects (see `parseSchemaMarkup` in `./schema-markup`). `"json"` marks a
    * field holding any JSON value (e.g. an order's line items). The API rejects
    * invalid values on every save (draft included); editors render a
-   * code-style input for both.
+   * code-style input for both. `"prose"` holds plain source text with the
+   * site's paragraph/heading/list/autolink format; it never interprets HTML.
    */
-  format?: "json-ld" | "json";
+  format?: "json-ld" | "json" | "prose";
 };
 
 export type SelectField = FieldBase<"select"> & {
