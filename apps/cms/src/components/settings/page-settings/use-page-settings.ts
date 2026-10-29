@@ -13,8 +13,6 @@ function sortPages(records: CmsRecord[]): CmsRecord[] {
 type UsePageSettingsOptions = {
   onDirtyChange: (dirty: boolean) => void;
   onSaved: () => void;
-  initialPagePath?: string | null;
-  requireInitialPagePath?: boolean;
 };
 
 /**
@@ -23,7 +21,7 @@ type UsePageSettingsOptions = {
  * Editing the selected page (draft, dirty tracking, saves, conflicts,
  * uploads) is the shared `useSettingsRecord`.
  */
-export function usePageSettings(collection: CmsCollectionSummary, { onDirtyChange, onSaved, initialPagePath, requireInitialPagePath = false }: UsePageSettingsOptions) {
+export function usePageSettings(collection: CmsCollectionSummary, { onDirtyChange, onSaved }: UsePageSettingsOptions) {
   const { data } = useCmsBackend();
   const record = useSettingsRecord({ collection, onDirtyChange, onSaved });
   const { lastSaved, load, reportError } = record;
@@ -49,8 +47,7 @@ export function usePageSettings(collection: CmsCollectionSummary, { onDirtyChang
 
         const sorted = sortPages(records);
         setPages(sorted);
-        const initialPage = initialPagePath ? sorted.find((page) => text(page.values, "pagePath") === initialPagePath) : undefined;
-        load(initialPage ?? (requireInitialPagePath && initialPagePath ? null : sorted[0] ?? null));
+        load(sorted[0] ?? null);
       })
       .catch((error: unknown) => {
         if (isMounted) {
@@ -66,7 +63,7 @@ export function usePageSettings(collection: CmsCollectionSummary, { onDirtyChang
     return () => {
       isMounted = false;
     };
-  }, [collection.id, data, initialPagePath, load, reportError, requireInitialPagePath]);
+  }, [collection.id, data, load, reportError]);
 
   // The list shows the selected page as last saved, so saves and reloads
   // (status pill, name, path) appear without refetching.

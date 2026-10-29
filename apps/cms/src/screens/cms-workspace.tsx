@@ -1,4 +1,3 @@
-import { cmsSourceField, readCmsSource, type CmsSource } from "@three-acts/cms-schema";
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@three-acts/utils";
@@ -6,24 +5,20 @@ import type { AuthUser } from "@three-acts/auth";
 import { collectionRegistry } from "../cms/registry";
 import { singularize } from "../lib/format";
 import { canCreate, hasPublishWorkflow } from "../lib/records";
-import { BareIconButton, Button, ConfirmDialog, PanelHeader, Tooltip, useToast } from "../components/atoms";
+import { BareIconButton, ConfirmDialog, PanelHeader, Tooltip, useToast } from "../components/atoms";
 import { useCmsWorkspace } from "../hooks/use-cms-workspace";
 import { CollectionSidebar, RecordListPane, RecordsToolbar, RecordTable, TopBar } from "../components/workspace";
 import type { WorkspaceTab } from "../components/workspace";
 import { RecordEditor } from "../components/editor";
 import { ImportDialog } from "../components/import";
-import { MediaSettingsView, SiteSettingsView } from "../components/settings";
-import { PagesWorkspace } from "../components/designer/pages-workspace";
-import type { PublicationSource } from "../components/designer/publication-source";
-import type { PublicationStatus } from "../hooks/use-publication";
+import { PageSettingsView, SiteSettingsView } from "../components/settings";
 
 // Tabs come from the static registry so they don't pop in once the
 // collection summaries finish loading.
 const availableTabs: WorkspaceTab[] = [
-  ...(collectionRegistry.some((collection) => collection.settingsView === "pages") ? (["page-settings"] as const) : []),
   "cms",
-  ...(collectionRegistry.some(collection => collection.settingsView === "media") ? (["resources"] as const) : []),
-  ...(collectionRegistry.some((collection) => collection.settingsView === "site") ? (["site-settings"] as const) : [])
+  ...(collectionRegistry.some((collection) => collection.settingsView === "site") ? (["site-settings"] as const) : []),
+  ...(collectionRegistry.some((collection) => collection.settingsView === "pages") ? (["page-settings"] as const) : [])
 ];
 
 export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<void>; user: AuthUser }) {
@@ -32,9 +27,6 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
     activeCollectionId,
     clearError,
     draftRecord,
-    discardRecordChanges,
-    recordError,
-    reloadRecord,
     error,
     filteredRecords,
     groups,
@@ -84,23 +76,14 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   // same guard covers them. Bumping the revision remounts a clean settings
   // screen so it re-reads records the publish pipeline just changed.
   const [isSettingsDirty, setIsSettingsDirty] = useState(false);
-  const [isDesignerBusy, setIsDesignerBusy] = useState(false);
-  const [publicationSource, setPublicationSource] = useState<PublicationSource | null>(null);
-  const [publicationLocked, setPublicationLocked] = useState(false);
-  const [publicationStatus, setPublicationStatus] = useState<PublicationStatus | null>(null);
-  const [publishRevision, setPublishRevision] = useState(0);
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>(availableTabs[0] ?? "cms");
-  const [designerToolbarHost, setDesignerToolbarHost] = useState<HTMLDivElement | null>(null);
-  const [publishOpen, setPublishOpen] = useState(false);
-  const [cmsReturn, setCmsReturn] = useState<CmsSource | null>(null);
-  const [detailsDiscardRevision, setDetailsDiscardRevision] = useState(0);
-  const [viewSiteUrl, setViewSiteUrl] = useState<string | null>(null);
+  const [settingsRevision, setSettingsRevision] = useState(0);
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("cms");
   const siteSettingsCollection = settingsCollections.find((collection) => collection.settingsView === "site");
   const redirectRulesCollection = settingsCollections.find((collection) => collection.settingsView === "redirects");
   const mediaCollection = settingsCollections.find((collection) => collection.settingsView === "media");
   const pageSettingsCollection = settingsCollections.find((collection) => collection.settingsView === "pages");
   const settingsCollection =
-    activeTab === "resources" ? mediaCollection : activeTab === "site-settings" ? siteSettingsCollection : activeTab === "page-settings" ? pageSettingsCollection : undefined;
+    activeTab === "site-settings" ? siteSettingsCollection : activeTab === "page-settings" ? pageSettingsCollection : undefined;
 
   useEffect(() => {
     if (!error) {
@@ -131,38 +114,21 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   function handlePublished() {
     refreshRecords();
     refreshCollections();
-    setPublishRevision((revision) => revision + 1);
+
+    if (!isSettingsDirty) {
+      setSettingsRevision((revision) => revision + 1);
+    }
   }
 
-  function guardNavigation(action: () => void, settingsUnsafe = isSettingsDirty, preserveRecord = false) {
-    if (publicationLocked || isDesignerBusy || isSaving || uploadingField) return;
-    if ((!preserveRecord && isDirty) || settingsUnsafe) {
-      setPendingAction(() => () => {
-        if (!preserveRecord && isDirty) discardRecordChanges();
-        if (settingsUnsafe) setDetailsDiscardRevision(revision => revision + 1);
-        action();
-      });
+  function guardNavigation(action: () => void) {
+    if (isDirty || isSettingsDirty) {
+      setPendingAction(() => action);
     } else {
       action();
     }
   }
 
-  function returnToCanvas() {
-    guardNavigation(() => { setSelectedRecordId(null); setPublishOpen(false); setActiveTab("page-settings"); setCmsReturn(null); });
-  }
-  function openCmsRecord(raw: CmsSource, leaveDetails: () => void, dirtyDetails: boolean) {
-    const source = readCmsSource(raw);
-    if (!source) return;
-    guardNavigation(() => {
-      leaveDetails();
-      handleSelectCollection(source.collectionId);
-      setSelectedRecordId(source.recordId);
-      setCmsReturn(source);
-      setPublishOpen(false);
-      setActiveTab("cms");
-    }, dirtyDetails, activeCollectionId === source.collectionId && selectedRecordId === source.recordId);
-  }
-  const handleGuardedBack = () => cmsReturn ? returnToCanvas() : guardNavigation(() => setSelectedRecordId(null));
+  const handleGuardedBack = () => guardNavigation(() => setSelectedRecordId(null));
 
   function handleSelectRecordFromList(recordId: string) {
     guardNavigation(() => setSelectedRecordId(recordId));
@@ -179,16 +145,13 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
   // The CMS tab's draft lives in the workspace hook and survives a tab switch;
   // a settings screen unmounts, so only its unsaved edits need the guard.
   function handleTabChange(tab: WorkspaceTab) {
-    if (isDesignerBusy || isSaving || uploadingField) return;
-    if (tab === "page-settings" && cmsReturn) { returnToCanvas(); return; }
     if (tab === activeTab) {
       return;
     }
 
     if (isSettingsDirty) {
-      setPendingAction(() => () => { setDetailsDiscardRevision(revision => revision + 1); setPublishOpen(false); setActiveTab(tab); });
+      setPendingAction(() => () => setActiveTab(tab));
     } else {
-      setPublishOpen(false);
       setActiveTab(tab);
     }
   }
@@ -220,20 +183,8 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
         onTabChange={handleTabChange}
         queuedCount={queuedCount}
         user={user}
-        designerToolbarRef={setDesignerToolbarHost}
-        editorBusy={isDesignerBusy}
-        publishOpen={publishOpen}
-        onPublishOpenChange={setPublishOpen}
-        viewSiteUrl={viewSiteUrl}
-        publicationSource={publicationSource}
-        onPublicationLockedChange={setPublicationLocked}
-        onPublicationStatusChange={setPublicationStatus}
-        unsavedPublication={isDirty || isSettingsDirty || isSaving || Boolean(uploadingField)}
       />
-      <div inert={publicationLocked} className="flex min-h-0 flex-1">
-        {pageSettingsCollection && <main hidden={activeTab !== "page-settings"} className={cn("relative min-h-0 min-w-0 flex-1", activeTab === "page-settings" ? "flex" : "hidden")}>
-          <PagesWorkspace collection={pageSettingsCollection} key={pageSettingsCollection.id} active={activeTab === "page-settings"} onOpenCmsRecord={openCmsRecord} discardDetailsRevision={detailsDiscardRevision} onDirtyChange={setIsSettingsDirty} onSaved={refreshCollections} onBusyChange={setIsDesignerBusy} user={user} toolbarHost={activeTab === "page-settings" ? designerToolbarHost : null} onClosePublish={() => setPublishOpen(false)} onViewSiteUrlChange={setViewSiteUrl} publishRevision={publishRevision} onPublicationSourceChange={setPublicationSource} publicationLocked={publicationLocked} publicationStatus={publicationStatus}/>
-        </main>}
+      <div className="flex min-h-0 flex-1">
         {activeTab === "cms" ? (
           <CollectionSidebar
             activeCollectionId={activeCollectionId}
@@ -243,7 +194,7 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
           />
         ) : null}
 
-        {activeTab === "page-settings" && pageSettingsCollection ? null : activeTab !== "cms" && !settingsCollection ? (
+        {activeTab !== "cms" && !settingsCollection ? (
           <main className="grid flex-1 place-items-center p-8 text-center" role="status">
             <p className="m-0 text-ui text-cms-subtle">Loading settings…</p>
           </main>
@@ -251,13 +202,23 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
           // Settings tabs take the whole workspace below the top bar; the
           // collections sidebar belongs to the CMS tab only.
           <main className="relative flex min-h-0 min-w-0 flex-1">
-              {activeTab === "resources" ? <MediaSettingsView collection={settingsCollection} key={`${settingsCollection.id}-${publishRevision}`} onDirtyChange={setIsSettingsDirty} onSaved={refreshCollections}/> : <SiteSettingsView
+            {activeTab === "page-settings" ? (
+              <PageSettingsView
                 collection={settingsCollection}
-                key={`${settingsCollection.id}-${publishRevision}`}
+                key={`${settingsCollection.id}-${settingsRevision}`}
                 onDirtyChange={setIsSettingsDirty}
                 onSaved={refreshCollections}
+              />
+            ) : (
+              <SiteSettingsView
+                collection={settingsCollection}
+                key={`${settingsCollection.id}-${settingsRevision}`}
+                onDirtyChange={setIsSettingsDirty}
+                onSaved={refreshCollections}
+                mediaCollection={mediaCollection}
                 redirectCollection={redirectRulesCollection}
-              />}
+              />
+            )}
           </main>
         ) : activeCollection ? (
           <main className="relative flex min-h-0 min-w-0 flex-1">
@@ -320,8 +281,6 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
               draftRecord ? (
                 <RecordEditor
                   collection={activeCollection}
-                  backLabel={cmsReturn ? "Back to canvas" : "Back to table"}
-                  focusField={cmsReturn?.collectionId === activeCollection.id && cmsReturn.recordId === draftRecord.id ? cmsSourceField(cmsReturn)?.key : undefined}
                   draftRecord={draftRecord}
                   isDirty={isDirty}
                   isSaving={isSaving}
@@ -337,16 +296,16 @@ export function CmsWorkspace({ onSignOut, user }: { onSignOut: () => Promise<voi
                   uploadingField={uploadingField}
                 />
               ) : (
-                <div role="region" aria-label="CMS record loading" aria-busy={!recordError} className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
+                <div aria-busy="true" className="flex min-h-0 min-w-0 flex-1 flex-col bg-cms-bg">
                   <PanelHeader>
-                    <Tooltip content={cmsReturn ? "Back to canvas" : "Back to table"}>
-                      <BareIconButton aria-label={cmsReturn ? "Back to canvas" : "Back to table"} disabled={isSaving} onClick={handleGuardedBack}>
+                    <Tooltip content="Back to table">
+                      <BareIconButton aria-label="Back to table" onClick={handleGuardedBack}>
                         <ArrowLeft size={15} />
                       </BareIconButton>
                     </Tooltip>
                   </PanelHeader>
                   <div className="grid flex-1 place-items-center p-8 text-center">
-                    <div className="grid gap-2"><p role={recordError ? "alert" : undefined} className="m-0 text-ui text-cms-subtle">{recordError ?? "Loading record…"}</p>{recordError && <Button onClick={() => void reloadRecord()}>Retry record</Button>}</div>
+                    <p className="m-0 text-ui text-cms-subtle">Loading record…</p>
                   </div>
                 </div>
               )

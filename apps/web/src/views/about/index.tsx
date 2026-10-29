@@ -1,6 +1,3 @@
-import { cmsAttributes } from "@three-acts/cms-schema";
-import { elementClass } from "../../lib/design";
-import copy from "@three-acts/static-content/documents/about.json";
 import type { Author, Testimonial } from "@three-acts/content";
 import { Grid } from "../../components/layout/grid";
 import { Section } from "../../components/layout/section";
@@ -15,11 +12,30 @@ type AboutPageProps = {
   testimonials: Testimonial[];
 };
 
-const STORY = copy.about.story_1;
+const STORY = [
+  "We built Three Acts after the same brief showed up for the fourth time: a marketing site, somewhere non-technical for an editor to make changes, and no budget to rebuild the plumbing from scratch each time. Three Acts is that shape, built once and left open to configure rather than rewrite.",
+  "The public site renders to static HTML by default. React only ships where a page actually needs it — cart, checkout, sign-in, a form — as an isolated island, not a framework wrapped around every route.",
+  "Every collection, field and constraint is declared once in the collection registry. The editor, the API's validation and the generated Postgres schema all read the same file, so the three never drift apart.",
+  "Neither the public site nor the editorial app ever holds a database credential or a payment key. Every write and every auth call goes through the API app — the one place secrets live, and the one place to audit.",
+  "A client fork edits the registry, the seed data, the shop config and the theme tokens — not the plumbing underneath. Swap the backend, keep the site."
+];
 
-const VALUE_TILES = copy.about.value_tiles_2;
+const VALUE_TILES = [
+  { mark: "01", title: "Static-first", description: "Every route pre-renders to HTML; islands hydrate only what needs to be interactive." },
+  { mark: "02", title: "One registry", description: "Collections, fields and constraints declared once, shared by the editor, the API and the schema." },
+  { mark: "03", title: "Swap the backend", description: "File-backed storage today, Postgres or Supabase tomorrow — the same interface either way." },
+  { mark: "04", title: "Everything through the API", description: "Every browser write and every auth call goes through one app. No app holds a provider credential." },
+  { mark: "05", title: "Fork in an afternoon", description: "Rename the brand, edit the registry, swap the seed data — the plumbing stays put." },
+  { mark: "06", title: "Wireframe design system", description: "Black, white and one gray. Hierarchy comes from size and space, not colour." }
+];
 
-const PROCESS_STEPS = copy.about.process_steps_3;
+const PROCESS_STEPS = [
+  { number: "01", title: "Fork", description: "Clone the repo, then rename the brand in site.ts and the design tokens in theme.css." },
+  { number: "02", title: "Configure the registry", description: "Add, remove or retype collections and fields in the collection registry for the client's real content and product model." },
+  { number: "03", title: "Seed and design", description: "Replace the example seed data, swap in the client's real copy and imagery, and adjust the theme tokens to the client's brand." },
+  { number: "04", title: "Connect a store", description: "Point the data and storage backends at Postgres or Supabase — or keep the zero-configuration file-backed store for a lightweight site with no shop." },
+  { number: "05", title: "Deploy", description: "Set the client's own secrets, deploy the web, CMS and API apps, and run the first publish." }
+];
 
 /**
  * The `/about` route: a two-column story + value-tile intro, the "how a
@@ -30,25 +46,25 @@ const PROCESS_STEPS = copy.about.process_steps_3;
 export function AboutPage({ authors, testimonials }: AboutPageProps) {
   return (
     <>
-      <Section.Root data-editor-id="source.about.1">
-        <Section.Container data-editor-id="source.about.2">
+      <Section.Root>
+        <Section.Container>
           <Section.Header
-            eyebrow={<span data-editor-base-class={""} data-editor-id="about.about.eyebrow_4" className={elementClass("about.about.eyebrow_4", "")} data-static-field="about.about.eyebrow_4">{copy.about.eyebrow_4}</span>}
-            title={<span data-editor-base-class={""} data-editor-id="about.about.title_5" className={elementClass("about.about.title_5", "")} data-static-field="about.about.title_5">{copy.about.title_5}</span>}
-            lede={<span data-editor-base-class={""} data-editor-id="about.about.lede_6" className={elementClass("about.about.lede_6", "")} data-static-field="about.about.lede_6">{copy.about.lede_6}</span>}
+            eyebrow="About"
+            title="One template, three apps, no re-plumbing"
+            lede="Three Acts is a static-first Astro site, a private CMS and a typed API bridge, versioned together in one repo. Here's why we built it that way, and what forking it actually looks like."
           />
-          <div data-editor-base-class={"grid gap-x-gap gap-y-gap-y landscape:grid-cols-split"} data-editor-id="source.about.3" className={elementClass("source.about.3", "grid gap-x-gap gap-y-gap-y landscape:grid-cols-split")}>
-            <div data-editor-base-class={"flex flex-col justify-between gap-8"} data-editor-id="source.about.4" className={elementClass("source.about.4", "flex flex-col justify-between gap-8")}>
-              <Typography.Eyebrow data-editor-id="source.about.5"><span data-editor-base-class={""} data-editor-id="about.about.eyebrow_7" className={elementClass("about.about.eyebrow_7", "")} data-static-field="about.about.eyebrow_7">{copy.about.eyebrow_7}</span></Typography.Eyebrow>
-              <div data-editor-base-class={"flex max-w-[640px] flex-col gap-6"} data-editor-id="source.about.6" className={elementClass("source.about.6", "flex max-w-[640px] flex-col gap-6")}>
+          <div className="grid gap-x-gap gap-y-gap-y landscape:grid-cols-split">
+            <div className="flex flex-col justify-between gap-8">
+              <Typography.Eyebrow>The short version</Typography.Eyebrow>
+              <div className="flex max-w-[640px] flex-col gap-6">
                 {STORY.map((paragraph, index) => (
-                  <p data-editor-base-class={"text-body text-ink"} data-editor-id="source.about.7" key={index} className={elementClass("source.about.7", "text-body text-ink")}>
+                  <p key={index} className="text-body text-ink">
                     {paragraph}
                   </p>
                 ))}
               </div>
             </div>
-            <Grid.Root data-editor-id="source.about.8" cols={3}>
+            <Grid.Root cols={3}>
               {VALUE_TILES.map((tile) => (
                 <Tile.Root key={tile.mark} mark={tile.mark} title={tile.title} description={tile.description} />
               ))}
@@ -57,16 +73,16 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
         </Section.Container>
       </Section.Root>
 
-      <Section.Root data-editor-id="source.about.9">
-        <Section.Container data-editor-id="source.about.10">
-          <Section.Header eyebrow={<span data-editor-base-class={""} data-editor-id="about.about.eyebrow_8" className={elementClass("about.about.eyebrow_8", "")} data-static-field="about.about.eyebrow_8">{copy.about.eyebrow_8}</span>} title={<span data-editor-base-class={""} data-editor-id="about.about.title_9" className={elementClass("about.about.title_9", "")} data-static-field="about.about.title_9">{copy.about.title_9}</span>} />
-          <div data-editor-base-class={""} data-editor-id="source.about.11" className={elementClass("source.about.11", "")}>
+      <Section.Root>
+        <Section.Container>
+          <Section.Header eyebrow="Process" title="How a client site ships" />
+          <div>
             {PROCESS_STEPS.map((step) => (
-              <div data-editor-base-class={"grid gap-x-4 gap-y-2 border-t border-line-strong py-8 landscape:grid-cols-[120px_1fr]"} data-editor-id="source.about.12" key={step.number} className={elementClass("source.about.12", "grid gap-x-4 gap-y-2 border-t border-line-strong py-8 landscape:grid-cols-[120px_1fr]")}>
-                <span data-editor-base-class={"text-h2 font-normal text-ink"} data-editor-id="source.about.13" className={elementClass("source.about.13", "text-h2 font-normal text-ink")}>{step.number}</span>
-                <div data-editor-base-class={"flex flex-col gap-2"} data-editor-id="source.about.14" className={elementClass("source.about.14", "flex flex-col gap-2")}>
-                  <h3 data-editor-base-class={"text-h3 font-medium text-ink"} data-editor-id="source.about.15" className={elementClass("source.about.15", "text-h3 font-medium text-ink")}>{step.title}</h3>
-                  <p data-editor-base-class={"max-w-2xl text-body text-ink"} data-editor-id="source.about.16" className={elementClass("source.about.16", "max-w-2xl text-body text-ink")}>{step.description}</p>
+              <div key={step.number} className="grid gap-x-4 gap-y-2 border-t border-line-strong py-8 landscape:grid-cols-[120px_1fr]">
+                <span className="text-h2 font-normal text-ink">{step.number}</span>
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-h3 font-medium text-ink">{step.title}</h3>
+                  <p className="max-w-2xl text-body text-ink">{step.description}</p>
                 </div>
               </div>
             ))}
@@ -75,25 +91,25 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
       </Section.Root>
 
       {authors.length > 0 && (
-        <Section.Root data-editor-id="source.about.17" className="bg-ink text-surface">
-          <Section.Container data-editor-id="source.about.18">
-            <Typography.Title data-editor-id="source.about.19" className="mb-10 text-surface"><span data-editor-base-class={""} data-editor-id="about.about.title_10" className={elementClass("about.about.title_10", "")} data-static-field="about.about.title_10">{copy.about.title_10}</span></Typography.Title>
-            <div data-editor-base-class={"grid gap-x-gap gap-y-gap-y landscape:grid-cols-label-grid"} data-editor-id="source.about.20" className={elementClass("source.about.20", "grid gap-x-gap gap-y-gap-y landscape:grid-cols-label-grid")}>
-              <div data-editor-base-class={"flex items-baseline gap-2"} data-editor-id="source.about.21" className={elementClass("source.about.21", "flex items-baseline gap-2")}>
-                <h3 data-editor-base-class={"text-h3 font-medium text-surface"} data-editor-id="source.about.22" className={elementClass("source.about.22", "text-h3 font-medium text-surface")}><span data-editor-base-class={""} data-editor-id="about.about.h3_11" className={elementClass("about.about.h3_11", "")} data-static-field="about.about.h3_11">{copy.about.h3_11}</span></h3>
-                <span data-editor-base-class={"text-small text-surface"} data-editor-id="source.about.23" className={elementClass("source.about.23", "text-small text-surface")}>({authors.length})</span>
+        <Section.Root className="bg-ink text-surface">
+          <Section.Container>
+            <Typography.Title className="mb-10 text-surface">The team</Typography.Title>
+            <div className="grid gap-x-gap gap-y-gap-y landscape:grid-cols-label-grid">
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-h3 font-medium text-surface">Team</h3>
+                <span className="text-small text-surface">({authors.length})</span>
               </div>
-              <div data-editor-base-class={"grid grid-cols-1 gap-x-gap gap-y-gap-y landscape:grid-cols-2 tablet:grid-cols-3"} data-editor-id="source.about.24" className={elementClass("source.about.24", "grid grid-cols-1 gap-x-gap gap-y-gap-y landscape:grid-cols-2 tablet:grid-cols-3")}>
+              <div className="grid grid-cols-1 gap-x-gap gap-y-gap-y landscape:grid-cols-2 tablet:grid-cols-3">
                 {authors.map((author) => (
-                  <a data-editor-base-class={"focus-ring group flex flex-col items-center gap-3 border border-surface bg-surface p-6 text-center"} data-editor-id="source.about.25"
-                    {...cmsAttributes({ collectionId: "authors", recordId: author.id, label: author.name }, "name")} key={author.slug}
+                  <a
+                    key={author.slug}
                     href={`/authors/${author.slug}`}
-                    className={elementClass("source.about.25", "focus-ring group flex flex-col items-center gap-3 border border-surface bg-surface p-6 text-center")}
+                    className="focus-ring group flex flex-col items-center gap-3 border border-surface bg-surface p-6 text-center"
                   >
-                    <Avatar.Root {...cmsAttributes({ collectionId: "authors", recordId: author.id, label: author.name }, "avatar")} name={author.name} src={author.avatar?.src} size="lg" />
-                    <span data-editor-base-class={"flex flex-col gap-1"} data-editor-id="source.about.26" className={elementClass("source.about.26", "flex flex-col gap-1")}>
-                      <span data-editor-base-class={"text-body font-medium text-ink group-hover:underline"} data-editor-id="source.about.27" className={elementClass("source.about.27", "text-body font-medium text-ink group-hover:underline")}>{author.name}</span>
-                      <span data-editor-base-class={"text-small text-ink"} data-editor-id="source.about.28" className={elementClass("source.about.28", "text-small text-ink")} {...cmsAttributes({ collectionId: "authors", recordId: author.id, label: author.name }, "role")}>{author.role}</span>
+                    <Avatar.Root name={author.name} src={author.avatar?.src} size="lg" />
+                    <span className="flex flex-col gap-1">
+                      <span className="text-body font-medium text-ink group-hover:underline">{author.name}</span>
+                      <span className="text-small text-ink">{author.role}</span>
                     </span>
                   </a>
                 ))}
@@ -104,13 +120,12 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
       )}
 
       {testimonials.length > 0 && (
-        <Section.Root data-editor-id="source.about.29">
-          <Section.Container data-editor-id="source.about.30">
-            <Section.Header align="center" eyebrow={<span data-editor-base-class={""} data-editor-id="about.about.eyebrow_12" className={elementClass("about.about.eyebrow_12", "")} data-static-field="about.about.eyebrow_12">{copy.about.eyebrow_12}</span>} title={<span data-editor-base-class={""} data-editor-id="about.about.title_13" className={elementClass("about.about.title_13", "")} data-static-field="about.about.title_13">{copy.about.title_13}</span>} />
-            <Grid.Root data-editor-id="source.about.31" cols={testimonials.length >= 4 ? 4 : 3}>
+        <Section.Root>
+          <Section.Container>
+            <Section.Header align="center" eyebrow="Agencies" title="What agencies say" />
+            <Grid.Root cols={testimonials.length >= 4 ? 4 : 3}>
               {testimonials.map((testimonial) => (
                 <Card.Testimonial
-                  cmsSource={{ collectionId: "testimonials", recordId: testimonial.id, label: testimonial.customerName }}
                   key={testimonial.id}
                   quote={testimonial.quote}
                   customerName={testimonial.customerName}
@@ -125,12 +140,13 @@ export function AboutPage({ authors, testimonials }: AboutPageProps) {
         </Section.Root>
       )}
 
-      <Section.Root data-editor-id="source.about.32" className="pt-0">
-        <Section.Container data-editor-id="source.about.33">
-          <div data-editor-base-class={"flex flex-col gap-6 border border-line p-[30px] landscape:flex-row landscape:items-center landscape:justify-between"} data-editor-id="source.about.34" className={elementClass("source.about.34", "flex flex-col gap-6 border border-line p-[30px] landscape:flex-row landscape:items-center landscape:justify-between")}>
-            <Typography.Title data-editor-id="source.about.35" as="h2"><span data-editor-base-class={""} data-editor-id="about.about.title_14" className={elementClass("about.about.title_14", "")} data-static-field="about.about.title_14">{copy.about.title_14}</span></Typography.Title>
-            <Button.Link data-editor-id="about.about.href_15" data-static-field="about.about.href_15" data-static-attribute="href" href={copy.about.href_15} icon="arrow">
-              <span data-editor-base-class={""} data-editor-id="about.about.link_16" className={elementClass("about.about.link_16", "")} data-static-field="about.about.link_16">{copy.about.link_16}</span></Button.Link>
+      <Section.Root className="pt-0">
+        <Section.Container>
+          <div className="flex flex-col gap-6 border border-line p-[30px] landscape:flex-row landscape:items-center landscape:justify-between">
+            <Typography.Title as="h2">Talk to us about an agency licence</Typography.Title>
+            <Button.Link href="/agencies" icon="arrow">
+              See agency licensing
+            </Button.Link>
           </div>
         </Section.Container>
       </Section.Root>

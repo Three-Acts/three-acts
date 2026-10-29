@@ -1,11 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
-import { cmsAttributes, type CmsSource } from "@three-acts/cms-schema";
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@three-acts/utils";
 
 type RootProps = Omit<HTMLAttributes<HTMLElement>, "title"> & {
   className?: string;
-  cmsSource?: CmsSource;
   title: ReactNode;
   /** A short prefix like "01", set top-left above the title. */
   mark?: ReactNode;
@@ -17,7 +15,7 @@ type RootProps = Omit<HTMLAttributes<HTMLElement>, "title"> & {
 const BASE = "group flex aspect-tile flex-col justify-between border border-line-strong bg-surface p-6 desktop:p-8";
 
 /** The bordered square feature tile: a `mark` top-left, `title`/`description` bottom-left. Used for value/feature grids (no photos). */
-function Root({ title, mark, description, href, className, cmsSource, ...props }: RootProps) {
+function Root({ title, mark, description, href, className, ...props }: RootProps) {
   const content = (
     <>
       {mark && (
@@ -26,22 +24,22 @@ function Root({ title, mark, description, href, className, cmsSource, ...props }
         </span>
       )}
       <span className="flex flex-col gap-1">
-        <span className={cn("text-body font-medium text-ink", href && "group-hover:underline")} {...cmsAttributes(cmsSource, "name")}>{title}</span>
-        {description && <span className="text-small text-ink" {...cmsAttributes(cmsSource, "description")}>{description}</span>}
+        <span className={cn("text-body font-medium text-ink", href && "group-hover:underline")}>{title}</span>
+        {description && <span className="text-small text-ink">{description}</span>}
       </span>
     </>
   );
 
   if (href) {
     return (
-      <a href={href} className={cn(BASE, "focus-ring", className)} {...(props as HTMLAttributes<HTMLAnchorElement>)} {...cmsAttributes(cmsSource, "slug")}>
+      <a href={href} className={cn(BASE, "focus-ring", className)} {...(props as HTMLAttributes<HTMLAnchorElement>)}>
         {content}
       </a>
     );
   }
 
   return (
-    <div className={cn(BASE, className)} {...props} {...cmsAttributes(cmsSource, "name")}>
+    <div className={cn(BASE, className)} {...props}>
       {content}
     </div>
   );

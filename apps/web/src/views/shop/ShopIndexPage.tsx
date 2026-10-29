@@ -22,14 +22,13 @@ export function ShopIndexPage({ meta, categories, products }: ShopIndexPageProps
 
   return (
     <>
-      <Section.Root data-editor-id="source.ShopIndexPage.1" className="pb-0">
-        <Section.Container data-editor-id="source.ShopIndexPage.2">
+      <Section.Root className="pb-0">
+        <Section.Container>
           <Section.Header eyebrow="Shop" title="Everything in the template" lede={meta.seo.description} />
-          <Grid.Root data-editor-id="source.ShopIndexPage.3" cols={4}>
+          <Grid.Root cols={4}>
             {sortedCategories.map((category, index) => (
               <Tile.Root
-              cmsSource={{ collectionId: "product-categories", recordId: category.id, label: category.name }}
-              key={category.id}
+                key={category.id}
                 mark={String(index + 1).padStart(2, "0")}
                 title={category.name}
                 description={category.description}
@@ -40,8 +39,8 @@ export function ShopIndexPage({ meta, categories, products }: ShopIndexPageProps
         </Section.Container>
       </Section.Root>
 
-      <Section.Root data-editor-id="source.ShopIndexPage.4" className="pt-0">
-        <Section.Container data-editor-id="source.ShopIndexPage.5">
+      <Section.Root className="pt-0">
+        <Section.Container>
           <Section.Header title="All pieces" lede="Every app, package, module, theme, integration, licence, service and bundle currently for sale." />
           <ProductGrid products={sortedProducts} />
         </Section.Container>

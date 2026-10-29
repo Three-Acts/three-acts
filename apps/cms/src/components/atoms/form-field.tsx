@@ -10,7 +10,6 @@ type FormFieldProps = {
   /** Only needed for controls Base UI cannot discover itself (e.g. a raw file input). */
   htmlFor?: string;
   label: string;
-  fieldKey?: string;
   /** Marks the label; set `required` on the control too so validation can fire. */
   required?: boolean;
 };
@@ -20,9 +19,9 @@ type FormFieldProps = {
  * Switch, and NumberField parts associate themselves with the label and the
  * description automatically, so no id threading is needed for those.
  */
-export function FormField({ children, className, description, htmlFor, label, required, fieldKey }: FormFieldProps) {
+export function FormField({ children, className, description, htmlFor, label, required }: FormFieldProps) {
   return (
-    <Field.Root data-cms-field={fieldKey} className={cn("mb-4 grid gap-1.5 last:mb-0", className)} validationMode="onBlur">
+    <Field.Root className={cn("mb-4 grid gap-1.5 last:mb-0", className)} validationMode="onBlur">
       <Field.Label className="flex items-center gap-1 text-ui font-medium text-cms-muted" htmlFor={htmlFor}>
         {label}
         {/* The accent is reserved for actions, so "you must fill this in" borrows the danger hue. */}

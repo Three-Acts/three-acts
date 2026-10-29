@@ -101,10 +101,9 @@ export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "a
    * objects (see `parseSchemaMarkup` in `./schema-markup`). `"json"` marks a
    * field holding any JSON value (e.g. an order's line items). The API rejects
    * invalid values on every save (draft included); editors render a
-   * code-style input for both. `"prose"` holds plain source text with the
-   * site's paragraph/heading/list/autolink format; it never interprets HTML.
+   * code-style input for both.
    */
-  format?: "json-ld" | "json" | "prose";
+  format?: "json-ld" | "json";
 };
 
 export type SelectField = FieldBase<"select"> & {
@@ -265,8 +264,6 @@ export type CmsDataAdapter = {
    * the data adapter.
    */
   publishQueued: (collectionId?: string) => Promise<{ published: number }>;
-  /** Promote only the exact queued versions captured in publication review. */
-  publishReviewed: (records: import("./publication").ReviewedCmsRecord[]) => Promise<import("./publication").CmsPromotionResult>;
   /**
    * Bulk status override for the selection toolbar ("Update items"). Only
    * `queued_to_publish` and `not_published` are valid targets: `published` is

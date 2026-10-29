@@ -1,14 +1,5 @@
 @import "tailwindcss";
 @import "./theme.css";
-@source "../../../packages/design/src/utility-candidates.json";
-@source "../../../packages/design/src/components.ts";
-@source "../../../packages/design/src/index.ts";
-@source "../../../packages/static-content/src/documents/design.json";
-
-/* These project breakpoint names also exist as built-in orientation variants.
- * Resolve them from our theme so responsive styles follow width at every zoom. */
-@custom-variant portrait (@media (width >= theme(--breakpoint-portrait)));
-@custom-variant landscape (@media (width >= theme(--breakpoint-landscape)));
 
 /*
  * Base element resets live in Tailwind's `base` layer (not unlayered), so

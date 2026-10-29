@@ -1,4 +1,3 @@
-import { componentAttributes, componentClass, componentIdentity } from "../../../lib/design";
 /* eslint-disable react-refresh/only-export-components */
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@three-acts/utils";
@@ -12,7 +11,7 @@ type RootProps = HTMLAttributes<HTMLElement> & {
 /** A page section's outer `<section>` — no frame, no borders: bands run edge to edge of the viewport. Nest Section.Container inside to centre and constrain the content. */
 function Root({ children, className, ...props }: RootProps) {
   return (
-    <section className={componentClass("Section.Root", {}, className)} {...props} {...componentAttributes("Section.Root", componentIdentity(props), {}, className)}>
+    <section className={cn("py-section-sm landscape:py-section-md desktop:py-section", className)} {...props}>
       {children}
     </section>
   );
@@ -26,13 +25,13 @@ type ContainerProps = HTMLAttributes<HTMLDivElement> & {
 /** The Relume-style content container: centred, capped at `max-w-content` (80rem), 5% side padding. Nothing else sets a max-width or draws a border around it. */
 function Container({ children, className, ...props }: ContainerProps) {
   return (
-    <div className={componentClass("Section.Container", {}, className)} {...props} {...componentAttributes("Section.Container", componentIdentity(props), {}, className)}>
+    <div className={cn("mx-auto w-full max-w-content px-gutter", className)} {...props}>
       {children}
     </div>
   );
 }
 
-type HeaderProps = Omit<HTMLAttributes<HTMLDivElement>, "title"> & {
+type HeaderProps = HTMLAttributes<HTMLDivElement> & {
   className?: string;
   eyebrow?: ReactNode;
   title: ReactNode;

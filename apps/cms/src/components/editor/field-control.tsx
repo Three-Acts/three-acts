@@ -1,5 +1,5 @@
 import { ExternalLink, Lock } from "lucide-react";
-import { cn, proseFormatHelp } from "@three-acts/utils";
+import { cn } from "@three-acts/utils";
 import type {
   AssetField,
   CmsField,
@@ -71,8 +71,8 @@ function readOnlyDisplay(field: CmsField, value: CmsRecordValue): string {
 }
 
 /** `text`/`textarea` fields are the only ones carrying `format`; every other field type has none. */
-function fieldFormat(field: CmsField): "json" | "json-ld" | "prose" | undefined {
-  return (field as { format?: "json" | "json-ld" | "prose" }).format;
+function fieldFormat(field: CmsField): "json" | "json-ld" | undefined {
+  return (field as { format?: "json" | "json-ld" }).format;
 }
 
 function isCodeFormat(field: CmsField): boolean {
@@ -106,7 +106,6 @@ function toNumberValue(value: CmsRecordValue): number | null {
 
 export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryItemUpload, onUpdateValue, readOnly, record, uploadingField }: FieldControlProps) {
   const value = record.values[field.key] ?? "";
-  const description = fieldFormat(field) === "prose" ? [field.helpText, proseFormatHelp].filter(Boolean).join(" ") : field.helpText;
   // Base UI Field wires labels to its own control parts; only the raw file input needs an id.
   const uploadId = `${record.id}-${field.key}`;
   // A field can be read-only either because the whole collection is
@@ -125,8 +124,7 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
 
     return (
       <FormField
-        fieldKey={field.key}
-        description={description}
+        description={field.helpText}
         label={field.label}
         required={fieldReadOnly ? undefined : field.required}
       >
@@ -184,8 +182,7 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
 
     return (
       <FormField
-        fieldKey={field.key}
-        description={description}
+        description={field.helpText}
         label={field.label}
         required={fieldReadOnly ? undefined : field.required}
       >
@@ -224,7 +221,7 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
     const codeFormat = isCodeFormat(field);
 
     return (
-      <FormField fieldKey={field.key} description={description} label={field.label}>
+      <FormField description={field.helpText} label={field.label}>
         <div className="flex items-start gap-1.5">
           {codeFormat ? (
             <pre className="m-0 min-h-13 min-w-0 flex-1 overflow-auto whitespace-pre-wrap wrap-break-word rounded-cms border border-cms-line-strong bg-cms-surface px-2 py-1.5 font-mono text-field text-cms-muted leading-5">
@@ -259,7 +256,7 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
     const codeFormat = isCodeFormat(field);
 
     return (
-      <FormField fieldKey={field.key} description={description} label={field.label} required={field.required}>
+      <FormField description={field.helpText} label={field.label} required={field.required}>
         <Textarea
           className={cn("min-h-22 resize-y leading-6", codeFormat && "font-mono text-field leading-5")}
           onChange={(event) => onUpdateValue(field.key, event.target.value)}
@@ -273,7 +270,7 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
 
   if (field.type === "boolean") {
     return (
-      <FormField fieldKey={field.key} description={description} label={field.label} required={field.required}>
+      <FormField description={field.helpText} label={field.label} required={field.required}>
         <Toggle checked={Boolean(value)} onChange={(checked) => onUpdateValue(field.key, checked)} />
       </FormField>
     );
@@ -281,7 +278,7 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
 
   if (field.type === "number") {
     return (
-      <FormField fieldKey={field.key} description={description} label={field.label} required={field.required}>
+      <FormField description={field.helpText} label={field.label} required={field.required}>
         <NumberInput onValueChange={(next) => onUpdateValue(field.key, next)} required={field.required} value={toNumberValue(value)} />
       </FormField>
     );
@@ -291,7 +288,7 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
     const selectField = field as SelectField;
 
     return (
-      <FormField fieldKey={field.key} description={description} label={field.label} required={field.required}>
+      <FormField description={field.helpText} label={field.label} required={field.required}>
         <Select
           onValueChange={(next) => onUpdateValue(field.key, next)}
           options={[{ label: "Select…", value: "" }, ...selectField.options]}
@@ -305,7 +302,7 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
     const assetField = field as AssetField;
 
     return (
-      <FormField fieldKey={field.key} description={description} label={field.label} required={field.required}>
+      <FormField description={field.helpText} label={field.label} required={field.required}>
         <AssetControl
           accept={assetField.accept}
           inputId={uploadId}
@@ -322,7 +319,7 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
     const slugField = field as SlugField;
 
     return (
-      <FormField fieldKey={field.key} description={description} label={field.label} required={field.required}>
+      <FormField description={field.helpText} label={field.label} required={field.required}>
         <Input mono onChange={(event) => onUpdateValue(field.key, event.target.value)} required={field.required} value={String(value)} />
         {slugField.urlPrefix ? (
           <div className="flex min-h-6 items-center gap-1.5 overflow-hidden rounded-cms bg-cms-surface px-2 font-mono text-ui text-cms-subtle">
@@ -339,7 +336,7 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
   }
 
   return (
-    <FormField fieldKey={field.key} description={description} label={field.label} required={field.required}>
+    <FormField description={field.helpText} label={field.label} required={field.required}>
       <Input
         onChange={(event) =>
           onUpdateValue(field.key, field.type === "datetime" ? fromDateTimeLocal(event.target.value) : event.target.value)

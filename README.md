@@ -32,7 +32,7 @@ The zero-configuration development defaults still use mock content in the web ap
 ## Apps
 
 - `apps/web` - public **Astro** website that prerenders to **zero-JS static HTML**, with React **islands** for interactivity, a **build-time content layer** (mock/seed by default, or the API's public content route via `@three-acts/content`), a full storefront (shop, cart, checkout, account) and auth flow backed by `apps/api`, route-level SEO + AEO metadata (JSON-LD, `sitemap.xml`, `robots.txt`, `llms.txt`), build-time **AVIF** image compression, and a same-origin `/api/*` convention.
-- `apps/cms` - private CMS with `noindex,nofollow`, disallowing `robots.txt`, an auth client built on `@three-acts/auth` (mock or REST), and a pluggable CMS backend built on the shared `packages/cms-schema` collection registry. Designer is the first workspace tab, with static pages and CMS page templates. Page-row settings icons open floating details beside the Pages list; template copy can be edited independently of collection-bound fields. See [Designer mode](apps/cms/DESIGNER.md).
+- `apps/cms` - private CMS shell with `noindex,nofollow`, disallowing `robots.txt`, an auth client built on `@three-acts/auth` (mock or REST), a pluggable CMS backend (mock or REST) built on the shared `packages/cms-schema` collection registry, and the same same-origin `/api/*` convention.
 - `apps/api` - Vercel serverless API app that is the single bridge for every browser write and every auth call: health/metadata routes, CMS/content routes, auth (sign-up/sign-in/session/account), the shop (products, reviews, discount validation, checkout, orders), form submissions, redirects, uploads, and Vercel publish orchestration.
 - `packages/cms-schema` - shared collection registry, field types, typed errors, REST wire contract, and column-mapping helpers for the CMS, exported from `@three-acts/cms-schema`. Consumed by `apps/cms` and `apps/api` so both validate against the same schema. See [ADR 0003](docs/adr/0003-pluggable-cms-backend.md).
 - `packages/content` - typed read models and a fetch client for editorial collections (articles, authors, categories, FAQs, testimonials, site/page settings, redirects), exported from `@three-acts/content`. Includes a seed-backed fetch implementation so the zero-config web build runs the same client code with no server.
@@ -50,7 +50,7 @@ Base UI is installed per app through `@base-ui-components/react`, and web-specif
 - `apps/web` owns public routes, presentation, SEO, islands, and build-time content reads. It does not write directly to a database.
 - `apps/cms` owns private editorial UI. It talks to a `CmsBackend`, using either a browser-local mock or the API's REST bridge.
 - `apps/api` owns secrets, privileged operations, provider implementations, CMS writes, public published-content reads, and every storefront/auth/forms write. It is the only app that talks to a Data Store, a Blob Store, an Identity Store, or a payment provider.
-- `packages/cms-schema` owns the collection registry and CMS contract shared by the CMS, API, and build-time content source.
+- `packages/cms-schema` owns the collection registry and CMS contract shared by the editor, API, and build-time content source.
 - `packages/utils` contains provider-neutral utility code shared by the apps. Theme tokens are per app: `apps/web/src/theme.css` and `apps/cms/src/theme.css` are deliberately isolated so the public site and the editorial workspace can diverge.
 
 Supabase is one included server-side Data Store and Blob Store implementation. It is not required by the web app or CMS UI, and it is not the architecture's default identity.
@@ -84,7 +84,6 @@ npm run dev:web
 npm run dev:cms
 npm run dev:api
 npm run build
-npm run build:cms
 npm run lint
 npm run typecheck
 ```
@@ -92,8 +91,6 @@ npm run typecheck
 The root `build`, `lint`, and `typecheck` commands run their corresponding scripts in every app workspace. Package-specific commands can be run with the named scripts above or npm's `-w` flag.
 
 Set `VITE_SITE_URL` before `npm run build:web` to control canonical URLs and sitemap locations. `CONTENT_SOURCE=api` (the default) sources published content from the public content route via `@three-acts/content`, using `CONTENT_API_ORIGIN` or `API_ORIGIN` to find the deployed API; set `CONTENT_SOURCE=mock` to build from the package's zero-config seed-backed fetch instead. See `apps/web/.env.example`.
-
-The CMS runs at http://localhost:5174, the public site at http://localhost:4321, and the API at http://localhost:5175. `npm run dev` starts all three; `npm run dev:cms` starts only the CMS. Designer is the first CMS workspace tab and uses the same CMS login and UI atoms/theme. See [Designer mode](apps/cms/DESIGNER.md) for preview setup and tests.
 
 ## API App
 
@@ -103,7 +100,6 @@ The CMS runs at http://localhost:5174, the public site at http://localhost:4321,
 - `GET /api/meta` - template metadata endpoint.
 - `POST /api/deploy` - trigger a Vercel deploy hook (used by the CMS Publish flow).
 - `GET /api/deploy-status` - normalized Vercel deployment state for progress feedback.
-- `GET`/`POST /api/editor/deploy` - authenticated exact-revision publication configuration, deployment and production-marker verification.
 - `POST /api/auth/sign-up` - creates a shop identity + `customers` record, returns a `scope: "shop"` session.
 - `POST /api/auth/sign-in` - `{ email, password, scope? }` (`scope` defaults to `"shop"`) -> a session.
 - `POST /api/auth/sign-out` - stateless; the client drops its token.
@@ -221,7 +217,7 @@ The `.env.example` files are the authoritative per-app setup references. The mat
 
 | Variable | App | Purpose |
 | --- | --- | --- |
-| `VITE_SITE_URL` | web, cms | Public-site origin used by the web app for canonical metadata and by CMS Designer previews. Required for production web builds unless Vercel can derive it. |
+| `VITE_SITE_URL` | web | Canonical public-site origin used for metadata, sitemap, robots, and social URLs. Required for production unless Vercel can derive it. |
 | `API_ORIGIN` | web, cms | Server/build-time API origin used by local proxies and production `/api/*` rewrites. Required in production for app features that call the API. |
 | `PUBLIC_API_URL` | web | Optional direct browser API base URL instead of the same-origin rewrite. Requires matching API CORS configuration. |
 | `VITE_API_URL` | cms | Optional direct browser API base URL instead of the same-origin rewrite. Requires matching API CORS configuration. |
@@ -237,12 +233,6 @@ The `.env.example` files are the authoritative per-app setup references. The mat
 | `AUTH_TOKEN_TTL_SECONDS` | api | Session token lifetime, in seconds. Defaults to `1209600` (14 days). |
 | `CMS_AUTH_MODE` | api | `open` (dev default): any non-empty email/password signs an editor in. `env` (production default): must match `CMS_EDITORS`. |
 | `CMS_EDITORS` | api | Editor credentials for `CMS_AUTH_MODE=env`, as `email:password,email:password`. |
-| `EDITOR_GITHUB_REPOSITORY` / `EDITOR_GITHUB_BRANCH` / `EDITOR_GITHUB_TOKEN` | api | Optional server-only GitHub content source and commit credentials for the CMS Designer. When unset, local CMS Designer uses the bundled files and browser drafts with GitHub disconnected. Never expose these values to the browser. |
-
-The Designer page picker includes unpublished CMS items. Its **CMS snapshot** selector switches between published values and saved CMS drafts for Product, Article, Author and their category templates. Saved drafts refresh after returning from a CMS source edit; unsaved record changes stay behind the existing navigation guard. Browser template/style drafts appear in either snapshot and remain separate from CMS publication and hosting deployment. **View site** uses the published slug and is unavailable for unpublished items.
-
-Saved CMS previews require the web app's opt-in editor preview build (`PUBLIC_EDITOR_PREVIEW=true`, with `PUBLIC_EDITOR_ORIGIN` set to the exact CMS origin). This emits an empty `/editor-preview/cms/` shell; normal production builds omit that route. The authenticated CMS parent sends an ephemeral, bounded projection of public-model fields to the selected iframe session. The website receives no CMS credentials and does not query private CMS endpoints. Purchase controls are disabled in this canvas; use the published site for transactions. Preview limits are 5,000 related records, 8 MiB per snapshot and 200,000 characters per field; exceeding them shows a recoverable error.
-| `PUBLIC_EDITOR_PREVIEW` / `PUBLIC_EDITOR_ORIGIN` | web | Enables the public site's Designer preview bridge and restricts it to the exact CMS origin (no trailing slash). Local development defaults to `http://localhost:5174`; deployed previews should set both values explicitly. |
 | `SHOP_OPEN_PASSWORDS` | api | Whether a seeded/site-created `customers` record with no identity yet may sign in with any password on first try (that password becomes its identity). Defaults to `true` outside production, `false` in production. |
 | `PAYMENT_PROVIDER` | api | Payment provider checkout charges through. `mock` is the only implementation today (card/Apple Pay/PayPal/gift card settle immediately, EFT comes back "awaiting"); any other value 503s. |
 | `CONTENT_SOURCE` | web | `api` (default) reads published content from `GET /api/content/collections/:id/records` at build time via `@three-acts/content`; `mock`/unset uses the package's seed-backed fetch so the build needs no server. |
@@ -302,10 +292,6 @@ Browsing is fully static and indexable; the Cart, Checkout, sign-in/up, and acco
 ## Publishing (CMS → Vercel)
 
 Editors change data, then click **Publish** in the CMS top bar. That calls `POST /api/deploy` (which triggers a Vercel Deploy Hook to rebuild the static site) and polls `GET /api/deploy-status` for live state, surfacing progress in a bottom-right toast: **queued → building → deployed ✓** (or failed). Configure `VERCEL_DEPLOY_HOOK_URL`, `VERCEL_TOKEN`, and `VERCEL_PROJECT_ID` in `apps/api`; when unset, the flow degrades gracefully with a clear message.
-
-Revision-aware clients use `GET /api/editor/deploy` to verify configuration and `POST /api/editor/deploy` with `{ revision, publicationId }` to build an exact Git commit. These routes require a signed CMS session. The source commit must contain the matching `packages/static-content/src/documents/publication.json` receipt. Configure `EDITOR_PUBLIC_SITE_URL`, `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, optional `VERCEL_TEAM_ID`, and the editor's GitHub connection; the project must use the same repository, production branch and `EDITOR_VERCEL_ROOT_DIRECTORY` (default `apps/web`). A provider `READY` result remains unverified until that production origin's `editor-revision.json` matches both identities. Browser state must retain the receipt for retries; legacy deploy-hook results cannot establish this verification.
-
-`POST /api/cms/publish` also accepts `{ records: [{ collectionId, id, modifiedAt, valuesHash }] }` for selected promotion through a signed CMS session. Data adapters implement `publishReviewed` with an atomic queued-status/version check. The result identifies each promoted, already promoted, conflicting, missing or still pending record; callers must require `complete` before requesting deployment. A newly queued record is never included implicitly.
 
 ## Forking for a client
 

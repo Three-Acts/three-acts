@@ -1,4 +1,3 @@
-import { cmsAttributes } from "@three-acts/cms-schema";
 import type { HTMLAttributes } from "react";
 import type { ArticleCategory } from "@three-acts/content";
 import { cn } from "@three-acts/utils";
@@ -32,7 +31,6 @@ export function CategoryNav({ categories, counts, totalCount, activeSlug, classN
         const active = category.slug === activeSlug;
         return (
           <a
-            {...cmsAttributes({ collectionId: "article-categories", recordId: category.id, label: category.name }, "name")}
             key={category.slug}
             href={`/blog/category/${category.slug}`}
             aria-current={active ? "page" : undefined}

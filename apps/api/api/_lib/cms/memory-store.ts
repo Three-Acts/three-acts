@@ -108,11 +108,6 @@ export class MemoryDataStore implements CmsDataStore {
     return this.engineFor(collection).publishQueued();
   }
 
-  async publishRecord(collection: CmsCollection, recordId: string, expectedModifiedAt: string): Promise<CmsRecord | "conflict" | null> {
-    await this.init();
-    return this.engineFor(collection).publishRecord(recordId, expectedModifiedAt);
-  }
-
   async setPublishStatus(collection: CmsCollection, recordIds: string[], status: PublishStatus): Promise<CmsRecord[]> {
     await this.init();
     return this.engineFor(collection).setPublishStatus(recordIds, status);
