@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { ExternalLink, Lock } from "lucide-react";
 import { cn } from "@three-acts/utils";
 import type {
@@ -31,6 +32,7 @@ import {
 import { formatDateTime, fromDateTimeLocal, toDateTimeLocal } from "../../lib/format";
 
 const READ_ONLY_FIELD_HINT = "Set by the site";
+const CodeEditor = lazy(() => import("../atoms/code-editor").then((module) => ({ default: module.CodeEditor })));
 
 type FieldControlProps = {
   field: CmsField;
@@ -85,7 +87,7 @@ function formatJsonDisplay(value: CmsRecordValue): string {
   const text = value === null || value === undefined ? "" : String(value);
 
   if (!text.trim()) {
-    return "—";
+    return "";
   }
 
   try {
@@ -106,7 +108,7 @@ function toNumberValue(value: CmsRecordValue): number | null {
 
 export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryItemUpload, onUpdateValue, readOnly, record, uploadingField }: FieldControlProps) {
   const value = record.values[field.key] ?? "";
-  // Base UI Field wires labels to its own control parts; only the raw file input needs an id.
+  // Non-Base UI controls (uploads and CodeMirror) need explicit associations.
   const uploadId = `${record.id}-${field.key}`;
   // A field can be read-only either because the whole collection is
   // (`readOnly`, e.g. form submissions) or because this specific field is
@@ -227,6 +229,34 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
     );
   }
 
+  if (isCodeFormat(field)) {
+    const labelId = `${uploadId}-label`;
+    const descriptionId = `${uploadId}-description`;
+    return (
+      <FormField
+        description={field.helpText}
+        descriptionId={descriptionId}
+        htmlFor={uploadId}
+        label={field.label}
+        labelId={labelId}
+        required={fieldReadOnly ? undefined : field.required}
+      >
+        <Suspense fallback={<div className="grid min-h-45 place-items-center rounded-cms border border-cms-line-strong text-ui text-cms-muted" role="status">Loading code editor…</div>}>
+          <CodeEditor
+            describedBy={field.helpText ? descriptionId : undefined}
+            id={uploadId}
+            key={uploadId}
+            labelledBy={labelId}
+            onChange={(next) => onUpdateValue(field.key, next)}
+            readOnly={fieldReadOnly}
+            required={field.required}
+            value={fieldReadOnly ? formatJsonDisplay(value) : String(value)}
+          />
+        </Suspense>
+      </FormField>
+    );
+  }
+
   if (fieldReadOnly) {
     // A required marker is meaningless when nothing can be edited.
     // Only an identifier-shaped `readonly`-type field (key contains "id")
@@ -234,29 +264,22 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
     // field just reads as empty.
     const isIdField = field.type === "readonly" && /id/i.test(field.key);
     const shown = value || (isIdField ? record.id : "");
-    const codeFormat = isCodeFormat(field);
 
     return (
       <FormField description={field.helpText} label={field.label}>
         <div className="flex items-start gap-1.5">
-          {codeFormat ? (
-            <pre className="m-0 min-h-13 min-w-0 flex-1 overflow-auto whitespace-pre-wrap wrap-break-word rounded-cms border border-cms-line-strong bg-cms-surface px-2 py-1.5 font-mono text-field text-cms-muted leading-5">
-              {formatJsonDisplay(shown)}
-            </pre>
-          ) : (
-            <div
-              className={cn(
-                inputVariants({ tone: "display" }),
-                "min-w-0 flex-1 whitespace-pre-wrap",
-                field.type === "textarea" && "min-h-13 items-start py-1.5",
-                // Mono is for identifiers, not for every read-only value — a
-                // `readonly` field can just as easily hold a person's name.
-                shown === record.id && "font-mono tabular-nums"
-              )}
-            >
-              {readOnlyDisplay(field, shown)}
-            </div>
-          )}
+          <div
+            className={cn(
+              inputVariants({ tone: "display" }),
+              "min-w-0 flex-1 whitespace-pre-wrap",
+              field.type === "textarea" && "min-h-13 items-start py-1.5",
+              // Mono is for identifiers, not for every read-only value — a
+              // `readonly` field can just as easily hold a person's name.
+              shown === record.id && "font-mono tabular-nums"
+            )}
+          >
+            {readOnlyDisplay(field, shown)}
+          </div>
           <Tooltip content={READ_ONLY_FIELD_HINT} side="left">
             <span className="mt-1.5 inline-flex shrink-0 items-center text-cms-subtle">
               <Lock aria-hidden="true" size={12} />
@@ -269,15 +292,12 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
   }
 
   if (field.type === "textarea") {
-    const codeFormat = isCodeFormat(field);
-
     return (
       <FormField description={field.helpText} label={field.label} required={field.required}>
         <Textarea
-          className={cn("min-h-22 resize-y leading-6", codeFormat && "font-mono text-field leading-5")}
+          className="min-h-22 resize-y leading-6"
           onChange={(event) => onUpdateValue(field.key, event.target.value)}
           required={field.required}
-          spellCheck={codeFormat ? false : undefined}
           value={String(value)}
         />
       </FormField>

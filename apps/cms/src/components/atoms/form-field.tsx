@@ -9,6 +9,9 @@ type FormFieldProps = {
   description?: string;
   /** Only needed for controls Base UI cannot discover itself (e.g. a raw file input). */
   htmlFor?: string;
+  /** Explicit associations for controls outside Base UI, such as CodeMirror. */
+  labelId?: string;
+  descriptionId?: string;
   label: string;
   /** Marks the label; set `required` on the control too so validation can fire. */
   required?: boolean;
@@ -19,10 +22,10 @@ type FormFieldProps = {
  * Switch, and NumberField parts associate themselves with the label and the
  * description automatically, so no id threading is needed for those.
  */
-export function FormField({ children, className, description, htmlFor, label, required }: FormFieldProps) {
+export function FormField({ children, className, description, descriptionId, htmlFor, label, labelId, required }: FormFieldProps) {
   return (
     <Field.Root className={cn("mb-4 grid gap-1.5 last:mb-0", className)} validationMode="onBlur">
-      <Field.Label className="flex items-center gap-1 text-ui font-medium text-cms-muted" htmlFor={htmlFor}>
+      <Field.Label className="flex items-center gap-1 text-ui font-medium text-cms-muted" htmlFor={htmlFor} id={labelId}>
         {label}
         {/* The accent is reserved for actions, so "you must fill this in" borrows the danger hue. */}
         {required ? (
@@ -31,7 +34,7 @@ export function FormField({ children, className, description, htmlFor, label, re
           </span>
         ) : null}
       </Field.Label>
-      {description ? <Field.Description className="m-0 text-ui text-cms-subtle">{description}</Field.Description> : null}
+      {description ? <Field.Description className="m-0 text-ui text-cms-subtle" id={descriptionId}>{description}</Field.Description> : null}
       {children}
       <Field.Error className="m-0 text-ui text-cms-danger" />
     </Field.Root>
