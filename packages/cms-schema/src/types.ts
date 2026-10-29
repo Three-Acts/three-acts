@@ -45,6 +45,7 @@ export type FieldType =
   | "image-gallery"
   | "video"
   | "file"
+  | "link"
   | "readonly";
 
 export type CmsRecordValue = string | number | boolean | null | undefined;
@@ -94,7 +95,7 @@ type FieldBase<TType extends FieldType> = {
   readOnly?: boolean;
 };
 
-export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "asset" | "image" | "image-gallery" | "video" | "file">> & {
+export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "asset" | "image" | "image-gallery" | "video" | "file" | "link">> & {
   /**
    * Structured-text format for `text`/`textarea` fields. `"json-ld"` marks a
    * schema markup field: the value must be empty or a JSON object / array of
@@ -171,7 +172,36 @@ export type FileField = FieldBase<"file"> & {
   accept?: string;
 };
 
-export type CmsField = PrimitiveField | SelectField | SlugField | AssetField | ImageField | ImageGalleryField | VideoField | FileField;
+export type LinkType = "url" | "page" | "collection" | "section" | "email" | "phone" | "file";
+
+/** Stored as JSON text. Internal destination IDs resolve through the field's catalogs; href is the resolved snapshot. */
+export type LinkValue = {
+  type: LinkType;
+  href: string;
+  target?: "_self" | "_blank";
+  destinationId?: string;
+  collectionId?: string;
+  recordId?: string;
+  fileName?: string;
+  size?: number;
+  contentType?: string;
+};
+
+export type LinkDestinationOption = { id: string; label: string; href: string };
+export type LinkCollectionOption = { id: string; label: string; items: LinkDestinationOption[] };
+
+/** The site supplies eligible destinations explicitly; route patterns and section IDs are never inferred. */
+export type LinkField = FieldBase<"link"> & {
+  type: "link";
+  pages?: LinkDestinationOption[];
+  collections?: LinkCollectionOption[];
+  sections?: LinkDestinationOption[];
+  /** Opts this field into file uploads. Without a bucket, File links accept a URL instead. */
+  bucket?: string;
+  accept?: string;
+};
+
+export type CmsField = PrimitiveField | SelectField | SlugField | AssetField | ImageField | ImageGalleryField | VideoField | FileField | LinkField;
 
 export type ListColumn = {
   key: string;

@@ -10,10 +10,11 @@ import type {
   ImageField,
   ImageGalleryField,
   ImageValue,
+  LinkField,
   PublishStatus,
   VideoField
 } from "../cms/types";
-import { parseImageGallery, parseImageValue, serializeFileValue, serializeImageGallery, serializeImageValue, serializeVideoValue } from "../cms/types";
+import { parseImageGallery, parseImageValue, parseLinkValue, serializeFileValue, serializeImageGallery, serializeImageValue, serializeLinkValue, serializeVideoValue } from "../cms/types";
 import { rememberAssetMeta } from "../components/atoms";
 import type { CollectionGroup } from "../components/workspace";
 import { canCreate, createDefaultsFor, getRecordTitle } from "../lib/records";
@@ -593,7 +594,7 @@ export function useCmsWorkspace() {
     });
   }
 
-  async function handleAssetUpload(field: AssetField | ImageField | VideoField | FileField, file: File) {
+  async function handleAssetUpload(field: AssetField | ImageField | VideoField | FileField | LinkField, file: File) {
     if (!activeCollection || !draftRecord) {
       return;
     }
@@ -644,6 +645,8 @@ export function useCmsWorkspace() {
             size: result.size,
             ...(file.type ? { contentType: file.type } : {})
           });
+        } else if (field.type === "link") {
+          nextValue = serializeLinkValue({ type: "file", href: result.url, target: parseLinkValue(current.values[field.key])?.target ?? "_self", fileName: result.fileName, size: result.size, contentType: file.type });
         } else {
           nextValue = result.url;
         }

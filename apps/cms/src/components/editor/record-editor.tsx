@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Copy, Lock, Trash2 } from "lucide-react";
-import type { AssetField, CmsCollectionSummary, CmsRecord, CmsRecordValue, FileField, ImageField, ImageGalleryField, PublishStatus, VideoField } from "../../cms/types";
+import type { AssetField, CmsCollectionSummary, CmsRecord, CmsRecordValue, FileField, ImageField, ImageGalleryField, LinkField, PublishStatus, VideoField } from "../../cms/types";
 import { formatDateTime } from "../../lib/format";
 import { canCreate, getRecordTitle, hasPublishWorkflow, isEditable } from "../../lib/records";
 import { BareIconButton, Button, ConfirmDialog, PanelHeader, ScrollArea, SplitButton, StatusPill, Tooltip } from "../atoms";
@@ -15,7 +15,7 @@ type RecordEditorProps = {
   draftRecord: CmsRecord;
   isDirty: boolean;
   isSaving: boolean;
-  onAssetUpload: (field: AssetField | ImageField | VideoField | FileField, file: File) => void;
+  onAssetUpload: (field: AssetField | ImageField | VideoField | FileField | LinkField, file: File) => void;
   onGalleryUpload: (field: ImageGalleryField, files: File[]) => void;
   onGalleryItemUpload: (field: ImageGalleryField, index: number, file: File) => void;
   onBack: () => void;

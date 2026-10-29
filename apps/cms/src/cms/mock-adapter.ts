@@ -1,6 +1,6 @@
 import { collectionRegistry } from "./registry";
 import { cloneSeedCollections } from "@three-acts/cms-schema/seed";
-import { CmsError, canCreateRecords, hasPublishWorkflow, isReadOnlyField } from "./types";
+import { CmsError, MAX_ASSET_UPLOAD_BYTES, canCreateRecords, hasPublishWorkflow, isReadOnlyField, parseLinkValue, resolveLinkValue, serializeLinkValue, validateLinkValue } from "./types";
 import type {
   AssetUploadResult,
   CmsBackend,
@@ -9,6 +9,7 @@ import type {
   CmsRecord,
   CmsRecordValue,
   ListRecordsOptions,
+  LinkField,
   PublishStatus,
   SaveRecordOptions,
   SelectField
@@ -110,7 +111,7 @@ export const mockCmsBackend: CmsBackend = {
       // `format: "json"` fields must be "" or valid JSON on every save — check
       // the incoming values before a read-only field's are overwritten below,
       // so a malformed submission is rejected rather than silently discarded.
-      assertValidFormats(collection, values);
+      assertValidFormats(collection, values, record.publishStatus === "published" || record.publishStatus === "queued_to_publish");
 
       // The site's system write path is the only one allowed to set a
       // read-only field's value; an editor save keeps whatever is already stored.
@@ -185,6 +186,21 @@ export const mockCmsBackend: CmsBackend = {
 
     async publishQueued(collectionId?: string) {
       const targets = collectionId ? [getCollection(collectionId)] : collectionRegistry;
+      const normalizedByCollection = new Map<string, Map<string, Record<string, CmsRecordValue>>>();
+      // Validate every queued record before promoting any of them, so a bad
+      // required link cannot leave a partially published batch behind.
+      for (const collection of targets) {
+        if (!hasPublishWorkflow(collection)) continue;
+        const normalizedById = new Map<string, Record<string, CmsRecordValue>>();
+        for (const record of records[collection.id] ?? []) {
+          if (record.publishStatus !== "queued_to_publish") continue;
+          const values = { ...record.values };
+          assertValidFormats(collection, values, true);
+          normalizedById.set(record.id, values);
+        }
+        normalizedByCollection.set(collection.id, normalizedById);
+      }
+
       let published = 0;
 
       for (const collection of targets) {
@@ -204,8 +220,9 @@ export const mockCmsBackend: CmsBackend = {
           // Promotion: the working values become the live snapshot the site renders.
           return {
             ...record,
+            values: normalizedByCollection.get(collection.id)?.get(record.id) ?? record.values,
             publishStatus: "published" as PublishStatus,
-            liveValues: { ...record.values },
+            liveValues: { ...(normalizedByCollection.get(collection.id)?.get(record.id) ?? record.values) },
             modifiedAt: new Date().toISOString()
           };
         });
@@ -228,6 +245,17 @@ export const mockCmsBackend: CmsBackend = {
       const idSet = new Set(recordIds);
       const now = new Date().toISOString();
       const updatedById = new Map<string, CmsRecord>();
+      const normalizedById = new Map<string, Record<string, CmsRecordValue>>();
+
+      if (status === "queued_to_publish") {
+        // Validate the complete selection before mutating any record.
+        for (const record of records[collectionId] ?? []) {
+          if (!idSet.has(record.id)) continue;
+          const values = { ...record.values };
+          assertValidFormats(collection, values, true);
+          normalizedById.set(record.id, values);
+        }
+      }
 
       records[collectionId] = (records[collectionId] ?? []).map((record) => {
         if (!idSet.has(record.id)) {
@@ -238,7 +266,7 @@ export const mockCmsBackend: CmsBackend = {
         const nextRecord: CmsRecord =
           status === "not_published"
             ? { ...record, publishStatus: status, liveValues: null, modifiedAt: now }
-            : { ...record, publishStatus: status, modifiedAt: now };
+            : { ...record, values: normalizedById.get(record.id) ?? record.values, publishStatus: status, modifiedAt: now };
         updatedById.set(record.id, nextRecord);
         return nextRecord;
       });
@@ -254,7 +282,7 @@ export const mockCmsBackend: CmsBackend = {
       const collection = assertWritable(getCollection(collectionId));
       const field = collection.fields.find((item) => item.key === fieldKey);
 
-      if (!field || (field.type !== "asset" && field.type !== "image" && field.type !== "image-gallery" && field.type !== "video" && field.type !== "file")) {
+      if (!field || (field.type !== "asset" && field.type !== "image" && field.type !== "image-gallery" && field.type !== "video" && field.type !== "file" && (field.type !== "link" || !field.bucket))) {
         throw new CmsError("validation", `Field is not an asset field: ${fieldKey}`);
       }
 
@@ -264,8 +292,11 @@ export const mockCmsBackend: CmsBackend = {
       if (field.type === "video" && file.type && !file.type.startsWith("video/")) {
         throw new CmsError("validation", `${field.label} only accepts videos.`);
       }
-      if ((field.type === "video" || field.type === "file") && !matchesAccept(file, field.accept)) {
+      if ((field.type === "video" || field.type === "file" || field.type === "link") && !matchesAccept(file, field.accept)) {
         throw new CmsError("validation", `${field.label} does not accept this file type.`);
+      }
+      if (file.size <= 0 || file.size > MAX_ASSET_UPLOAD_BYTES) {
+        throw new CmsError("validation", `File exceeds the ${MAX_ASSET_UPLOAD_BYTES} byte upload limit.`);
       }
 
       const bucket = (field as { bucket: string }).bucket;
@@ -382,9 +413,15 @@ function assertValidJsonFormat(field: CmsField, value: CmsRecordValue) {
   }
 }
 
-function assertValidFormats(collection: CmsCollection, values: Record<string, CmsRecordValue>) {
+function assertValidFormats(collection: CmsCollection, values: Record<string, CmsRecordValue>, enforceRequired = false) {
   for (const field of collection.fields) {
     assertValidJsonFormat(field, values[field.key]);
+    if (field.type === "link") {
+      const error = validateLinkValue(values[field.key], { field: field as LinkField, required: enforceRequired && field.required });
+      if (error) throw new CmsError("validation", error, { details: { field: field.key } });
+      const parsed = parseLinkValue(values[field.key]);
+      values[field.key] = serializeLinkValue(parsed ? resolveLinkValue(parsed, field) : null);
+    }
   }
 }
 

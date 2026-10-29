@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import type { AssetField, CmsCollectionSummary, CmsRecord, CmsRecordValue, FileField, ImageField, VideoField } from "../../cms/types";
+import type { AssetField, CmsCollectionSummary, CmsRecord, CmsRecordValue, FileField, ImageField, LinkField, VideoField } from "../../cms/types";
+import { parseLinkValue, serializeLinkValue } from "../../cms/types";
 import { useCmsBackend } from "../../cms/backend-context";
 import { canCreate as canCreateRecords } from "../../lib/records";
 import { RecordEditor } from "../editor/record-editor";
@@ -98,12 +99,13 @@ export function CollectionSettingsView({ collection, downloadName, newLabel, onD
     }
   }
 
-  async function uploadAsset(field: AssetField | ImageField | VideoField | FileField, file: File) {
+  async function uploadAsset(field: AssetField | ImageField | VideoField | FileField | LinkField, file: File) {
     if (!draft) return;
+    const recordId = draft.id;
     setUploadingField(field.key);
     try {
       const result = await storage.uploadAsset(collection.id, field.key, file);
-      setDraft((current) => (current ? { ...current, values: { ...current.values, [field.key]: result.url } } : current));
+      setDraft((current) => (current?.id === recordId ? { ...current, values: { ...current.values, [field.key]: field.type === "link" ? serializeLinkValue({ type: "file", href: result.url, target: parseLinkValue(current.values[field.key])?.target ?? "_self", fileName: result.fileName, size: result.size, contentType: file.type }) : result.url } } : current));
     } catch {
       // Keep the current value if storage rejects the upload.
     } finally {

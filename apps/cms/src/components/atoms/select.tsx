@@ -1,28 +1,30 @@
 import { Check, ChevronsUpDown } from "lucide-react";
+import type { ReactNode } from "react";
 import { Select as BaseSelect } from "@base-ui-components/react/select";
 import { cn } from "@three-acts/utils";
 import { inputVariants, popupClass } from "./styles";
 
-export type SelectOption = { label: string; value: string };
+export type SelectOption = { label: string; value: string; icon?: ReactNode };
 
 type SelectProps = {
   className?: string;
+  disabled?: boolean;
   onValueChange: (value: string) => void;
   options: SelectOption[];
   value: string;
 };
 
 // Base UI Select associates itself with a surrounding Field label automatically.
-export function Select({ className, onValueChange, options, value }: SelectProps) {
+export function Select({ className, disabled, onValueChange, options, value }: SelectProps) {
   return (
-    <BaseSelect.Root items={options} onValueChange={(next) => onValueChange((next as string) ?? "")} value={value}>
+    <BaseSelect.Root disabled={disabled} items={options} onValueChange={(next) => onValueChange((next as string) ?? "")} value={value}>
       <BaseSelect.Trigger className={cn(inputVariants(), "flex items-center justify-between gap-2 text-left", className)}>
         <BaseSelect.Value className="truncate">
           {(selected: string) => {
             const match = options.find((option) => option.value === selected);
 
             if (match) {
-              return match.label;
+              return <span className="inline-flex min-w-0 items-center gap-1.5">{match.icon}<span className="truncate">{match.label}</span></span>;
             }
 
             // A value the option list doesn't know about (e.g. imported data)
@@ -46,7 +48,7 @@ export function Select({ className, onValueChange, options, value }: SelectProps
                 key={`${index}-${option.value}`}
                 value={option.value}
               >
-                <BaseSelect.ItemText className="truncate">{option.label}</BaseSelect.ItemText>
+                <BaseSelect.ItemText className="inline-flex min-w-0 items-center gap-1.5">{option.icon}<span className="truncate">{option.label}</span></BaseSelect.ItemText>
                 <BaseSelect.ItemIndicator className="shrink-0 text-cms-accent">
                   <Check size={13} />
                 </BaseSelect.ItemIndicator>

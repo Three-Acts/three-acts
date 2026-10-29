@@ -5,12 +5,15 @@ import {
   collectionRegistry,
   hasPublishWorkflow,
   isReadOnlyField,
+  parseLinkValue,
   parseFileValue,
   parseImageGallery,
   parseImageValue,
   parseSchemaMarkup,
   parseVideoValue,
+  resolveLinkValue,
   serializeFileValue,
+  serializeLinkValue,
   serializeImageGallery,
   serializeImageValue,
   serializeVideoValue,
@@ -21,8 +24,10 @@ import {
   type CmsRecord,
   type CmsRecordValue,
   type ImageGalleryField,
+  type LinkField,
   type ListRecordsOptions,
   type ListRecordsResult,
+  validateLinkValue,
   type PublishStatus,
   type SelectField,
   type UploadAssetBody
@@ -143,6 +148,13 @@ function validateFieldValue(field: CmsField, raw: CmsRecordValue, enforceRequire
       }
       return serializeFileValue(parsed);
     }
+    case "link": {
+      const linkField = field as LinkField;
+      const error = validateLinkValue(raw, { field: linkField, required: enforceRequired && field.required });
+      if (error) throw validationError(field, error);
+      const parsed = parseLinkValue(raw);
+      return serializeLinkValue(parsed ? resolveLinkValue(parsed, linkField) : null);
+    }
     case "image-gallery": {
       // Ordered gallery: stored as an ImageValue[] JSON string. Like
       // `required`, `minItems`/`maxItems` gate publishing, not drafting.
@@ -213,6 +225,16 @@ function validateFieldValue(field: CmsField, raw: CmsRecordValue, enforceRequire
     }
     default:
       return raw ?? "";
+  }
+}
+
+/** Validate the shared Link field contract when records enter or leave the publish queue. */
+function validateLinksForPublish(collection: CmsCollection, rawValues: Record<string, CmsRecordValue>): void {
+  const values = { ...rawValues };
+  for (const field of collection.fields) {
+    if (field.type === "link") {
+      values[field.key] = validateFieldValue(field, values[field.key], true);
+    }
   }
 }
 
@@ -519,10 +541,10 @@ export async function uploadAsset(collectionId: string, fieldKey: string, body: 
   const field = collection.fields.find((item) => item.key === fieldKey);
 
   // Uploads serve generic files (`asset`) as well as typed singles:
-  // `image`, `video`, `file`, and per-item gallery uploads
+  // `image`, `video`, `file`, and opted-in link fields, plus per-item gallery uploads
   // (`image-gallery`). The stored record value stays a URL/JSON string the
   // caller composes — no blob deletes happen here.
-  if (!field || (field.type !== "asset" && field.type !== "image" && field.type !== "image-gallery" && field.type !== "video" && field.type !== "file")) {
+  if (!field || (field.type !== "asset" && field.type !== "image" && field.type !== "image-gallery" && field.type !== "video" && field.type !== "file" && (field.type !== "link" || !field.bucket))) {
     throw new CmsError("not_found", `Unknown asset field: ${fieldKey}`);
   }
   const bucket = (field as { bucket: string }).bucket;
@@ -543,8 +565,8 @@ export async function uploadAsset(collectionId: string, fieldKey: string, body: 
     throw new CmsError("validation", `${field.label} only accepts videos.`);
   }
   if (
-    (field.type === "video" || field.type === "file") &&
-    !matchesAcceptMetadata(body.fileName, body.contentType, field.accept)
+    (field.type === "video" || field.type === "file" || field.type === "link") &&
+    !matchesAcceptMetadata(body.fileName, typeof body.contentType === "string" ? body.contentType : "", field.accept)
   ) {
     throw new CmsError("validation", `${field.label} does not accept this file type.`);
   }
@@ -578,6 +600,14 @@ export async function uploadAsset(collectionId: string, fieldKey: string, body: 
 export async function publishQueued(collectionId?: string): Promise<{ published: number }> {
   const collections = collectionId ? [getCollectionOrThrow(collectionId)] : collectionRegistry;
   const store = getDataStore();
+
+  // Preflight every collection before any store promotes records, keeping a
+  // multi-collection publish atomic with respect to Link validation failures.
+  for (const collection of collections) {
+    if (!hasPublishWorkflow(collection)) continue;
+    const { records } = await store.listRecords(collection, { publishStatus: "queued_to_publish" });
+    for (const record of records) validateLinksForPublish(collection, record.values);
+  }
 
   let published = 0;
   for (const collection of collections) {
@@ -617,5 +647,14 @@ export async function setPublishStatus(collectionId: string, recordIds: string[]
     throw new CmsError("validation", `${collection.label} has no publish workflow.`);
   }
 
-  return getDataStore().setPublishStatus(collection, recordIds, status);
+  const store = getDataStore();
+  if (status === "queued_to_publish") {
+    // Validate the whole selected set before the adapter changes any statuses.
+    for (const recordId of new Set(recordIds)) {
+      const record = await store.getRecord(collection, recordId);
+      if (record) validateLinksForPublish(collection, record.values);
+    }
+  }
+
+  return store.setPublishStatus(collection, recordIds, status);
 }

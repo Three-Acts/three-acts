@@ -9,6 +9,7 @@ import type {
   FileField,
   ImageField,
   ImageGalleryField,
+  LinkField,
   SelectField,
   SlugField,
   VideoField
@@ -30,13 +31,14 @@ import {
   VideoControl
 } from "../atoms";
 import { formatDateTime, fromDateTimeLocal, toDateTimeLocal } from "../../lib/format";
+import { LinkControl } from "../atoms/link-control";
 
 const READ_ONLY_FIELD_HINT = "Set by the site";
 const CodeEditor = lazy(() => import("../atoms/code-editor").then((module) => ({ default: module.CodeEditor })));
 
 type FieldControlProps = {
   field: CmsField;
-  onAssetUpload: (field: AssetField | ImageField | VideoField | FileField, file: File) => void;
+  onAssetUpload: (field: AssetField | ImageField | VideoField | FileField | LinkField, file: File) => void;
   onGalleryUpload: (field: ImageGalleryField, files: File[]) => void;
   onGalleryItemUpload: (field: ImageGalleryField, index: number, file: File) => void;
   onUpdateValue: (fieldKey: string, value: CmsRecordValue) => void;
@@ -115,6 +117,10 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
   // (`isReadOnlyField`, e.g. an order's total — editors may still change its
   // status even though the money fields are set by checkout).
   const fieldReadOnly = readOnly || isReadOnlyField(field);
+
+  if (field.type === "link") {
+    return <LinkControl field={field} inputId={uploadId} isUploading={uploadingField === field.key} onChange={(next) => onUpdateValue(field.key, next)} onFile={(file) => onAssetUpload(field, file)} readOnly={fieldReadOnly} value={String(value)} />;
+  }
 
   if (field.type === "image" || field.type === "image-gallery") {
     // Image controls render their own read-only state (card with alt text, no

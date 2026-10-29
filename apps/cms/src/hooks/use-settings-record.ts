@@ -10,10 +10,11 @@ import type {
   ImageField,
   ImageGalleryField,
   ImageValue,
+  LinkField,
   PublishStatus,
   VideoField
 } from "../cms/types";
-import { isCmsError, parseImageGallery, parseImageValue, serializeFileValue, serializeImageGallery, serializeImageValue, serializeVideoValue } from "../cms/types";
+import { isCmsError, parseImageGallery, parseImageValue, parseLinkValue, serializeFileValue, serializeImageGallery, serializeImageValue, serializeLinkValue, serializeVideoValue } from "../cms/types";
 import { rememberAssetMeta, useToast } from "../components/atoms";
 import { getImageDimensions } from "../lib/image-dimensions";
 
@@ -168,7 +169,7 @@ export function useSettingsRecord({ collection, onDirtyChange, onSaved }: UseSet
     }
   }
 
-  async function uploadAsset(field: AssetField | ImageField | VideoField | FileField, file: File) {
+  async function uploadAsset(field: AssetField | ImageField | VideoField | FileField | LinkField, file: File) {
     if (!draft) {
       return;
     }
@@ -202,6 +203,8 @@ export function useSettingsRecord({ collection, onDirtyChange, onSaved }: UseSet
           nextValue = serializeVideoValue(typed);
         } else if (field.type === "file") {
           nextValue = serializeFileValue(typed);
+        } else if (field.type === "link") {
+          nextValue = serializeLinkValue({ type: "file", href: result.url, target: parseLinkValue(current.values[field.key])?.target ?? "_self", fileName: result.fileName, size: result.size, contentType: file.type });
         }
 
         return { ...current, values: { ...current.values, [field.key]: nextValue } };
