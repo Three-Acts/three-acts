@@ -211,6 +211,22 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
     );
   }
 
+  if (field.type === "asset") {
+    return (
+      <FormField description={field.helpText} label={field.label} required={fieldReadOnly ? undefined : field.required}>
+        <AssetControl
+          accept={field.accept}
+          inputId={uploadId}
+          isUploading={uploadingField === field.key}
+          onClear={() => onUpdateValue(field.key, "")}
+          onFile={(file) => onAssetUpload(field, file)}
+          readOnly={fieldReadOnly}
+          value={String(value)}
+        />
+      </FormField>
+    );
+  }
+
   if (fieldReadOnly) {
     // A required marker is meaningless when nothing can be edited.
     // Only an identifier-shaped `readonly`-type field (key contains "id")
@@ -292,23 +308,6 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
         <Select
           onValueChange={(next) => onUpdateValue(field.key, next)}
           options={[{ label: "Select…", value: "" }, ...selectField.options]}
-          value={String(value)}
-        />
-      </FormField>
-    );
-  }
-
-  if (field.type === "asset") {
-    const assetField = field as AssetField;
-
-    return (
-      <FormField description={field.helpText} label={field.label} required={field.required}>
-        <AssetControl
-          accept={assetField.accept}
-          inputId={uploadId}
-          isUploading={uploadingField === field.key}
-          onClear={() => onUpdateValue(field.key, "")}
-          onFile={(file) => onAssetUpload(assetField, file)}
           value={String(value)}
         />
       </FormField>

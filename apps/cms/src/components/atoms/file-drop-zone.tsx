@@ -4,6 +4,7 @@ import { Loader2, Upload } from "lucide-react";
 import { cn } from "@three-acts/utils";
 import { Button } from "./button";
 import { matchesAccept } from "./file-utils";
+import { mediaActionClass } from "./styles";
 
 type FileDropZoneProps = {
   accept?: string;
@@ -109,7 +110,7 @@ export function FileDropZone({
           {icon}
           <span className="text-ui font-medium text-cms-text">{title}</span>
           {subtitle ? <span className="text-ui text-cms-subtle">{subtitle}</span> : null}
-          <Button className="mt-1" disabled={disabled} onClick={() => inputRef.current?.click()}>
+          <Button className={cn("mt-1", mediaActionClass)} disabled={disabled} onClick={() => inputRef.current?.click()}>
             <Upload aria-hidden="true" size={12} />
             Browse files
           </Button>

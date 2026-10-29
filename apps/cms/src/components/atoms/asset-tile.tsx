@@ -4,7 +4,7 @@ import { RefreshCw, Trash2 } from "lucide-react";
 import { cn } from "@three-acts/utils";
 import { Button } from "./button";
 import { matchesAccept } from "./file-utils";
-import { buttonVariants, fileLabelFocusRing } from "./styles";
+import { buttonVariants, fileLabelFocusRing, focusRing, mediaActionClass, mediaDangerActionClass } from "./styles";
 
 type RootProps = {
   children: ReactNode;
@@ -35,7 +35,7 @@ function Root({
     <article
       aria-label={label}
       className={cn(
-        "grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-2 rounded-cms border border-cms-line-strong bg-cms-surface p-2 transition-opacity",
+        "grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-2 rounded-cms border border-cms-track bg-cms-surface p-2 transition-opacity",
         isDragging && "opacity-50",
         isDropTarget && "border-cms-accent"
       )}
@@ -77,7 +77,7 @@ function Caption({ children }: { children: ReactNode }) {
 }
 
 function Actions({ children }: { children: ReactNode }) {
-  return <div className="flex gap-1.5">{children}</div>;
+  return <div className="flex flex-wrap gap-1.5">{children}</div>;
 }
 
 type ReplaceProps = {
@@ -91,7 +91,7 @@ type ReplaceProps = {
 function Replace({ accept, inputId, isUploading, onFile, onRejected }: ReplaceProps) {
   return (
     <label
-      className={cn(buttonVariants({ variant: "normal" }), isUploading ? "cursor-not-allowed opacity-50" : "cursor-pointer", fileLabelFocusRing)}
+      className={cn(buttonVariants({ variant: "normal" }), mediaActionClass, isUploading ? "cursor-not-allowed opacity-50" : "cursor-pointer", fileLabelFocusRing)}
     >
       <RefreshCw aria-hidden="true" size={13} />
       Replace
@@ -122,7 +122,7 @@ function Delete({ onClick, label = "Delete" }: { onClick?: () => void; label?: s
     return null;
   }
   return (
-    <Button className="text-cms-muted hover:text-cms-danger" onClick={onClick} variant="ghost">
+    <Button className={mediaDangerActionClass} onClick={onClick}>
       <Trash2 aria-hidden="true" size={13} />
       {label}
     </Button>
@@ -131,7 +131,7 @@ function Delete({ onClick, label = "Delete" }: { onClick?: () => void; label?: s
 
 function OpenLink({ href, label, children }: { href: string; label: string; children: ReactNode }) {
   return (
-    <a className="w-fit truncate px-0.5 text-ui text-cms-subtle underline underline-offset-2 hover:text-cms-text" href={href} rel="noreferrer" target="_blank" aria-label={label}>
+    <a className={cn("w-fit max-w-full truncate rounded-cms px-0.5 text-ui text-cms-muted underline underline-offset-2 hover:text-cms-text", focusRing)} href={href} rel="noreferrer" target="_blank" aria-label={label}>
       {children}
     </a>
   );

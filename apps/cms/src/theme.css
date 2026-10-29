@@ -17,6 +17,9 @@
   --color-cms-line: #2A2929;
   --color-cms-line-strong: #373736;
   --color-cms-track: #525252;
+  --color-cms-action-bg: #343432;
+  --color-cms-action-hover: #40403D;
+  --color-cms-action-line: #6F6F6A;
   --color-cms-text: #EFEFEE;
   --color-cms-muted: #A8A8A7;
   --color-cms-subtle: #858585;
@@ -40,6 +43,8 @@
   --color-cms-danger: #e4715c;
   --color-cms-danger-surface: #2e1d19;
   --color-cms-danger-line: #4a2a23;
+  --color-cms-danger-action-line: #A35D4E;
+  --color-cms-danger-action-hover: #3D2420;
 
   /* Dense-tool type scale. Chrome is 11px; the values an editor types into are
    * 13px — the content being edited outranks the interface around it. */

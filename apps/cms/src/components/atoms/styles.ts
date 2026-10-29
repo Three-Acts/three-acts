@@ -25,6 +25,13 @@ export const fileLabelFocusRing =
 /** Raised bevel for controls that sit above a panel (buttons, steppers). */
 export const controlShadow = "shadow-cms-control";
 
+/** Media actions need a visible edge and fill against their enclosing card. */
+export const mediaActionClass =
+  "border border-cms-action-line bg-cms-action-bg text-cms-text shadow-none hover:bg-cms-action-hover hover:text-cms-text";
+
+export const mediaDangerActionClass =
+  "border border-cms-danger-action-line bg-cms-danger-surface text-cms-danger shadow-none hover:bg-cms-danger-action-hover hover:text-cms-danger";
+
 /** Recessed well for controls you type into (inputs, textareas, select triggers). */
 export const wellShadow = "shadow-cms-well";
 

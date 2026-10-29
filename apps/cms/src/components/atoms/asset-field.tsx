@@ -1,19 +1,14 @@
 import { useState } from "react";
-import { ArrowUpRight, FileText, Film, Image as ImageIcon, RefreshCw, Trash2 } from "lucide-react";
-import { cn } from "@three-acts/utils";
-import { BareIconButton } from "./bare-icon-button";
+import { FileText, Film, Image as ImageIcon } from "lucide-react";
 import { getAssetMeta } from "./asset-meta";
-import { Button } from "./button";
+import { AssetTile } from "./asset-tile";
 import { FileDropZone } from "./file-drop-zone";
-import { matchesAccept } from "./file-utils";
-import { Tooltip } from "./tooltip";
-import { buttonVariants, fileLabelFocusRing } from "./styles";
+import { fileNameFromMedia, formatFileSize } from "./file-utils";
 
 type AssetKind = "image" | "video" | "file";
 
 const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "avif", "svg"]);
 const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "mov", "m4v"]);
-const BYTE_UNITS = ["B", "kB", "MB", "GB", "TB"];
 
 function kindFromAccept(accept?: string): AssetKind {
   if (accept?.startsWith("image/")) {
@@ -72,34 +67,6 @@ function kindNoun(kind: AssetKind): string {
   return "file";
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1000) {
-    return `${bytes} B`;
-  }
-
-  let value = bytes;
-  let unitIndex = 0;
-
-  while (value >= 1000 && unitIndex < BYTE_UNITS.length - 1) {
-    value /= 1000;
-    unitIndex += 1;
-  }
-
-  const rounded = value.toFixed(1).replace(/\.0$/, "");
-  return `${rounded} ${BYTE_UNITS[unitIndex]}`;
-}
-
-function fileNameFromUrl(url: string): string {
-  const path = url.split(/[?#]/)[0];
-  const segment = path.slice(path.lastIndexOf("/") + 1);
-
-  try {
-    return decodeURIComponent(segment);
-  } catch {
-    return segment;
-  }
-}
-
 type AssetControlProps = {
   accept?: string;
   /** Id of whichever file input is currently mounted, so `FormField`'s label stays wired to it. */
@@ -108,10 +75,11 @@ type AssetControlProps = {
   onClear: () => void;
   onFile: (file: File) => void;
   value: string;
+  readOnly?: boolean;
 };
 
 /** Webflow-style asset picker: a drop zone when empty, a preview card with actions once a file is set. */
-export function AssetControl({ accept, inputId, isUploading, onClear, onFile, value }: AssetControlProps) {
+export function AssetControl({ accept, inputId, isUploading, onClear, onFile, value, readOnly }: AssetControlProps) {
   const [hasRejectedFile, setHasRejectedFile] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
@@ -129,17 +97,14 @@ export function AssetControl({ accept, inputId, isUploading, onClear, onFile, va
   }
 
   function acceptFile(file: File) {
-    if (!matchesAccept(file, accept)) {
-      setHasRejectedFile(true);
-      return;
-    }
     setHasRejectedFile(false);
     onFile(file);
   }
 
-  const errorMessage = hasRejectedFile ? <p className="m-0 text-ui text-cms-danger">That file type isn&apos;t accepted here.</p> : null;
-
   if (!value) {
+    if (readOnly) {
+      return <p className="m-0 text-ui text-cms-subtle">No asset</p>;
+    }
     const kind = kindFromAccept(accept);
 
     return (
@@ -159,26 +124,26 @@ export function AssetControl({ accept, inputId, isUploading, onClear, onFile, va
           subtitle="or click to browse for a file"
           title={`Drag your ${kindNoun(kind)} here`}
         />
-        {errorMessage}
+        <AssetTile.RejectedNote visible={hasRejectedFile} />
       </div>
     );
   }
 
   const kind = kindFromUrl(value, accept);
   const meta = getAssetMeta(value);
-  const fileName = meta?.fileName ?? fileNameFromUrl(value);
+  const fileName = fileNameFromMedia({ src: value, fileName: meta?.fileName });
   const dimensionLabel = kind === "image" && naturalSize ? `${naturalSize.width} × ${naturalSize.height}` : null;
   const sizeLabel = meta ? formatFileSize(meta.size) : null;
   const detailLabel = [dimensionLabel, sizeLabel].filter(Boolean).join(" • ");
 
   return (
     <div className="grid gap-1.5">
-      <div className="relative flex items-center gap-3 rounded-cms border border-cms-line-strong bg-cms-surface p-2 pr-9">
-        <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-cms bg-cms-bg">
+      <AssetTile.Root label={fileName}>
+        <AssetTile.Preview>
           {kind === "image" && !mediaFailed ? (
             <img
               alt=""
-              className="size-full object-contain"
+              className="size-full object-cover"
               onError={() => setMediaFailed(true)}
               onLoad={(event) => {
                 const target = event.currentTarget;
@@ -196,50 +161,30 @@ export function AssetControl({ accept, inputId, isUploading, onClear, onFile, va
               src={value}
             />
           ) : (
-            renderKindIcon(kind, 22)
+            <AssetTile.Icon>{renderKindIcon(kind, 22)}</AssetTile.Icon>
           )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="m-0 truncate text-ui font-medium text-cms-text">{fileName}</p>
-          {detailLabel ? <p className="m-0 truncate text-ui text-cms-subtle">{detailLabel}</p> : null}
-        </div>
-        <Tooltip content="Open">
-          <BareIconButton
-            aria-label="Open file in new tab"
-            className="absolute right-2 top-2"
-            nativeButton={false}
-            render={<a href={value} rel="noreferrer" target="_blank" />}
-          >
-            <ArrowUpRight aria-hidden="true" size={13} />
-          </BareIconButton>
-        </Tooltip>
-      </div>
-
-      <div className="flex gap-1.5">
-        <label className={cn(buttonVariants({ variant: "normal" }), isUploading ? "cursor-not-allowed opacity-50" : "cursor-pointer", fileLabelFocusRing)}>
-          <RefreshCw aria-hidden="true" size={13} />
-          Replace
-          <input
-            accept={accept}
-            className="sr-only"
-            disabled={isUploading}
-            id={inputId}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                acceptFile(file);
-              }
-              event.target.value = "";
-            }}
-            type="file"
-          />
-        </label>
-        <Button className="text-cms-muted hover:text-cms-danger" onClick={onClear}>
-          <Trash2 aria-hidden="true" size={13} />
-          Delete
-        </Button>
-      </div>
-      {errorMessage}
+        </AssetTile.Preview>
+        <AssetTile.Details>
+          <div className="min-w-0 px-0.5">
+            <AssetTile.Title>{fileName}</AssetTile.Title>
+            {detailLabel ? <AssetTile.Meta>{detailLabel}</AssetTile.Meta> : null}
+          </div>
+          <AssetTile.OpenLink href={value} label={`Open ${fileName} in new tab`}>Open</AssetTile.OpenLink>
+          {readOnly ? null : (
+            <AssetTile.Actions>
+              <AssetTile.Replace
+                accept={accept}
+                inputId={inputId}
+                isUploading={isUploading}
+                onFile={acceptFile}
+                onRejected={() => setHasRejectedFile(true)}
+              />
+              <AssetTile.Delete onClick={onClear} />
+            </AssetTile.Actions>
+          )}
+        </AssetTile.Details>
+      </AssetTile.Root>
+      <AssetTile.RejectedNote visible={hasRejectedFile} />
     </div>
   );
 }
