@@ -33,6 +33,9 @@ export type CollectionMode = "editorial" | "data" | "readonly";
 export type RecordSource = "editors" | "site";
 
 export type FieldType =
+  | "object"
+  | "reference"
+  | "markdown"
   | "text"
   | "slug"
   | "textarea"
@@ -73,6 +76,10 @@ type FieldBase<TType extends FieldType> = {
   key: string;
   label: string;
   type: TType;
+  cardinality?: "single" | "multiple";
+  minItems?: number;
+  maxItems?: number;
+  itemRequired?: boolean;
   required?: boolean;
   helpText?: string;
   /**
@@ -95,7 +102,7 @@ type FieldBase<TType extends FieldType> = {
   readOnly?: boolean;
 };
 
-export type PrimitiveField = FieldBase<Exclude<FieldType, "select" | "slug" | "asset" | "image" | "image-gallery" | "video" | "file" | "link">> & {
+export type PrimitiveField = FieldBase<Exclude<FieldType, "object" | "reference" | "select" | "slug" | "asset" | "image" | "image-gallery" | "video" | "file" | "link">> & {
   /**
    * Structured-text format for `text`/`textarea` fields. `"json-ld"` marks a
    * schema markup field: the value must be empty or a JSON object / array of
@@ -201,7 +208,9 @@ export type LinkField = FieldBase<"link"> & {
   accept?: string;
 };
 
-export type CmsField = PrimitiveField | SelectField | SlugField | AssetField | ImageField | ImageGalleryField | VideoField | FileField | LinkField;
+export type ObjectField = FieldBase<"object"> & { fields: CmsField[] };
+export type ReferenceField = FieldBase<"reference"> & { collectionId: string };
+export type CmsField = ObjectField | ReferenceField | PrimitiveField | SelectField | SlugField | AssetField | ImageField | ImageGalleryField | VideoField | FileField | LinkField;
 
 export type ListColumn = {
   key: string;

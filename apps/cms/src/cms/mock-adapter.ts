@@ -1,3 +1,4 @@
+import { preserveReadOnlyChildren, resolveFieldPath, validateFieldValue, validateReferences } from "@three-acts/cms-schema";
 import { collectionRegistry } from "./registry";
 import { cloneSeedCollections } from "@three-acts/cms-schema/seed";
 import { CmsError, MAX_ASSET_UPLOAD_BYTES, canCreateRecords, hasPublishWorkflow, isReadOnlyField, parseLinkValue, resolveLinkValue, serializeLinkValue, validateLinkValue } from "./types";
@@ -111,7 +112,8 @@ export const mockCmsBackend: CmsBackend = {
       // `format: "json"` fields must be "" or valid JSON on every save — check
       // the incoming values before a read-only field's are overwritten below,
       // so a malformed submission is rejected rather than silently discarded.
-      assertValidFormats(collection, values, record.publishStatus === "published" || record.publishStatus === "queued_to_publish");
+      for (const field of collection.fields) values[field.key] = preserveReadOnlyChildren(field, values[field.key], collectionRecords[index].values[field.key]);
+      await assertValidFormats(collection, values, record.publishStatus === "published" || record.publishStatus === "queued_to_publish");
 
       // The site's system write path is the only one allowed to set a
       // read-only field's value; an editor save keeps whatever is already stored.
@@ -142,7 +144,7 @@ export const mockCmsBackend: CmsBackend = {
         record.values = { ...record.values, ...values };
       }
 
-      assertValidFormats(collection, record.values);
+      await assertValidFormats(collection, record.values);
 
       records[collectionId] = [record, ...(records[collectionId] ?? [])];
       return delay(cloneRecord(record), 160);
@@ -159,7 +161,7 @@ export const mockCmsBackend: CmsBackend = {
     async importRecords(collectionId: string, rows: Array<Record<string, CmsRecordValue>>) {
       const collection = assertCreatable(getCollection(collectionId));
       assertSingletonCapacity(collection, rows.length);
-      const imported = rows.map((row) => {
+      const imported = await Promise.all(rows.map(async (row) => {
         const base = createEmptyRecord(collection, generateId(collection.id));
         const values = { ...base.values };
 
@@ -175,10 +177,10 @@ export const mockCmsBackend: CmsBackend = {
           }
         }
 
-        assertValidFormats(collection, values);
+        await assertValidFormats(collection, values);
 
         return { ...base, values };
-      });
+      }));
 
       records[collectionId] = [...imported, ...(records[collectionId] ?? [])];
       return delay(imported.map(cloneRecord), 260);
@@ -195,7 +197,7 @@ export const mockCmsBackend: CmsBackend = {
         for (const record of records[collection.id] ?? []) {
           if (record.publishStatus !== "queued_to_publish") continue;
           const values = { ...record.values };
-          assertValidFormats(collection, values, true);
+          await assertValidFormats(collection, values, true);
           normalizedById.set(record.id, values);
         }
         normalizedByCollection.set(collection.id, normalizedById);
@@ -252,7 +254,7 @@ export const mockCmsBackend: CmsBackend = {
         for (const record of records[collectionId] ?? []) {
           if (!idSet.has(record.id)) continue;
           const values = { ...record.values };
-          assertValidFormats(collection, values, true);
+          await assertValidFormats(collection, values, true);
           normalizedById.set(record.id, values);
         }
       }
@@ -280,7 +282,7 @@ export const mockCmsBackend: CmsBackend = {
   storage: {
     async uploadAsset(collectionId: string, fieldKey: string, file: File) {
       const collection = assertWritable(getCollection(collectionId));
-      const field = collection.fields.find((item) => item.key === fieldKey);
+      const field = resolveFieldPath(collection.fields, fieldKey);
 
       if (!field || (field.type !== "asset" && field.type !== "image" && field.type !== "image-gallery" && field.type !== "video" && field.type !== "file" && (field.type !== "link" || !field.bucket))) {
         throw new CmsError("validation", `Field is not an asset field: ${fieldKey}`);
@@ -413,8 +415,10 @@ function assertValidJsonFormat(field: CmsField, value: CmsRecordValue) {
   }
 }
 
-function assertValidFormats(collection: CmsCollection, values: Record<string, CmsRecordValue>, enforceRequired = false) {
+async function assertValidFormats(collection: CmsCollection, values: Record<string, CmsRecordValue>, enforceRequired = false) {
+  await validateReferences(collection.fields, values, async (collectionId, id) => Boolean(records[collectionId]?.some(item => item.id === id)));
   for (const field of collection.fields) {
+    if (field.type === "object" || field.type === "reference" || field.type === "markdown" || field.cardinality === "multiple") values[field.key] = validateFieldValue(field, values[field.key], enforceRequired);
     assertValidJsonFormat(field, values[field.key]);
     if (field.type === "link") {
       const error = validateLinkValue(values[field.key], { field: field as LinkField, required: enforceRequired && field.required });
@@ -512,7 +516,9 @@ function generateId(prefix: string): string {
 
 function createEmptyRecord(collection: CmsCollection, id = generateId(collection.id)): CmsRecord {
   const values = collection.fields.reduce<Record<string, CmsRecordValue>>((nextValues, field) => {
-    if (field.type === "boolean") {
+    if (field.cardinality === "multiple") {
+      nextValues[field.key] = "[]";
+    } else if (field.type === "boolean") {
       nextValues[field.key] = false;
     } else if (field.type === "number") {
       nextValues[field.key] = 0;
@@ -542,6 +548,7 @@ function coerceValue(field: CmsField, value: CmsRecordValue): CmsRecordValue {
     return value;
   }
 
+  if (field.cardinality === "multiple" || field.type === "object") return value;
   const text = String(value).trim();
 
   if (field.type === "boolean") {

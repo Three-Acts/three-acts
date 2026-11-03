@@ -1,3 +1,5 @@
+import { StructuredControl } from "./structured-control";
+import { ReferenceControl } from "./reference-control";
 import { lazy, Suspense } from "react";
 import { ExternalLink, Lock } from "lucide-react";
 import { cn } from "@three-acts/utils";
@@ -33,10 +35,15 @@ import {
 import { formatDateTime, fromDateTimeLocal, toDateTimeLocal } from "../../lib/format";
 import { LinkControl } from "../atoms/link-control";
 
+const MarkdownControl = lazy(() => import("./markdown-control").then(module => ({ default: module.MarkdownControl })));
+
 const READ_ONLY_FIELD_HINT = "Set by the site";
 const CodeEditor = lazy(() => import("../atoms/code-editor").then((module) => ({ default: module.CodeEditor })));
 
-type FieldControlProps = {
+export type FieldControlProps = {
+  collectionId?: string;
+  schemaPath?: string;
+  referenceExcludedIds?: string[];
   field: CmsField;
   onAssetUpload: (field: AssetField | ImageField | VideoField | FileField | LinkField, file: File) => void;
   onGalleryUpload: (field: ImageGalleryField, files: File[]) => void;
@@ -108,7 +115,8 @@ function toNumberValue(value: CmsRecordValue): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryItemUpload, onUpdateValue, readOnly, record, uploadingField }: FieldControlProps) {
+export function FieldControl(props: FieldControlProps) {
+  const { field, onAssetUpload, onGalleryUpload, onGalleryItemUpload, onUpdateValue, readOnly, record, uploadingField } = props;
   const value = record.values[field.key] ?? "";
   // Non-Base UI controls (uploads and CodeMirror) need explicit associations.
   const uploadId = `${record.id}-${field.key}`;
@@ -117,6 +125,10 @@ export function FieldControl({ field, onAssetUpload, onGalleryUpload, onGalleryI
   // (`isReadOnlyField`, e.g. an order's total — editors may still change its
   // status even though the money fields are set by checkout).
   const fieldReadOnly = readOnly || isReadOnlyField(field);
+
+  if (field.cardinality === "multiple" || field.type === "object") return <StructuredControl {...props} readOnly={fieldReadOnly} />;
+  if (field.type === "reference") return <ReferenceControl excludedIds={props.referenceExcludedIds} field={field} value={String(value)} onChange={next => onUpdateValue(field.key, next)} readOnly={fieldReadOnly} />;
+  if (field.type === "markdown") return <Suspense fallback={<p role="status">Loading Markdown editor…</p>}><MarkdownControl field={field} value={String(value)} onChange={next => onUpdateValue(field.key, next)} readOnly={fieldReadOnly} /></Suspense>;
 
   if (field.type === "link") {
     return <LinkControl field={field} inputId={uploadId} isUploading={uploadingField === field.key} onChange={(next) => onUpdateValue(field.key, next)} onFile={(file) => onAssetUpload(field, file)} readOnly={fieldReadOnly} value={String(value)} />;

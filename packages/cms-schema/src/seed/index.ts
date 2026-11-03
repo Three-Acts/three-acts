@@ -1,3 +1,5 @@
+import { studioSeed } from "./studio";
+export { studioSeed } from "./studio";
 /**
  * Merges the three domain seeds (content, shop, site) into one dataset for
  * the "Three Acts" demo brand — the template selling itself. See `./keys.ts`
@@ -18,7 +20,7 @@ export { siteSeed } from "./site";
  * Every seed collection, merged (content + shop + site). Treat as read-only —
  * backends that mutate records must start from `cloneSeedCollections()`.
  */
-export const seedCollections: SeedCollections = { ...contentSeed, ...shopSeed, ...siteSeed };
+export const seedCollections: SeedCollections = { ...contentSeed, ...shopSeed, ...siteSeed, ...studioSeed };
 
 /** A fresh deep copy of every seed collection, safe to mutate (mock backends, memory stores, tests). */
 export function cloneSeedCollections(): SeedCollections {

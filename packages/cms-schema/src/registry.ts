@@ -1,3 +1,4 @@
+import { studioCollections } from "./studio";
 import type { CmsCollection, SelectOption } from "./types";
 
 /**
@@ -31,6 +32,7 @@ const ratingOptions: SelectOption[] = [
 ];
 
 export const collectionRegistry: CmsCollection[] = [
+  ...studioCollections,
   // --- Content ---------------------------------------------------------------
   {
     id: "articles",
