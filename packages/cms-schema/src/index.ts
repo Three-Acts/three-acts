@@ -8,3 +8,7 @@ export * from "./links";
 export * from "./schema-markup";
 export { collectionRegistry } from "./registry";
 export * from "./title-template";
+
+export * from "./structured";
+export * from "./validation";
+export * from "./references";

@@ -1,3 +1,4 @@
+import { preserveReadOnlyChildren, validateReferences, validateFieldValue, resolveFieldPath } from "@three-acts/cms-schema";
 import {
   CmsError,
   MAX_ASSET_UPLOAD_BYTES,
@@ -5,31 +6,15 @@ import {
   collectionRegistry,
   hasPublishWorkflow,
   isReadOnlyField,
-  parseLinkValue,
-  parseFileValue,
-  parseImageGallery,
-  parseImageValue,
-  parseSchemaMarkup,
-  parseVideoValue,
-  resolveLinkValue,
-  serializeFileValue,
-  serializeLinkValue,
-  serializeImageGallery,
-  serializeImageValue,
-  serializeVideoValue,
   type AssetUploadResult,
   type CmsCollection,
   type CmsCollectionSummary,
   type CmsField,
   type CmsRecord,
   type CmsRecordValue,
-  type ImageGalleryField,
-  type LinkField,
   type ListRecordsOptions,
   type ListRecordsResult,
-  validateLinkValue,
   type PublishStatus,
-  type SelectField,
   type UploadAssetBody
 } from "@three-acts/cms-schema";
 import { getBlobStore, getDataStore } from "./resolve-store";
@@ -69,170 +54,24 @@ function assertCanCreate(collection: CmsCollection): CmsCollection {
   return collection;
 }
 
-function validationError(field: CmsField, message: string): CmsError {
-  return new CmsError("validation", message, { details: { field: field.key } });
-}
 
 function defaultValueForField(field: CmsField): CmsRecordValue {
+  if (field.cardinality === "multiple") return "[]";
   if (field.type === "boolean") return false;
   if (field.type === "number") return 0;
   if (field.type === "image-gallery") return "[]";
   return "";
 }
 
-/**
- * Validates and normalizes a single field's incoming value: select values
- * must be one of the configured options, numbers/booleans must coerce
- * cleanly, and datetimes are "" or a parseable value normalized to ISO UTC.
- *
- * `required` is a publish-time rule, not a draft-time one: editors create an
- * empty record and fill it in, so emptiness is only rejected when
- * `enforceRequired` is set (saving as published / queued to publish).
- */
-function validateFieldValue(field: CmsField, raw: CmsRecordValue, enforceRequired: boolean): CmsRecordValue {
-  switch (field.type) {
-    case "text":
-    case "textarea":
-    case "slug":
-    case "asset": {
-      const text = raw === null || raw === undefined ? "" : String(raw);
-      if (enforceRequired && field.required && !text.trim()) {
-        throw validationError(field, `${field.label} is required.`);
-      }
-      // Schema markup fields must hold valid JSON-LD on every save, drafts
-      // included: a malformed value is a format error, not a missing one.
-      if ((field.type === "text" || field.type === "textarea") && field.format === "json-ld") {
-        const markup = parseSchemaMarkup(text);
-        if (!markup.ok) {
-          throw validationError(field, markup.error);
-        }
-      }
-      // `format: "json"` fields (e.g. an order's line items) hold any JSON
-      // value, not just an object/array-of-objects like json-ld: "" is valid
-      // (nothing yet), anything else must parse.
-      if ((field.type === "text" || field.type === "textarea") && field.format === "json" && text.trim()) {
-        try {
-          JSON.parse(text);
-        } catch (parseError) {
-          const detail = parseError instanceof Error && parseError.message ? ` (${parseError.message})` : "";
-          throw validationError(field, `${field.label} is not valid JSON${detail}.`);
-        }
-      }
-      return text;
-    }
-    case "image": {
-      // Single typed image: stored as an ImageValue JSON string, read back
-      // leniently so legacy plain-URL rows keep validating.
-      const parsed = parseImageValue(raw);
-      if (enforceRequired && field.required && !parsed) {
-        throw validationError(field, `${field.label} is required.`);
-      }
-      return serializeImageValue(parsed);
-    }
-    case "video": {
-      // Single typed video: stored as a VideoValue JSON string, read back
-      // leniently so legacy plain-URL rows keep validating. Uploads only —
-      // there is no external-URL input, so a value without a src is empty.
-      const parsed = parseVideoValue(raw);
-      if (enforceRequired && field.required && !parsed) {
-        throw validationError(field, `${field.label} is required.`);
-      }
-      return serializeVideoValue(parsed);
-    }
-    case "file": {
-      // Single typed file: stored as a FileValue JSON string, read back
-      // leniently so legacy plain-URL rows keep validating.
-      const parsed = parseFileValue(raw);
-      if (enforceRequired && field.required && !parsed) {
-        throw validationError(field, `${field.label} is required.`);
-      }
-      return serializeFileValue(parsed);
-    }
-    case "link": {
-      const linkField = field as LinkField;
-      const error = validateLinkValue(raw, { field: linkField, required: enforceRequired && field.required });
-      if (error) throw validationError(field, error);
-      const parsed = parseLinkValue(raw);
-      return serializeLinkValue(parsed ? resolveLinkValue(parsed, linkField) : null);
-    }
-    case "image-gallery": {
-      // Ordered gallery: stored as an ImageValue[] JSON string. Like
-      // `required`, `minItems`/`maxItems` gate publishing, not drafting.
-      const items = parseImageGallery(raw);
-      if (enforceRequired) {
-        const galleryField = field as ImageGalleryField;
-        if (field.required && items.length === 0) {
-          throw validationError(field, `${field.label} is required.`);
-        }
-        if (galleryField.minItems !== undefined && items.length > 0 && items.length < galleryField.minItems) {
-          throw validationError(field, `${field.label} needs at least ${galleryField.minItems} image(s).`);
-        }
-        if (galleryField.maxItems !== undefined && items.length > galleryField.maxItems) {
-          throw validationError(field, `${field.label} accepts at most ${galleryField.maxItems} image(s).`);
-        }
-      }
-      return serializeImageGallery(items);
-    }
-    case "number": {
-      if (raw === "" || raw === null || raw === undefined) {
-        if (enforceRequired && field.required) {
-          throw validationError(field, `${field.label} is required.`);
-        }
-        return 0;
-      }
-      const num = typeof raw === "number" ? raw : Number(raw);
-      if (typeof raw === "boolean" || Number.isNaN(num)) {
-        throw validationError(field, `${field.label} must be a number.`);
-      }
-      return num;
-    }
-    case "boolean": {
-      if (typeof raw === "boolean") {
-        return raw;
-      }
-      if (raw === null || raw === undefined) {
-        return false;
-      }
-      throw validationError(field, `${field.label} must be true or false.`);
-    }
-    case "select": {
-      const text = raw === null || raw === undefined ? "" : String(raw);
-      if (!text) {
-        if (enforceRequired && field.required) {
-          throw validationError(field, `${field.label} is required.`);
-        }
-        return "";
-      }
-      const selectField = field as SelectField;
-      if (!selectField.options.some((option) => option.value === text)) {
-        throw validationError(field, `${field.label} must be one of the configured options.`);
-      }
-      return text;
-    }
-    case "datetime": {
-      const text = raw === null || raw === undefined ? "" : String(raw).trim();
-      if (!text) {
-        if (enforceRequired && field.required) {
-          throw validationError(field, `${field.label} is required.`);
-        }
-        return "";
-      }
-      const parsed = Date.parse(text);
-      if (Number.isNaN(parsed)) {
-        throw validationError(field, `${field.label} must be a valid date/time.`);
-      }
-      return new Date(parsed).toISOString();
-    }
-    default:
-      return raw ?? "";
-  }
-}
-
-/** Validate the shared Link field contract when records enter or leave the publish queue. */
-function validateLinksForPublish(collection: CmsCollection, rawValues: Record<string, CmsRecordValue>): void {
+/** Preflight composed values and relationships before promoting any records. */
+async function validateLinksForPublish(collection: CmsCollection, rawValues: Record<string, CmsRecordValue>): Promise<void> {
   const values = { ...rawValues };
+  await validateReferences(collection.fields, values, async (collectionId, id) => {
+    const target = collectionRegistry.find(item => item.id === collectionId);
+    return Boolean(target && await getDataStore().getRecord(target, id));
+  });
   for (const field of collection.fields) {
-    if (field.type === "link") {
+    if (field.type === "link" || field.type === "object" || field.type === "reference" || field.cardinality === "multiple") {
       values[field.key] = validateFieldValue(field, values[field.key], true);
     }
   }
@@ -250,12 +89,12 @@ function validateLinksForPublish(collection: CmsCollection, rawValues: Record<st
  * (`createSystemRecord`/`updateSystemRecord`), which is the only legitimate
  * way to set them.
  */
-function buildRecordValues(
+async function buildRecordValues(
   collection: CmsCollection,
   input: Partial<Record<string, CmsRecordValue>> | undefined,
   existingValues: Record<string, CmsRecordValue> | undefined,
   options: { enforceRequired?: boolean; allowReadOnlyInput?: boolean } = {}
-): Record<string, CmsRecordValue> {
+): Promise<Record<string, CmsRecordValue>> {
   const { enforceRequired = false, allowReadOnlyInput = false } = options;
   const values: Record<string, CmsRecordValue> = {};
 
@@ -276,9 +115,13 @@ function buildRecordValues(
       raw = defaultValueForField(field);
     }
 
-    values[field.key] = validateFieldValue(field, raw, enforceRequired);
+    values[field.key] = validateFieldValue(field, allowReadOnlyInput ? raw : preserveReadOnlyChildren(field, raw, existingValues?.[field.key]), enforceRequired);
   }
 
+  await validateReferences(collection.fields, values, async (collectionId, id) => {
+    const target = collectionRegistry.find(item => item.id === collectionId);
+    return Boolean(target && await getDataStore().getRecord(target, id));
+  });
   return values;
 }
 
@@ -392,7 +235,7 @@ async function assertSingletonCapacity(collection: CmsCollection, incoming: numb
 export async function createRecord(collectionId: string, values?: Partial<Record<string, CmsRecordValue>>): Promise<CmsRecord> {
   const collection = assertCanCreate(assertWritable(getCollectionOrThrow(collectionId)));
   await assertSingletonCapacity(collection, 1);
-  const normalizedValues = buildRecordValues(collection, values, undefined);
+  const normalizedValues = await buildRecordValues(collection, values, undefined);
   const [record] = await getDataStore().insertRecords(collection, [{ publishStatus: "not_published", values: normalizedValues }]);
   return record;
 }
@@ -412,7 +255,7 @@ export async function createSystemRecord(
 ): Promise<CmsRecord> {
   const collection = getCollectionOrThrow(collectionId);
   await assertSingletonCapacity(collection, 1);
-  const normalizedValues = buildRecordValues(collection, values, undefined, { enforceRequired: true, allowReadOnlyInput: true });
+  const normalizedValues = await buildRecordValues(collection, values, undefined, { enforceRequired: true, allowReadOnlyInput: true });
   const [record] = await getDataStore().insertRecords(collection, [{ publishStatus, values: normalizedValues }]);
   return record;
 }
@@ -440,7 +283,7 @@ export async function updateSystemRecord(
     throw new CmsError("not_found", `Unknown record: ${recordId}`);
   }
 
-  const normalizedValues = buildRecordValues(collection, patch, existing.values, { enforceRequired: true, allowReadOnlyInput: true });
+  const normalizedValues = await buildRecordValues(collection, patch, existing.values, { enforceRequired: true, allowReadOnlyInput: true });
   const nextRecord: CmsRecord = {
     id: existing.id,
     publishStatus: existing.publishStatus,
@@ -485,7 +328,7 @@ export async function saveRecord(
   const publishStatus = isPublishStatus(record.publishStatus) ? record.publishStatus : existing.publishStatus;
   // Required fields gate publishing, not drafting.
   const enforceRequired = publishStatus === "published" || publishStatus === "queued_to_publish";
-  const normalizedValues = buildRecordValues(collection, record.values, existing.values, { enforceRequired });
+  const normalizedValues = await buildRecordValues(collection, record.values, existing.values, { enforceRequired });
 
   const nextRecord: CmsRecord = {
     id: existing.id,
@@ -528,17 +371,17 @@ export async function importRecords(collectionId: string, rows: Array<Record<str
 
   await assertSingletonCapacity(collection, rows.length);
 
-  const prepared = rows.map((row) => ({
+  const prepared = await Promise.all(rows.map(async (row) => ({
     publishStatus: "not_published" as const,
-    values: buildRecordValues(collection, row, undefined)
-  }));
+    values: await buildRecordValues(collection, row, undefined)
+  })));
 
   return getDataStore().insertRecords(collection, prepared);
 }
 
 export async function uploadAsset(collectionId: string, fieldKey: string, body: UploadAssetBody): Promise<AssetUploadResult> {
   const collection = assertCanCreate(assertWritable(getCollectionOrThrow(collectionId)));
-  const field = collection.fields.find((item) => item.key === fieldKey);
+  const field = resolveFieldPath(collection.fields, fieldKey);
 
   // Uploads serve generic files (`asset`) as well as typed singles:
   // `image`, `video`, `file`, and opted-in link fields, plus per-item gallery uploads
@@ -606,7 +449,7 @@ export async function publishQueued(collectionId?: string): Promise<{ published:
   for (const collection of collections) {
     if (!hasPublishWorkflow(collection)) continue;
     const { records } = await store.listRecords(collection, { publishStatus: "queued_to_publish" });
-    for (const record of records) validateLinksForPublish(collection, record.values);
+    for (const record of records) await validateLinksForPublish(collection, record.values);
   }
 
   let published = 0;
@@ -652,7 +495,7 @@ export async function setPublishStatus(collectionId: string, recordIds: string[]
     // Validate the whole selected set before the adapter changes any statuses.
     for (const recordId of new Set(recordIds)) {
       const record = await store.getRecord(collection, recordId);
-      if (record) validateLinksForPublish(collection, record.values);
+      if (record) await validateLinksForPublish(collection, record.values);
     }
   }
 

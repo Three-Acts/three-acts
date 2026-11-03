@@ -107,6 +107,7 @@ export function RecordEditor({
         <EditorSection title="Basic info">
           {collection.fields.slice(0, 3).map((field) => (
             <FieldControl
+              collectionId={collection.id}
               field={field}
               key={field.key}
               onAssetUpload={onAssetUpload}
@@ -123,6 +124,7 @@ export function RecordEditor({
         <EditorSection title={editable ? "Custom fields" : "Details"}>
           {collection.fields.slice(3).map((field) => (
             <FieldControl
+              collectionId={collection.id}
               field={field}
               key={field.key}
               onAssetUpload={onAssetUpload}

@@ -11,6 +11,7 @@
 import { columnsForCollection, columnForField, isUniqueField, publishStatuses, systemColumnsFor, type CmsCollection, type CmsField } from "@three-acts/cms-schema";
 
 export function sqlColumnType(field: CmsField): string {
+  if (field.cardinality === "multiple") return "text";
   switch (field.type) {
     case "number":
       return "numeric";
@@ -150,7 +151,7 @@ export function constraintSql(collection: CmsCollection): string {
 
   for (const field of collection.fields) {
     const column = columnForField(collection, field);
-    if (field.type === "select") {
+    if (field.type === "select" && field.cardinality !== "multiple") {
       blocks.push(selectCheckConstraintSql(collection.tableName, column, field.options.map((option) => option.value)));
     }
     if (isUniqueField(field)) {

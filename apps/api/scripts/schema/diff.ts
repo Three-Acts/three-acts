@@ -46,6 +46,7 @@ export type SnapshotColumn = {
    * the snapshot alone.
    */
   fieldType?: FieldType | SystemColumnRole;
+  cardinality?: "single" | "multiple";
   unique?: boolean;
   selectOptions?: string[];
 };
@@ -82,10 +83,11 @@ export function snapshotOf(registry: readonly CmsCollection[], generatedAt: stri
     for (const field of collection.fields) {
       const column = columnForField(collection, field);
       const entry: SnapshotColumn = { type: sqlColumnType(field), kind: "field", fieldType: field.type };
+      if (field.cardinality) entry.cardinality = field.cardinality;
       if (isUniqueField(field)) {
         entry.unique = true;
       }
-      if (field.type === "select") {
+      if (field.type === "select" && field.cardinality !== "multiple") {
         entry.selectOptions = field.options.map((option) => option.value);
       }
       columns[column] = entry;
@@ -130,7 +132,7 @@ function constraintSqlForSnapshotTable(tableName: string, table: SnapshotTable):
 
   for (const [column, def] of Object.entries(table.columns)) {
     if (def.kind !== "field") continue;
-    if (def.fieldType === "select") {
+    if (def.fieldType === "select" && def.cardinality !== "multiple") {
       blocks.push(selectCheckConstraintSql(tableName, column, def.selectOptions ?? []));
     }
     if (def.unique) {
@@ -221,7 +223,7 @@ export function diffSnapshots(previous: SchemaSnapshot, next: SchemaSnapshot): S
       if (!prevDef && nextDef) {
         // Added column.
         statements.push(`alter table ${table} add column if not exists ${columnDefinitionLine(column, nextDef)};`);
-        if (nextDef.kind === "field" && nextDef.fieldType === "select") {
+        if (nextDef.kind === "field" && nextDef.fieldType === "select" && nextDef.cardinality !== "multiple") {
           statements.push(selectCheckConstraintSql(tableName, column, nextDef.selectOptions ?? []));
         }
         if (nextDef.kind === "field" && nextDef.unique) {
@@ -244,6 +246,10 @@ export function diffSnapshots(previous: SchemaSnapshot, next: SchemaSnapshot): S
 
       if (!prevDef || !nextDef) continue; // unreachable, satisfies strict narrowing
 
+      if ((prevDef.cardinality ?? "single") !== (nextDef.cardinality ?? "single")) {
+        statements.push(`-- WARNING: cardinality changed for "${tableName}"."${column}". Convert existing scalar/JSON array values explicitly before applying this schema. No automatic conversion is generated.`);
+        continue;
+      }
       if (prevDef.type !== nextDef.type) {
         statements.push(
           [
@@ -254,7 +260,7 @@ export function diffSnapshots(previous: SchemaSnapshot, next: SchemaSnapshot): S
         );
       }
 
-      if (nextDef.kind === "field" && nextDef.fieldType === "select") {
+      if (nextDef.kind === "field" && nextDef.fieldType === "select" && nextDef.cardinality !== "multiple") {
         const prevOptions = prevDef.kind === "field" ? (prevDef.selectOptions ?? []) : [];
         const nextOptions = nextDef.selectOptions ?? [];
         if (!sameStringSet(prevOptions, nextOptions)) {

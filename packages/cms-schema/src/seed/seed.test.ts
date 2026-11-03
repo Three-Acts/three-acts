@@ -59,8 +59,8 @@ describe("merged seed", () => {
     }
   });
 
-  it("merges the three domain seeds without overlap", () => {
-    const keys = [seed.contentSeed, seed.shopSeed, seed.siteSeed].flatMap((part) => Object.keys(part));
+  it("merges the domain seeds without overlap", () => {
+    const keys = [seed.contentSeed, seed.shopSeed, seed.siteSeed, seed.studioSeed].flatMap((part) => Object.keys(part));
     assert.equal(new Set(keys).size, keys.length, "no collection is seeded twice");
   });
 
